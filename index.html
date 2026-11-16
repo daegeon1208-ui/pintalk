@@ -747,9 +747,26 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 
 /* ===== 3.64 버튼 뉴모피즘 (시안 C): 왼쪽 위 밝은 그림자 + 오른쪽 아래 어두운 그림자 ===== */
 .row2 button,.sec,.fab,.pcall,#lMove,.hfilter button,.seg button.on,.tchip,.vchip,.exp button.tchip,header .hbtn:not(#cloudBtn),.dcard .favb,.toolbar>button:not(#addBtn){background-image:none!important;box-shadow:4px 4px 9px rgba(0,0,0,.17),-3px -3px 8px rgba(255,255,255,.95)!important;border-color:transparent!important}
-.seg{box-shadow:inset 3px 3px 6px rgba(0,0,0,.13),inset -3px -3px 6px rgba(255,255,255,.9)!important}
-header .hbtn:not(#cloudBtn){box-shadow:3px 3px 6px rgba(0,0,0,.22),-2px -2px 5px rgba(255,255,255,.18)!important}
+.seg{box-shadow:inset 2px 2px 4px rgba(0,0,0,.11),inset -2px -2px 4px rgba(255,255,255,.9)!important}
+/* 3.65 작은 버튼(칩·전환·별·머리줄 버튼)은 그림자를 얕게 */
+.hfilter button,.seg button.on,.tchip,.vchip,.exp button.tchip,.dcard .favb{box-shadow:2px 2px 4px rgba(0,0,0,.13),-2px -2px 4px rgba(255,255,255,.9)!important}
+header .hbtn:not(#cloudBtn){box-shadow:2px 2px 4px rgba(0,0,0,.2),-1px -1px 3px rgba(255,255,255,.15)!important}
 #addBtn{box-shadow:6px 6px 14px rgba(0,0,0,.35),-4px -4px 10px rgba(255,255,255,.12)!important}
+
+/* ===== 3.65 도면 화면 1안: 팀·업체·공종 칸과 쪽 이동 칸을 아래(독 위)로 (세로 화면만) ===== */
+@media not all and (orientation:landscape) and (max-height:600px){
+#viewer #vp{order:1}
+#viewer .fhandle{order:2;border-top:0;border-bottom:1px solid var(--line)}
+#viewer .ftab{top:auto;bottom:-1px;border-top:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0;box-shadow:0 -3px 6px rgba(0,0,0,.08)}
+#viewer .ftab i{transform:rotate(180deg)} #viewer .fhandle.closed .ftab i{transform:none}
+#viewer #fPanel{order:3}
+#viewer .pgbar{order:4;border-bottom:0;border-top:1px solid var(--line)}
+#viewer .teambar{border-bottom:0;border-top:1px solid var(--line)}
+#viewer .toolbar{order:9;position:relative;flex-direction:column;gap:8px;padding-top:8px;pointer-events:auto}
+#viewer .cntdock{position:static;transform:none;align-self:center}
+#viewer .toolbar{background:#DEDEDB}
+}
+@media (orientation:landscape) and (max-height:600px){ #viewer .pgbar{padding-right:calc(env(safe-area-inset-right) + 116px)} }   /* 가로 화면: 쪽 › 버튼이 개수 표시에 가리지 않게 */
 </style>
 </head>
 <body>
@@ -1048,7 +1065,7 @@ header .hbtn:not(#cloudBtn){box-shadow:3px 3px 6px rgba(0,0,0,.22),-2px -2px 5px
 
 <script>
 "use strict";
-const APP_VER = "3.64";
+const APP_VER = "3.65";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -2248,8 +2265,9 @@ const fOpen=()=>myPref("filterOpen","1")==="1";
 function setFOpen(o){ setPref("filterOpen",o?"1":"0"); $("#fPanel").classList.toggle("closed",!o); $("#fHandle").classList.toggle("closed",!o); if(V.page) setTimeout(()=>{ apply(); scheduleDetail(); },240); }
 (()=>{ let y0=null, x0=0, y1=0, x1=0, tab=false;   // 밀기와 손잡이 누르기 둘 다
   const st=e=>{ y0=y1=e.clientY; x0=x1=e.clientX; tab=!!e.target.closest("#fTab"); };
-  const mv=e=>{ if(y0===null) return; y1=e.clientY; x1=e.clientX; if(y1-y0>20&&!fOpen()){ y0=null; setFOpen(true); } else if(y0-y1>20&&fOpen()&&Math.abs(y1-y0)>Math.abs(x1-x0)){ y0=null; setFOpen(false); } };
-  const en=()=>{ if(y0===null) return; const dy=y1-y0, dx=x1-x0; y0=null;
+  const sg=()=>LAND.matches?1:-1;   // 세로 화면은 칸이 아래에 있어 위로 밀면 펼침
+  const mv=e=>{ if(y0===null) return; y1=e.clientY; x1=e.clientX; if((y1-y0)*sg()>20&&!fOpen()){ y0=null; setFOpen(true); } else if((y0-y1)*sg()>20&&fOpen()&&Math.abs(y1-y0)>Math.abs(x1-x0)){ y0=null; setFOpen(false); } };
+  const en=()=>{ if(y0===null) return; const dy=(y1-y0)*sg(), dx=x1-x0; y0=null;
     if(Math.abs(dy)>20&&Math.abs(dy)>Math.abs(dx)){ if(dy>0&&!fOpen()) setFOpen(true); else if(dy<0&&fOpen()) setFOpen(false); }
     else if(tab&&Math.abs(dy)<10&&Math.abs(dx)<10) setFOpen(!fOpen()); };
   ["#fTab","#fPanel"].forEach(id=>$(id).addEventListener("pointerdown",st));
