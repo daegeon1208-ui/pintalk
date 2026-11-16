@@ -746,10 +746,10 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 #pinSheet #pCmBox{padding-top:4px}
 
 /* ===== 3.64 버튼 뉴모피즘 (시안 C): 왼쪽 위 밝은 그림자 + 오른쪽 아래 어두운 그림자 ===== */
-.row2 button,.sec,.fab,.pcall,#lMove,.hfilter button,.seg button.on,.tchip,.vchip,.exp button.tchip,header .hbtn:not(#cloudBtn),.dcard .favb,.toolbar>button:not(#addBtn){background-image:none!important;box-shadow:4px 4px 9px rgba(0,0,0,.17),-3px -3px 8px rgba(255,255,255,.95)!important;border-color:transparent!important}
+.row2 button,.sec,.fab,.pcall,#lMove,.hfilter button.on,.seg button.on,.tchip,.vchip,.exp button.tchip,header .hbtn:not(#cloudBtn),.dcard .favb,.toolbar>button:not(#addBtn){background-image:none!important;box-shadow:4px 4px 9px rgba(0,0,0,.17),-3px -3px 8px rgba(255,255,255,.95)!important;border-color:transparent!important}
 .seg{box-shadow:inset 2px 2px 4px rgba(0,0,0,.11),inset -2px -2px 4px rgba(255,255,255,.9)!important}
 /* 3.65 작은 버튼(칩·전환·별·머리줄 버튼)은 그림자를 얕게 */
-.hfilter button,.seg button.on,.tchip,.vchip,.exp button.tchip,.dcard .favb{box-shadow:2px 2px 4px rgba(0,0,0,.13),-2px -2px 4px rgba(255,255,255,.9)!important}
+.hfilter button.on,.seg button.on,.tchip,.vchip,.exp button.tchip,.dcard .favb{box-shadow:2px 2px 4px rgba(0,0,0,.13),-2px -2px 4px rgba(255,255,255,.9)!important}
 header .hbtn:not(#cloudBtn){box-shadow:2px 2px 4px rgba(0,0,0,.2),-1px -1px 3px rgba(255,255,255,.15)!important}
 #addBtn{box-shadow:6px 6px 14px rgba(0,0,0,.35),-4px -4px 10px rgba(255,255,255,.12)!important}
 
@@ -773,6 +773,9 @@ header .hbtn:not(#cloudBtn){box-shadow:2px 2px 4px rgba(0,0,0,.2),-1px -1px 3px 
 .seg.liq>button,.hfilter.liq>button{position:relative;z-index:1;transition:color .25s}
 .seg.liq>button.on,.hfilter.liq>button.on{background:transparent!important;box-shadow:none!important}
 .seg>i.lq,.hfilter>i.lq{position:absolute;z-index:0;pointer-events:none;display:block}
+/* 3.67 개인/협업 탭: 안 고른 칸은 그림자 없이 바탕에 붙여 두 칸 사이 틈을 없앤다 */
+.hfilter{gap:0!important;box-shadow:inset 2px 2px 4px rgba(0,0,0,.11),inset -2px -2px 4px rgba(255,255,255,.9)}
+.hfilter button:not(.on){background:none!important;box-shadow:none!important}
 @media (prefers-reduced-motion:reduce){ .seg>i.lq,.hfilter>i.lq{transition:none!important} }
 </style>
 </head>
@@ -1072,7 +1075,7 @@ header .hbtn:not(#cloudBtn){box-shadow:2px 2px 4px rgba(0,0,0,.2),-1px -1px 3px 
 
 <script>
 "use strict";
-const APP_VER = "3.66";
+const APP_VER = "3.67";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
