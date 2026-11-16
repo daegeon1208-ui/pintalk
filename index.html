@@ -769,14 +769,14 @@ header .hbtn:not(#cloudBtn){box-shadow:2px 2px 4px rgba(0,0,0,.2),-1px -1px 3px 
 @media (orientation:landscape) and (max-height:600px){ #viewer .pgbar{padding-right:calc(env(safe-area-inset-right) + 116px)} }   /* 가로 화면: 쪽 › 버튼이 개수 표시에 가리지 않게 */
 
 /* ===== 3.66 구간 버튼: 고른 칸이 물방울처럼 늘었다 줄며 옆으로 옮겨 간다 ===== */
-.seg.liq,.hfilter.liq{position:relative;isolation:isolate}
-.seg.liq>button,.hfilter.liq>button{position:relative;z-index:1;transition:color .25s}
-.seg.liq>button.on,.hfilter.liq>button.on{background:transparent!important;box-shadow:none!important}
-.seg>i.lq,.hfilter>i.lq{position:absolute;z-index:0;pointer-events:none;display:block}
+.seg.liq,.hfilter.liq,.tmgrid.liq{position:relative;isolation:isolate}
+.seg.liq>button,.hfilter.liq>button,.tmgrid.liq>button{position:relative;z-index:1;transition:color .2s}
+.seg.liq>button.on,.hfilter.liq>button.on,.tmgrid.liq>button.on{background:transparent!important;box-shadow:none!important}
+.seg>i.lq,.hfilter>i.lq,.tmgrid>i.lq{position:absolute;z-index:0;pointer-events:none;display:block;grid-area:auto}
 /* 3.67 개인/협업 탭: 안 고른 칸은 그림자 없이 바탕에 붙여 두 칸 사이 틈을 없앤다 */
 .hfilter{gap:0!important;box-shadow:inset 2px 2px 4px rgba(0,0,0,.11),inset -2px -2px 4px rgba(255,255,255,.9)}
 .hfilter button:not(.on){background:none!important;box-shadow:none!important}
-@media (prefers-reduced-motion:reduce){ .seg>i.lq,.hfilter>i.lq{transition:none!important} }
+@media (prefers-reduced-motion:reduce){ .seg>i.lq,.hfilter>i.lq,.tmgrid>i.lq{transition:none!important} }
 </style>
 </head>
 <body>
@@ -1075,7 +1075,7 @@ header .hbtn:not(#cloudBtn){box-shadow:2px 2px 4px rgba(0,0,0,.2),-1px -1px 3px 
 
 <script>
 "use strict";
-const APP_VER = "3.67";
+const APP_VER = "3.68";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -4041,26 +4041,32 @@ try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); 
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 
 // 3.66 구간 버튼 물방울 이동: 앞쪽 끝이 먼저 튀어 나가고 뒤쪽 끝이 늦게 따라와서 늘었다 줄어든다
+// 3.68 더 빠르게, 2칸×2줄 양식 버튼도, 화면을 다시 그려도(내보내기 창) 이전 자리에서 이어서 움직인다
 (()=>{
-  const SEL=".seg:not(.team),.hfilter";
-  const GO="cubic-bezier(.3,1.45,.5,1)", TAIL="cubic-bezier(.65,0,.25,1)";
+  const SEL=".seg:not(.team),.hfilter,.tmgrid";
+  const GO="cubic-bezier(.3,1.4,.5,1)", TAIL="cubic-bezier(.65,0,.25,1)", FAST=".19s", SLOW=".27s", LAG=".03s";
+  const MEM=new Map();   // id 있는 칸은 다시 그려져도 이전 자리를 기억
+  const key=seg=>seg.id||null;
   const upd=seg=>{
     const on=seg.querySelector(":scope>button.on"); let ink=seg.querySelector(":scope>i.lq");
     if(!on||!on.offsetWidth){ if(ink) ink.style.opacity="0"; return; }
-    if(ink&&ink.style.opacity==="1"&&ink._on===on&&seg.dataset.lqL==on.offsetLeft&&seg.dataset.lqW==seg.clientWidth) return;   // 바뀐 게 없으면 건너뜀
+    if(ink&&ink.style.opacity==="1"&&ink._on===on&&ink._l===on.offsetLeft&&ink._t===on.offsetTop&&ink._w===seg.clientWidth) return;   // 바뀐 게 없으면 건너뜀
     seg.classList.remove("liq"); const cs=getComputedStyle(on);
     const bg=cs.backgroundColor, sh=cs.boxShadow, br=cs.borderRadius; seg.classList.add("liq");
-    const L=on.offsetLeft, R=seg.clientWidth-L-on.offsetWidth, T=on.offsetTop, H=on.offsetHeight;
-    const pL=parseFloat(seg.dataset.lqL), pR=parseFloat(seg.dataset.lqR);
-    const had=!isNaN(pL)&&seg.dataset.lqW==String(seg.clientWidth);
+    const W=seg.clientWidth, Hh=seg.clientHeight;
+    const n={L:on.offsetLeft, T:on.offsetTop}; n.R=W-n.L-on.offsetWidth; n.B=Hh-n.T-on.offsetHeight;
+    const p=(ink&&ink._p)||(key(seg)&&MEM.get(key(seg)));
+    const had=p&&p.W===W;
     if(!ink){ ink=document.createElement("i"); ink.className="lq"; seg.prepend(ink);
-      if(had){ Object.assign(ink.style,{transition:"none",left:pL+"px",right:pR+"px",top:T+"px",height:H+"px",background:bg,borderRadius:br}); void ink.offsetWidth; } }
-    const move=had&&Math.abs(pL-L)>1;
-    ink.style.transition=!move?"none":(L>pL
-      ? `right .32s ${GO}, left .46s ${TAIL} .07s, background-color .3s`
-      : `left .32s ${GO}, right .46s ${TAIL} .07s, background-color .3s`);
-    Object.assign(ink.style,{left:L+"px",right:R+"px",top:T+"px",height:H+"px",background:bg,boxShadow:sh,borderRadius:br,opacity:"1"});
-    ink._on=on; seg.dataset.lqL=L; seg.dataset.lqR=R; seg.dataset.lqW=seg.clientWidth;
+      if(had){ Object.assign(ink.style,{transition:"none",left:p.L+"px",right:p.R+"px",top:p.T+"px",bottom:p.B+"px",background:bg,borderRadius:br,opacity:"1"}); void ink.offsetWidth; } }
+    const mx=had&&Math.abs(p.L-n.L)>1, my=had&&Math.abs(p.T-n.T)>1;
+    const tr=["background-color .25s"];
+    const ax=(a,b,go)=>{ tr.push(`${a} ${FAST} ${GO}`,`${b} ${SLOW} ${TAIL} ${LAG}`); };
+    if(mx){ n.L>p.L?ax("right","left"):ax("left","right"); }
+    if(my){ n.T>p.T?ax("bottom","top"):ax("top","bottom"); }
+    ink.style.transition=(mx||my)?tr.join(","):"none";
+    Object.assign(ink.style,{left:n.L+"px",right:n.R+"px",top:n.T+"px",bottom:n.B+"px",height:"auto",background:bg,boxShadow:sh,borderRadius:br,opacity:"1"});
+    n.W=W; ink._p=n; ink._on=on; ink._l=n.L; ink._t=n.T; ink._w=W; if(key(seg)) MEM.set(key(seg),n);
   };
   let q=false; const run=()=>{ q=false; document.querySelectorAll(SEL).forEach(upd); };
   const kick=()=>{ if(!q){ q=true; requestAnimationFrame(run); } };
