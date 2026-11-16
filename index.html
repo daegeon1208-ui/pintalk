@@ -975,7 +975,7 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 
 <script>
 "use strict";
-const APP_VER = "3.58";
+const APP_VER = "3.59";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -3457,7 +3457,7 @@ async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per)
     // 아래 줄: 왼쪽 내용·등록·완료, 오른쪽 위치도
     const BH=yy-bot, LX=xl, LWID=CW*0.56, RX=xl+LWID;
     page.drawLine({start:{x:RX,y:yy},end:{x:RX,y:bot},thickness:0.6,color:LINE});
-    const tw2=LWID-16, l1=VEN?"":`등록 ${fmtDate(p.created)}${p.by?"  "+p.by:""}`, l2=done&&p.doneAt?`완료 ${fmtDate(p.doneAt)}${p.doneBy&&!VEN?"  "+p.doneBy:""}`:"";
+    const tw2=LWID-16, l1="", l2=done&&p.doneAt?`완료 ${fmtDate(p.doneAt)}${p.doneBy&&!VEN?"  "+p.doneBy:""}`:"";
     page.drawText(CRK?"균열 내용":PAT?"지적 내용":"내용",{x:LX+8,y:yy-14,size:8.5,font:kor,color:SUB});
     const fill=CRK?"폭 ______ mm   길이 ______ m   보수 ____________":PAT?"조치 기한 ________   확인 ________":"";   // 손으로 적는 칸
     const fillH=fill?17:0;
