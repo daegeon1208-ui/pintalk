@@ -621,7 +621,8 @@ header #backBtn{color:#fff!important;background:none!important}
 /* 연결 상태: 글자 대신 동그라미 (초록 = 연결 확인, 노랑 = 연결 중·보내는 중, 빨강 = 연결 안 됨) */
 header .cloud.dot{padding-left:12px;padding-right:12px}
 header .cloud.dot span{display:none}
-header .cloud.dot i{width:13px;height:13px;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+header .cloud.dot i{width:13px;height:13px;box-shadow:none}
+header .hbtn.cloud.dot{background:none!important;padding-left:8px;padding-right:8px}   /* 3.60: 연결 점만 (테두리 독 없음) */
 header .cloud[data-state="err"]:not(.dot) i{background:#E31937}
 .sync{display:inline-grid;place-items:center;width:28px;height:28px;flex:none;cursor:pointer}
 .sync i{width:12px;height:12px;border-radius:50%;background:#9CA3AF;box-shadow:0 0 0 2px rgba(255,255,255,.3)}
@@ -975,7 +976,7 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 
 <script>
 "use strict";
-const APP_VER = "3.59";
+const APP_VER = "3.60";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -3156,7 +3157,7 @@ async function showExport(drawing,allPins,fromHome){
         <div class="lbl">넣을 업체</div><div class="vchips" id="expV">${evChips("v",evs)}</div>
         <div class="lbl">넣을 공종 <small style="font-weight:500;color:var(--sub)">· 고른 업체의 공종만</small></div><div class="vchips" id="expW">${evChips("w",ews)}</div>
         <div class="lbl">기간 <small style="font-weight:500;color:var(--sub)">· 핀을 등록한 날짜</small></div>
-        <div class="seg" id="expPer">${[["all","전체"],["today","오늘"],["week","최근 7일"],["month","이번 달"],["custom","직접"]].map(([v,t])=>`<button data-v="${v}" class="${per===v?"on":""}">${t}</button>`).join("")}</div>
+        <div class="seg" id="expPer">${[["all","전체"],["today","오늘"],["week","최근 7일"],["month","이번 달"],["custom","직접 입력"]].map(([v,t])=>`<button data-v="${v}" class="${per===v?"on":""}">${t}</button>`).join("")}</div>
         ${per==="custom"?`<div class="perrow"><input type="date" class="inp" id="expFrom" value="${pFrom}"><span>~</span><input type="date" class="inp" id="expTo" value="${pTo}"></div>`:""}
         <div class="lbl">사진대지에 넣을 사진</div>
         <div class="seg" id="expPh"><button data-v="rep" class="${allPh?"":"on"}">대표 사진만</button><button data-v="all" class="${allPh?"on":""}">사진 전부</button></div>
