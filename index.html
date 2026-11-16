@@ -744,6 +744,12 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 #pinSheet .vchip.on{background:#1E2226!important;color:#fff!important;box-shadow:none}
 #pinSheet .prow .photos{margin:0}
 #pinSheet #pCmBox{padding-top:4px}
+
+/* ===== 3.64 버튼 뉴모피즘 (시안 C): 왼쪽 위 밝은 그림자 + 오른쪽 아래 어두운 그림자 ===== */
+.row2 button,.sec,.fab,.pcall,#lMove,.hfilter button,.seg button.on,.tchip,.vchip,.exp button.tchip,header .hbtn:not(#cloudBtn),.dcard .favb,.toolbar>button:not(#addBtn){background-image:none!important;box-shadow:4px 4px 9px rgba(0,0,0,.17),-3px -3px 8px rgba(255,255,255,.95)!important;border-color:transparent!important}
+.seg{box-shadow:inset 3px 3px 6px rgba(0,0,0,.13),inset -3px -3px 6px rgba(255,255,255,.9)!important}
+header .hbtn:not(#cloudBtn){box-shadow:3px 3px 6px rgba(0,0,0,.22),-2px -2px 5px rgba(255,255,255,.18)!important}
+#addBtn{box-shadow:6px 6px 14px rgba(0,0,0,.35),-4px -4px 10px rgba(255,255,255,.12)!important}
 </style>
 </head>
 <body>
@@ -1042,7 +1048,7 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 
 <script>
 "use strict";
-const APP_VER = "3.63";
+const APP_VER = "3.64";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
