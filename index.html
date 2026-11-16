@@ -686,7 +686,7 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 <section id="home" class="screen" data-lb="B1 도면 목록">
   <header><h1><span class="hlogo"><img src="icon-192.png" alt=""></span>핀톡</h1><button class="hbtn mode" id="modeBtn" hidden></button><button class="hbtn cloud" id="cloudBtn"><i></i><span id="cloudTxt">공유</span></button><button class="hbtn ico" id="noteBtn" aria-label="알림"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg><b class="nbadge" id="noteCnt" hidden></b></button><button class="hbtn ico" id="helpBtn" aria-label="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2L5.5 5.5"/><circle cx="12" cy="12" r="6.3"/></svg></button></header>
   <div class="asuser" id="asUserBar" hidden><span id="asUserTxt"></span> <button id="asUserOff">관리자로 돌아가기</button></div>
-  <div class="htop" id="hTop"><div class="hsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="hq" type="search" placeholder="도면 이름으로 찾기" autocomplete="off" enterkeyhint="search"><button id="hqX" aria-label="지우기" hidden>✕</button></div><div class="hfilter" id="hTabs"></div></div>
+  <div class="htop" id="hTop"><div class="hsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="hq" type="search" name="dwg-search" placeholder="도면 이름으로 찾기" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore readonly enterkeyhint="search"><button id="hqX" aria-label="지우기" hidden>✕</button></div><div class="hfilter" id="hTabs"></div></div>
   <main id="dlist"></main>
   <button class="fab" id="importBtn">＋ 도면 불러오기 (PDF·DWG)</button>
   <input type="file" id="pdfInput" hidden>
@@ -976,7 +976,7 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 
 <script>
 "use strict";
-const APP_VER = "3.60";
+const APP_VER = "3.61";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -1332,6 +1332,7 @@ async function renderHome(){
   $("#hTop").hidden=!ds.length&&!rem.length;
   if(!ds.length&&!rem.length){box.innerHTML=`<div class="empty">아직 불러온 도면이 없습니다.<br>아래 <b>도면 불러오기</b>를 눌러<br>휴대폰에 받은 도면 PDF나 DWG를 고르세요.<br><button class="tourGo" data-tour>▶ 처음이세요? 연습 도면으로 따라하기</button></div>`;return;}
   // 협업 / 개인 탭 + 도면 이름 검색 (띄어쓰기·대소문자 무시)
+  if(!hqTyped&&$("#hq").value){ $("#hq").value=""; $("#hqX").hidden=true; }   // 자동완성으로 들어온 글자
   const q=($("#hq").value||"").replace(/\s+/g,"").toLowerCase(), hit=d=>!q||String(d.name||"").replace(/\s+/g,"").toLowerCase().includes(q);
   const prv=d=>!!(d.private||d.sample);   // 견본 도면은 개인 도면 탭에
   const nPrv=ds.filter(prv).length, nTeam=ds.length-nPrv+rem.length;
@@ -1358,9 +1359,16 @@ async function removeLocalDrawing(id){
   await dbDel("files",id); await dbDel("drawings",id);
 }
 $("#hTabs").addEventListener("click",e=>{ const hf=e.target.closest("[data-hf]"); if(!hf) return; try{ localStorage.setItem("homeFilter",hf.dataset.hf); }catch(err){} renderHome(); });
-$("#hq").addEventListener("input",()=>{ $("#hqX").hidden=!$("#hq").value; renderHome(); });
+/* 휴대폰 비밀번호 자동완성이 검색창을 아이디 칸으로 알고 이름을 채우는 것을 막는다 (3.61):
+   손대기 전에는 readonly(자동완성 안 됨), 사람이 치지 않았는데 들어온 글자는 지운다 */
+var hqTyped=false;
+const hqUnlock=()=>{ $("#hq").readOnly=false; };
+["pointerdown","touchstart","focus"].forEach(ev=>$("#hq").addEventListener(ev,hqUnlock,{passive:true}));
+["keydown","compositionstart","paste"].forEach(ev=>$("#hq").addEventListener(ev,()=>{ hqTyped=true; }));
+$("#hq").addEventListener("blur",()=>{ if(!$("#hq").value){ $("#hq").readOnly=true; hqTyped=false; } });
+$("#hq").addEventListener("input",()=>{ if(!hqTyped&&$("#hq").value){ $("#hq").value=""; } $("#hqX").hidden=!$("#hq").value; renderHome(); });
 $("#hq").addEventListener("keydown",e=>{ if(e.key==="Enter") e.target.blur(); });
-$("#hqX").addEventListener("click",()=>{ $("#hq").value=""; $("#hqX").hidden=true; renderHome(); });
+$("#hqX").addEventListener("click",()=>{ hqTyped=false; $("#hq").value=""; $("#hqX").hidden=true; renderHome(); });
 $("#dlist").addEventListener("click",async e=>{
   const fb=e.target.closest("[data-fav]");
   if(fb){ e.stopPropagation(); const on=toggleFav(fb.dataset.fav); await renderHome(); toast(on?"즐겨찾기했어요. 목록 맨 위에 고정돼요":"즐겨찾기를 풀었어요",2000); return; }
