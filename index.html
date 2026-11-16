@@ -622,7 +622,9 @@ header #backBtn{color:#fff!important;background:none!important}
 header .cloud.dot{padding-left:12px;padding-right:12px}
 header .cloud.dot span{display:none}
 header .cloud.dot i{width:13px;height:13px;box-shadow:none}
-header .hbtn.cloud.dot{background:none!important;padding-left:8px;padding-right:8px}   /* 3.60: 연결 점만 (테두리 독 없음) */
+header .hbtn.cloud.dot{background:none!important;padding-left:8px;padding-right:8px}
+#home header h1{flex:none}
+#home header #cloudBtn{margin-right:auto;margin-left:-2px}   /* 3.62: 연결 점은 핀톡 글자 바로 옆(왼쪽) */   /* 3.60: 연결 점만 (테두리 독 없음) */
 header .cloud[data-state="err"]:not(.dot) i{background:#E31937}
 .sync{display:inline-grid;place-items:center;width:28px;height:28px;flex:none;cursor:pointer}
 .sync i{width:12px;height:12px;border-radius:50%;background:#9CA3AF;box-shadow:0 0 0 2px rgba(255,255,255,.3)}
@@ -684,7 +686,7 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 
 <!-- 도면 목록 -->
 <section id="home" class="screen" data-lb="B1 도면 목록">
-  <header><h1><span class="hlogo"><img src="icon-192.png" alt=""></span>핀톡</h1><button class="hbtn mode" id="modeBtn" hidden></button><button class="hbtn cloud" id="cloudBtn"><i></i><span id="cloudTxt">공유</span></button><button class="hbtn ico" id="noteBtn" aria-label="알림"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg><b class="nbadge" id="noteCnt" hidden></b></button><button class="hbtn ico" id="helpBtn" aria-label="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2L5.5 5.5"/><circle cx="12" cy="12" r="6.3"/></svg></button></header>
+  <header><h1><span class="hlogo"><img src="icon-192.png" alt=""></span>핀톡</h1><button class="hbtn cloud" id="cloudBtn"><i></i><span id="cloudTxt">공유</span></button><button class="hbtn mode" id="modeBtn" hidden></button><button class="hbtn ico" id="noteBtn" aria-label="알림"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg><b class="nbadge" id="noteCnt" hidden></b></button><button class="hbtn ico" id="helpBtn" aria-label="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2L5.5 5.5"/><circle cx="12" cy="12" r="6.3"/></svg></button></header>
   <div class="asuser" id="asUserBar" hidden><span id="asUserTxt"></span> <button id="asUserOff">관리자로 돌아가기</button></div>
   <div class="htop" id="hTop"><div class="hsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="hq" type="search" name="dwg-search" placeholder="도면 이름으로 찾기" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore readonly enterkeyhint="search"><button id="hqX" aria-label="지우기" hidden>✕</button></div><div class="hfilter" id="hTabs"></div></div>
   <main id="dlist"></main>
@@ -976,7 +978,7 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 
 <script>
 "use strict";
-const APP_VER = "3.61";
+const APP_VER = "3.62";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
