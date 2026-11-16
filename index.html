@@ -767,6 +767,13 @@ header .hbtn:not(#cloudBtn){box-shadow:2px 2px 4px rgba(0,0,0,.2),-1px -1px 3px 
 #viewer .toolbar{background:#DEDEDB}
 }
 @media (orientation:landscape) and (max-height:600px){ #viewer .pgbar{padding-right:calc(env(safe-area-inset-right) + 116px)} }   /* 가로 화면: 쪽 › 버튼이 개수 표시에 가리지 않게 */
+
+/* ===== 3.66 구간 버튼: 고른 칸이 물방울처럼 늘었다 줄며 옆으로 옮겨 간다 ===== */
+.seg.liq,.hfilter.liq{position:relative;isolation:isolate}
+.seg.liq>button,.hfilter.liq>button{position:relative;z-index:1;transition:color .25s}
+.seg.liq>button.on,.hfilter.liq>button.on{background:transparent!important;box-shadow:none!important}
+.seg>i.lq,.hfilter>i.lq{position:absolute;z-index:0;pointer-events:none;display:block}
+@media (prefers-reduced-motion:reduce){ .seg>i.lq,.hfilter>i.lq{transition:none!important} }
 </style>
 </head>
 <body>
@@ -1065,7 +1072,7 @@ header .hbtn:not(#cloudBtn){box-shadow:2px 2px 4px rgba(0,0,0,.2),-1px -1px 3px 
 
 <script>
 "use strict";
-const APP_VER = "3.65";
+const APP_VER = "3.66";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -4029,6 +4036,35 @@ if(/[?&]demo=1/.test(location.search)){ try{history.replaceState(null,"",locatio
 if(/[?&]tour=1/.test(location.search)){ try{history.replaceState(null,"",location.pathname+location.hash);}catch(e){} if($("#gate").hidden) setTimeout(startTour,300); else tourAfterLogin=true; }   // 가이드의 "따라하기" 링크
 try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}   // 연결 정보·도면이 저절로 지워지지 않게 요청
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+// 3.66 구간 버튼 물방울 이동: 앞쪽 끝이 먼저 튀어 나가고 뒤쪽 끝이 늦게 따라와서 늘었다 줄어든다
+(()=>{
+  const SEL=".seg:not(.team),.hfilter";
+  const GO="cubic-bezier(.3,1.45,.5,1)", TAIL="cubic-bezier(.65,0,.25,1)";
+  const upd=seg=>{
+    const on=seg.querySelector(":scope>button.on"); let ink=seg.querySelector(":scope>i.lq");
+    if(!on||!on.offsetWidth){ if(ink) ink.style.opacity="0"; return; }
+    if(ink&&ink.style.opacity==="1"&&ink._on===on&&seg.dataset.lqL==on.offsetLeft&&seg.dataset.lqW==seg.clientWidth) return;   // 바뀐 게 없으면 건너뜀
+    seg.classList.remove("liq"); const cs=getComputedStyle(on);
+    const bg=cs.backgroundColor, sh=cs.boxShadow, br=cs.borderRadius; seg.classList.add("liq");
+    const L=on.offsetLeft, R=seg.clientWidth-L-on.offsetWidth, T=on.offsetTop, H=on.offsetHeight;
+    const pL=parseFloat(seg.dataset.lqL), pR=parseFloat(seg.dataset.lqR);
+    const had=!isNaN(pL)&&seg.dataset.lqW==String(seg.clientWidth);
+    if(!ink){ ink=document.createElement("i"); ink.className="lq"; seg.prepend(ink);
+      if(had){ Object.assign(ink.style,{transition:"none",left:pL+"px",right:pR+"px",top:T+"px",height:H+"px",background:bg,borderRadius:br}); void ink.offsetWidth; } }
+    const move=had&&Math.abs(pL-L)>1;
+    ink.style.transition=!move?"none":(L>pL
+      ? `right .32s ${GO}, left .46s ${TAIL} .07s, background-color .3s`
+      : `left .32s ${GO}, right .46s ${TAIL} .07s, background-color .3s`);
+    Object.assign(ink.style,{left:L+"px",right:R+"px",top:T+"px",height:H+"px",background:bg,boxShadow:sh,borderRadius:br,opacity:"1"});
+    ink._on=on; seg.dataset.lqL=L; seg.dataset.lqR=R; seg.dataset.lqW=seg.clientWidth;
+  };
+  let q=false; const run=()=>{ q=false; document.querySelectorAll(SEL).forEach(upd); };
+  const kick=()=>{ if(!q){ q=true; requestAnimationFrame(run); } };
+  new MutationObserver(ms=>{ for(const m of ms){ if(m.type==="attributes"&&m.target.matches&&m.target.matches(SEL)) continue; if(m.type==="childList"&&[...m.addedNodes].every(n=>n.classList&&n.classList.contains("lq"))) continue; kick(); return; } })
+    .observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["class","hidden"]});
+  addEventListener("resize",kick); kick();
+})();
 </script>
 </body>
 </html>
