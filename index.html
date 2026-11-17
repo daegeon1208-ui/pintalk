@@ -1122,7 +1122,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.73";
+const APP_VER = "3.74";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -4100,7 +4100,22 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch
   const shadowToFilter=sh=>{ if(!sh||sh==="none") return "none";
     const parts=sh.split(/,(?![^(]*\))/).map(x=>x.trim()).filter(x=>!/inset/.test(x));
     return parts.length?parts.map(x=>{ const col=(x.match(/rgba?\([^)]*\)|#[0-9a-f]+/i)||["rgba(0,0,0,.15)"])[0]; const n=x.replace(col,"").trim().split(/\s+/).slice(0,3); return `drop-shadow(${n[0]||0} ${n[1]||0} ${n[2]||0} ${col})`; }).join(" "):"none"; };
-  const draw=ink=>{ const S=ink._s, x1=S.x1.p, x2=S.x2.p, y1=S.y1.p, y2=S.y2.p, w=Math.max(1,x2-x1), h=Math.max(1,y2-y1);
+  const rr=(x,y,w,h,r)=>`M${x+r},${y}H${x+w-r}A${r},${r} 0 0 1 ${x+w},${y+r}V${y+h-r}A${r},${r} 0 0 1 ${x+w-r},${y+h}H${x+r}A${r},${r} 0 0 1 ${x},${y+h-r}V${y+r}A${r},${r} 0 0 1 ${x+r},${y}Z`;
+  // 3.74 대각선 이동: 앞 물방울과 뒤 물방울을 가는 목으로 잇는다 (큰 네모로 늘어나지 않게)
+  const drawDiag=ink=>{ const S=ink._s, w=S.tw, h=S.th, r=S.r;
+    const hx=S.hx.p, hy=S.hy.p, tx=S.tx.p, ty=S.ty.p, dx=hx-tx, dy=hy-ty, L=Math.hypot(dx,dy);
+    const m0=Math.min(w,h);
+    if(L<m0*0.9){ const x1=Math.min(hx,tx)-w/2, y1=Math.min(hy,ty)-h/2, x2=Math.max(hx,tx)+w/2, y2=Math.max(hy,ty)+h/2;   // 가까우면 한 덩어리로
+      ink._p.setAttribute("d",rr(x1,y1,x2-x1,y2-y1,Math.min(r,(x2-x1)/2,(y2-y1)/2))); return; }
+    let d=rr(hx-w/2,hy-h/2,w,h,r);
+    if(L>2){ const ts=Math.max(0.5,0.85-L/(Math.hypot(w,h)*1.6));   // 뒤 물방울은 멀어질수록 작아진다
+      const tw=w*ts, th=h*ts; d+=rr(tx-tw/2,ty-th/2,tw,th,Math.min(tw,th)/2);   // 뒤 물방울은 둥근 알약
+      let nx=-dy/L, ny=dx/L; if(dx*ny-dy*nx>0){ nx=-nx; ny=-ny; }   // 네모와 같은 방향으로 돌아야 겹친 곳이 비지 않는다
+      const m=Math.min(w,h), ht=m*ts*0.42, hh=m*0.42, hm=Math.max(m*0.1,m*0.42*(1-L/(L+m*1.4)));
+      const mx=(hx+tx)/2, my=(hy+ty)/2;
+      d+=`M${tx+nx*ht},${ty+ny*ht}Q${mx+nx*hm*2-nx*(ht+hh)/2},${my+ny*hm*2-ny*(ht+hh)/2} ${hx+nx*hh},${hy+ny*hh}L${hx-nx*hh},${hy-ny*hh}Q${mx-nx*hm*2+nx*(ht+hh)/2},${my-ny*hm*2+ny*(ht+hh)/2} ${tx-nx*ht},${ty-ny*ht}Z`; }
+    ink._p.setAttribute("d",d); };
+  const draw=ink=>{ if(ink._s.diag) return drawDiag(ink); const S=ink._s, x1=S.x1.p, x2=S.x2.p, y1=S.y1.p, y2=S.y2.p, w=Math.max(1,x2-x1), h=Math.max(1,y2-y1);
     const r=Math.min(S.r,w/2,h/2);
     const sx=Math.max(0,w-S.tw), sy=Math.max(0,h-S.th);   // 목표보다 늘어난 만큼
     const px=Math.min(h*0.3,sx*0.16), py=Math.min(w*0.3,sy*0.16);   // 가운데가 잘록해지는 깊이
@@ -4109,8 +4124,9 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch
   const step=(e,dt,now)=>{ if(now<e.t0) return; const a=-e.k*(e.p-e.g)-e.c*e.v; e.v+=a*dt; e.p+=e.v*dt; };
   const tick=ink=>{ if(ink._raf) return; let last=performance.now();
     const f=now=>{ const dt=Math.min(0.032,(now-last)/1000); last=now; const S=ink._s; let busy=false;
-      for(let i=0;i<3;i++) ["x1","x2","y1","y2"].forEach(q=>step(S[q],dt/3,now));
-      ["x1","x2","y1","y2"].forEach(q=>{ const e=S[q]; if(Math.abs(e.p-e.g)>0.3||Math.abs(e.v)>3) busy=true; else { e.p=e.g; e.v=0; } });
+      const K=S.diag?["hx","hy","tx","ty"]:["x1","x2","y1","y2"];
+      for(let i=0;i<3;i++) K.forEach(q=>step(S[q],dt/3,now));
+      K.forEach(q=>{ const e=S[q]; if(Math.abs(e.p-e.g)>0.3||Math.abs(e.v)>3) busy=true; else { e.p=e.g; e.v=0; } });
       draw(ink); ink._raf=busy?requestAnimationFrame(f):0; };
     ink._raf=requestAnimationFrame(f); };
   const edge=(p,g,lead,now)=>{ const sp=lead?LEAD:TAIL; return {p,g,v:0,k:sp.k,c:sp.c,t0:now+(lead?0:TAIL_DELAY)}; };
@@ -4121,12 +4137,17 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch
     seg.classList.remove("liq"); const cs=getComputedStyle(on);
     const bg=cs.backgroundColor, flt=shadowToFilter(cs.boxShadow), br=parseFloat(cs.borderTopLeftRadius)||0; seg.classList.add("liq");
     const W=seg.clientWidth, g={x1:on.offsetLeft, y1:on.offsetTop}; g.x2=g.x1+on.offsetWidth; g.y2=g.y1+on.offsetHeight;
-    const prev=(ink&&ink._s&&ink.style.opacity==="1")?{x1:ink._s.x1.p,x2:ink._s.x2.p,y1:ink._s.y1.p,y2:ink._s.y2.p,W:ink._w}:(seg.id&&MEM.get(seg.id));
+    const cur=S=>S.diag?{x1:S.hx.p-S.tw/2,x2:S.hx.p+S.tw/2,y1:S.hy.p-S.th/2,y2:S.hy.p+S.th/2}:{x1:S.x1.p,x2:S.x2.p,y1:S.y1.p,y2:S.y2.p};
+    const prev=(ink&&ink._s&&ink.style.opacity==="1")?{...cur(ink._s),W:ink._w}:(seg.id&&MEM.get(seg.id));
     if(!ink){ ink=document.createElement("i"); ink.className="lq"; const sv=document.createElementNS(NS,"svg"); ink._p=document.createElementNS(NS,"path"); sv.appendChild(ink._p); ink.appendChild(sv); seg.prepend(ink); }
     const now=performance.now(), move=prev&&prev.W===W&&!RM.matches&&(Math.abs(prev.x1-g.x1)>1||Math.abs(prev.y1-g.y1)>1);
     const fr=move?prev:g, right=g.x1>fr.x1, down=g.y1>fr.y1;
-    ink._s={x1:edge(fr.x1,g.x1,!right,now),x2:edge(fr.x2,g.x2,right,now),y1:edge(fr.y1,g.y1,!down,now),y2:edge(fr.y2,g.y2,down,now),
-      r:Math.min(br,(g.y2-g.y1)/2,(g.x2-g.x1)/2),tw:g.x2-g.x1,th:g.y2-g.y1};
+    const diag=move&&Math.abs(fr.x1-g.x1)>1&&Math.abs(fr.y1-g.y1)>1;
+    const R0=Math.min(br,(g.y2-g.y1)/2,(g.x2-g.x1)/2), TW=g.x2-g.x1, TH=g.y2-g.y1;
+    if(diag){ const fx=(fr.x1+fr.x2)/2, fy=(fr.y1+fr.y2)/2, gx=(g.x1+g.x2)/2, gy=(g.y1+g.y2)/2;
+      const H=e=>Object.assign(e,{k:700,c:34}), Tl=e=>Object.assign(e,{k:300,c:35});   // 대각선은 덜 출렁이게, 뒤 물방울은 튀지 않고 따라붙게
+      ink._s={diag:true,hx:H(edge(fx,gx,true,now)),hy:H(edge(fy,gy,true,now)),tx:Tl(edge(fx,gx,false,now)),ty:Tl(edge(fy,gy,false,now)),r:R0,tw:TW,th:TH}; }
+    else ink._s={x1:edge(fr.x1,g.x1,!right,now),x2:edge(fr.x2,g.x2,right,now),y1:edge(fr.y1,g.y1,!down,now),y2:edge(fr.y2,g.y2,down,now),r:R0,tw:TW,th:TH};
     ink._p.setAttribute("fill",bg); ink.style.filter=flt; ink.style.opacity="1";
     if(ink._raf){ cancelAnimationFrame(ink._raf); ink._raf=0; }
     draw(ink); if(move) tick(ink);
