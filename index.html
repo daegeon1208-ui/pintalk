@@ -776,6 +776,10 @@ header .hbtn:not(#cloudBtn){box-shadow:2px 2px 4px rgba(0,0,0,.2),-1px -1px 3px 
 /* 3.67 개인/협업 탭: 안 고른 칸은 그림자 없이 바탕에 붙여 두 칸 사이 틈을 없앤다 */
 .hfilter{gap:0!important;box-shadow:inset 2px 2px 4px rgba(0,0,0,.11),inset -2px -2px 4px rgba(255,255,255,.9)}
 .hfilter button:not(.on){background:none!important;box-shadow:none!important}
+/* 3.71 양식 버튼(2×2)은 안 고른 칸에 바탕색이 있어 늘어나는 칸이 가려졌다: 늘어나는 칸을 안 고른 칸 위, 고른 칸 글자 아래에 둔다 */
+.tmgrid.liq>button:not(.on){z-index:0}
+.tmgrid.liq>i.lq{z-index:1}
+.tmgrid.liq>button.on{z-index:2}
 @media (prefers-reduced-motion:reduce){ .seg>i.lq,.hfilter>i.lq,.tmgrid>i.lq{transition:none!important} }
 
 /* ===== 3.69 도면 목록(B1) 뉴모피즘: 바탕·머리줄·카드를 한 색으로, 그림자로만 떠오르고 들어간다 ===== */
@@ -1111,7 +1115,7 @@ header .hbtn:not(#cloudBtn){box-shadow:2px 2px 4px rgba(0,0,0,.2),-1px -1px 3px 
 
 <script>
 "use strict";
-const APP_VER = "3.70";
+const APP_VER = "3.71";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
