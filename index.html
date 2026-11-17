@@ -805,6 +805,16 @@ header .hbtn:not(#cloudBtn){box-shadow:2px 2px 4px rgba(0,0,0,.2),-1px -1px 3px 
 #home header .hbtn.ico{width:40px;height:40px;border-radius:50%;box-shadow:4px 4px 8px rgba(150,158,170,.55),-4px -4px 8px rgba(255,255,255,.92)!important}
 #home header .hbtn:not(#cloudBtn):active{box-shadow:inset 3px 3px 6px rgba(150,158,170,.55),inset -3px -3px 6px rgba(255,255,255,.92)!important}
 #home .asuser{background:#E3E6EA;box-shadow:inset 2px 2px 5px rgba(150,158,170,.55),inset -2px -2px 5px rgba(255,255,255,.92)}
+
+/* 3.70 아직 받지 않은 공유 도면: 점선 대신 오목하게 눌린 카드 + 오른쪽 볼록한 '받기' 단추 */
+.dcard.remote{border-style:solid}
+#home .dcard.remote{box-shadow:inset 5px 5px 10px rgba(150,158,170,.55),inset -5px -5px 10px rgba(255,255,255,.92)!important}
+#home .dcard.remote .nm{color:#5B6170}
+#home .dcard.remote .cnt{opacity:.75}
+.dcard .rtag{color:#7A8090;font-weight:600}
+.dcard .rget{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:52px;height:52px;margin-right:4px;border-radius:16px;background:#E3E6EA;color:#E31937;box-shadow:4px 4px 8px rgba(150,158,170,.55),-4px -4px 8px rgba(255,255,255,.92)}
+.dcard .rget svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.dcard .rget b{font-size:11px;font-weight:800}
 </style>
 </head>
 <body>
@@ -1103,7 +1113,7 @@ header .hbtn:not(#cloudBtn){box-shadow:2px 2px 4px rgba(0,0,0,.2),-1px -1px 3px 
 
 <script>
 "use strict";
-const APP_VER = "3.69";
+const APP_VER = "3.70";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -1475,7 +1485,7 @@ async function renderHome(){
       <button class="favb${fv.has(d.id)?" on":""}" data-fav="${d.id}" aria-label="${fv.has(d.id)?"즐겨찾기 풀기":"즐겨찾기"}" aria-pressed="${fv.has(d.id)}"><svg viewBox="0 0 24 24"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg></button><button class="more" data-more="${d.id}">⋯</button></div>`;}).join("")
   +showRem.map(d=>`<div class="dcard remote" data-remote="${d.id}"><div class="meta"><div class="nm">${ftIcon(d)}${lockIcon(d)}${esc(d.name)}</div>
       <div class="sm"><span class="cnt o">미조치 ${d.open||0}</span><span class="cnt d">완료 ${d.done||0}</span> ${d.pages}쪽${d.by?" · "+esc(d.by):""}${(d.parts||[]).length?` · 참가 ${d.parts.length}명`:""}</div>
-      <div class="sm" style="color:var(--accent);font-weight:600">공유 도면 · 눌러서 받기</div></div></div>`).join("");
+      <div class="sm rtag">공유 도면 · 아직 이 휴대폰에 없음</div></div><span class="rget" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M5 19.5h14"/></svg><b>받기</b></span></div>`).join("");
 }
 /* 즐겨찾기: 이 휴대폰에만 저장. 즐겨찾기한 도면은 목록 맨 위 */
 function favSet(){ try{ return new Set(JSON.parse(localStorage.getItem("favDrawings")||"[]")); }catch(e){ return new Set(); } }
