@@ -1153,7 +1153,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.83";
+const APP_VER = "3.84";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -3652,7 +3652,7 @@ async function pageImages(drawing,pins,progress){
   }finally{ pdf.destroy(); }
   return out;
 }
-async function locCrop(full,pin,pins,aspect){
+async function locCrop(full,pin,pins,aspect,PL){ PL=PL||pinLabel;
   const cOf=colorsOf(pins);
   const W=full.width,H=full.height, [cx,cy]=[pin.nx*W,pin.ny*H];
   let cw=Math.max(W,H)*0.2;
@@ -3669,8 +3669,8 @@ async function locCrop(full,pin,pins,aspect){
     ctx.lineCap=ctx.lineJoin="round";
     if(closed){ ctx.fillStyle=`rgba(${col},${me?.22:.1})`; ctx.fill(); } ctx.strokeStyle=`rgba(${col},${me?1:.5})`; ctx.lineWidth=me?5:3; ctx.stroke(); }
   for(const q of pins){ if(q.page!==pin.page||q===pin) continue; const [x,y]=P([q.nx,q.ny]);
-    if(x>-40&&y>-40&&x<ow+40&&y<oh+60){ ctx.globalAlpha=.55; drawPinMark(ctx,x,y,20,pinLabel(q),cOf(q),q.status==="done"); ctx.globalAlpha=1; } }
-  const [x,y]=P([pin.nx,pin.ny]); drawPinMark(ctx,x,y,28,pinLabel(pin),cOf(pin),pin.status==="done");
+    if(x>-40&&y>-40&&x<ow+40&&y<oh+60){ ctx.globalAlpha=.55; drawPinMark(ctx,x,y,20,PL(q),cOf(q),q.status==="done"); ctx.globalAlpha=1; } }
+  const [x,y]=P([pin.nx,pin.ny]); drawPinMark(ctx,x,y,28,PL(pin),cOf(pin),pin.status==="done");
   ctx.strokeStyle="#9CA3AF"; ctx.lineWidth=2; ctx.strokeRect(1,1,ow-2,oh-2);
   const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",0.88));
   return await blob.arrayBuffer();
@@ -3679,7 +3679,7 @@ async function locCrop(full,pin,pins,aspect){
 const photoOrder=list=>{ const l=(list||[]).slice(), i=l.findIndex(x=>x.rep); if(i>0) l.unshift(l.splice(i,1)[0]); return l; };
 const photoRows=p=>Math.max(1,(p.photos||[]).length,(p.donePhotos||[]).length);
 async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per){
-  const VEN=tmpl==="vendor", CRK=tmpl==="crack", PAT=tmpl==="patrol";   // 협력업체 전달용: 업체별로 묶고, 우리 쪽 이름·팀은 빼고, 쪽마다 조치 확인(서명) 칸
+  const VEN=tmpl==="vendor", CRK=tmpl==="crack", PAT=tmpl==="patrol"; const PL=p=>VEN?mapLabel(p):pinLabel(p);   // 3.84 하자조치요청서는 팀 글자 없이 번호만   // 협력업체 전달용: 업체별로 묶고, 우리 쪽 이름·팀은 빼고, 쪽마다 조치 확인(서명) 칸
   if(!pdfLibReady) pdfLibReady=Promise.all([loadScript("lib/pdf-lib.min.js"),loadScript("lib/fontkit.umd.min.js")]);
   await pdfLibReady;
   if(!fontBytes) fontBytes=await fetch("fonts/KoPubDotum-Medium.ttf").then(r=>{if(!r.ok)throw new Error("글꼴을 받지 못했습니다");return r.arrayBuffer();});
@@ -3693,7 +3693,7 @@ async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per)
   const siteHead=pg=>{ if(!SITE) return; const st=wrap(SITE,8.5,W-2*M)[0], sw=kor.widthOfTextAtSize(st,8.5); pg.drawText(st,{x:(W-sw)/2,y:H-M+8,size:8.5,font:kor,color:SUB}); };   // 맨 위 현장 이름
   const pins=[...pinList].sort(VEN?(a,b)=>tradeOf(a).localeCompare(tradeOf(b),"ko")||pinCmp(a,b):pinCmp);
   const cOf=colorsOf(pins), pc=p=>{const [r,g,b]=hexRgb(cOf(p));return rgb(r/255,g/255,b/255);};
-  for(const p of pins){ const all=[...p.photos,...(p.donePhotos||[])]; if(all.some(x=>!x.data)) progress&&progress(`${pinLabel(p)} 핀 사진 받는 중…`); for(const x of all) await ensurePhoto(p,x); }
+  for(const p of pins){ const all=[...p.photos,...(p.donePhotos||[])]; if(all.some(x=>!x.data)) progress&&progress(`${PL(p)} 핀 사진 받는 중…`); for(const x of all) await ensurePhoto(p,x); }
 
   // PDF 좌표가 없는 핀(테스트 도면 등)은 화면 비율(nx,ny)로 계산
   for(const p of pins){ if(Number.isFinite(p.px)&&Number.isFinite(p.py)) continue; const pg=doc.getPage(p.page-1); if(!pg) continue;
@@ -3767,13 +3767,13 @@ async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per)
     const where=p=>pgLabel(drawing,p.page)||"-", fd=t=>t?fmtDate(t).slice(2,10):"-";
     if(CRK){
       table("균열 목록",[["번호",0.07],["위치",0.12],["업체·공종",0.15,"l"],["균열 내용",0.3,"l"],["폭(mm)",0.08],["발생일",0.1],["보수일",0.1],["상태",0.08]],
-        pins.map(p=>[pinLabel(p),where(p),p.trade||"-",(p.text||"-").replace(/\n/g," "),"",fd(p.created),p.status==="done"?fd(p.doneAt):"",{t:p.status==="done"?"보수":"미보수",c:p.status==="done"?GREEN:RED}]));
+        pins.map(p=>[PL(p),where(p),p.trade||"-",(p.text||"-").replace(/\n/g," "),"",fd(p.created),p.status==="done"?fd(p.doneAt):"",{t:p.status==="done"?"보수":"미보수",c:p.status==="done"?GREEN:RED}]));
       table("업체별 현황",C5,grp(tradeOf).sort((a,b)=>(b.n-b.d)-(a.n-a.d)).map(rowOf));
       return;
     }
     if(PAT){
       table("지적 사항",[["번호",0.07],["위치",0.12],["업체",0.14,"l"],["지적 내용",0.33,"l"],["지적일",0.1],["조치 결과",0.14],["확인",0.1]],
-        pins.map(p=>[pinLabel(p),where(p),tradeOf(p),(p.text||"-").replace(/\n/g," "),fd(p.created),{t:p.status==="done"?"조치완료 "+fd(p.doneAt):"미조치",c:p.status==="done"?GREEN:RED},""]));
+        pins.map(p=>[PL(p),where(p),tradeOf(p),(p.text||"-").replace(/\n/g," "),fd(p.created),{t:p.status==="done"?"조치완료 "+fd(p.doneAt):"미조치",c:p.status==="done"?GREEN:RED},""]));
       table("업체별 현황",C5,grp(tradeOf).sort((a,b)=>(b.n-b.d)-(a.n-a.d)).map(rowOf));
       return;
     }
@@ -3781,7 +3781,7 @@ async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per)
     table("업체별 현황",C5,grp(tradeOf).sort((a,b)=>(b.n-b.d)-(a.n-a.d)).map(rowOf));
     table("공종별 현황",C5,grp(p=>workOf(p)||"공종 미지정").sort((a,b)=>(b.n-b.d)-(a.n-a.d)).map(rowOf));
     table("핀 목록",[["핀",0.06],["상태",0.08],["팀",0.07],["업체·공종",0.16,"l"],["내용",0.27,"l"],["등록",0.18],["조치완료",0.18]],
-      pins.map(p=>[pinLabel(p),{t:p.status==="done"?"완료":"미조치",c:p.status==="done"?GREEN:RED},p.team?teamName(p.team).replace("팀",""):"-",(p.trade||"-"),(p.text||"-").replace(/\n/g," "),
+      pins.map(p=>[PL(p),{t:p.status==="done"?"완료":"미조치",c:p.status==="done"?GREEN:RED},p.team?teamName(p.team).replace("팀",""):"-",(p.trade||"-"),(p.text||"-").replace(/\n/g," "),
         fmtDate(p.created).slice(2,10)+(p.by?" "+p.by:""),p.status==="done"&&p.doneAt?fmtDate(p.doneAt).slice(2,10)+(p.doneBy?" "+p.doneBy:""):"-"]));
   }
 
@@ -3832,7 +3832,7 @@ async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per)
     page.drawRectangle({x:xl,y:yy-HH,width:CW,height:HH,color:HEAD});
     page.drawLine({start:{x:xl,y:yy-HH},end:{x:xr,y:yy-HH},thickness:0.6,color:LINE});
     page.drawCircle({x:xl+16,y:yy-HH/2,size:9,color:pcol});
-    { const sn=pinLabel(p), fs=Math.min(9,15/Math.max(0.01,kor.widthOfTextAtSize(sn,1))); page.drawText(sn,{x:xl+16-kor.widthOfTextAtSize(sn,fs)/2,y:yy-HH/2-fs*0.36,size:fs,font:kor,color:WHITE}); }
+    { const sn=PL(p), fs=Math.min(9,15/Math.max(0.01,kor.widthOfTextAtSize(sn,1))); page.drawText(sn,{x:xl+16-kor.widthOfTextAtSize(sn,fs)/2,y:yy-HH/2-fs*0.36,size:fs,font:kor,color:WHITE}); }
     const st=(CRK?(done?"보수완료":"미보수"):(done?"조치완료":"미조치"))+(R.n>1?`  (사진 ${R.i+1}/${R.n})`:""), stw=kor.widthOfTextAtSize(st,10.5);
     page.drawText(st,{x:xl+32,y:yy-HH/2-3.8,size:10.5,font:kor,color:col});
     const meta=[p.team&&!VEN?teamName(p.team):"",p.shape?kindLabel(p):"",pgLabel(drawing,p.page)||""].filter(Boolean).join("  ·  ");
@@ -3871,7 +3871,7 @@ async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per)
     if(full){
       const pad=6, lbl=pgName(drawing,p.page)?`위치 · ${pgName(drawing,p.page)}`:"위치", lh=BH-2*pad-13, lw=Math.min(xr-RX-2*pad,lh*1.45), lx=RX+(xr-RX-lw)/2;
       page.drawText(lbl,{x:RX+pad,y:yy-pad-8,size:8.5,font:kor,color:SUB});
-      if(!crops[p.id]) crops[p.id]=await doc.embedJpg(await locCrop(full,p,pins,lw/lh));
+      if(!crops[p.id]) crops[p.id]=await doc.embedJpg(await locCrop(full,p,pins,lw/lh,PL));
       page.drawImage(crops[p.id],{x:lx,y:bot+pad,width:lw,height:lh});
     }
   }
