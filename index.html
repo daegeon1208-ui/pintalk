@@ -1123,7 +1123,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.93";
+const APP_VER = "3.94";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -2467,11 +2467,12 @@ async function renderDetail(){
   ctx.fillStyle="#D1D5DB"; ctx.fillRect(0,0,c.width,c.height);
   ctx.fillStyle="#fff"; ctx.fillRect(tx*r,ty*r,V.pw*k*r,V.ph*k*r);
   V.detailTask=V.page.render({canvasContext:ctx,viewport:V.page.getViewport({scale}),transform:[1,0,0,1,tx*r,ty*r]});
-  try{await V.detailTask.promise;}catch(e){return;}
+  // 3.94 임시 그림판은 쓰고 나면 바로 0으로 줄인다 (아이폰은 확대할 때마다 쌓인 그림판 메모리 때문에 앱이 튕김)
+  try{await V.detailTask.promise;}catch(e){c.width=c.height=0;return;}
   V.detailTask=null;
-  if(job!==V.detailJob||tx!==V.tx||ty!==V.ty||k!==V.k) return;
+  if(job!==V.detailJob||tx!==V.tx||ty!==V.ty||k!==V.k){c.width=c.height=0;return;}
   detail.width=c.width; detail.height=c.height; detail.style.width=cw+"px"; detail.style.height=ch+"px";
-  detail.getContext("2d").drawImage(c,0,0);
+  detail.getContext("2d").drawImage(c,0,0); c.width=c.height=0;
   V.dk=k; V.dtx=tx; V.dty=ty; detail.style.transform="";
   detail.hidden=false;
 }
@@ -2773,6 +2774,8 @@ $("#backBtn").addEventListener("click",()=>{
   setMode("view"); $("#viewer").hidden=true; $("#home").hidden=false;
   if(V.renderTask){try{V.renderTask.cancel();}catch(e){}} V.page=null;
   if(V.pdf){V.pdf.destroy();V.pdf=null;}
+  if(V.detailTask){try{V.detailTask.cancel();}catch(e){}} V.detailTask=null; V.detailJob=(V.detailJob||0)+1;
+  base.width=base.height=0; detail.width=detail.height=0; detail.hidden=true;   // 3.94 목록으로 나가면 도면 그림 메모리를 돌려준다
   V.drawing=null; V.pins=[]; renderHome(); syncDrawings();
 });
 /* 쪽 넘김 바: ‹ 이전 · 가운데 쪽 이름 · 다음 › (가운데를 누르면 쪽 목록에서 고르기) */
@@ -3134,8 +3137,9 @@ async function rotatePhoto(ph){
   const im=await loadImage(new Blob([ph.data],{type:ph.type||"image/jpeg"}));
   const w=im.naturalWidth, h=im.naturalHeight, c=document.createElement("canvas"); c.width=h; c.height=w;
   const g=c.getContext("2d"); g.translate(h,0); g.rotate(Math.PI/2); g.drawImage(im,0,0);
-  const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",0.9));
-  return {type:"image/jpeg",data:await blob.arrayBuffer(),w:c.width,h:c.height};
+  const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",0.9)), cw=c.width, ch=c.height;
+  c.width=c.height=0; im.src="";
+  return {type:"image/jpeg",data:await blob.arrayBuffer(),w:cw,h:ch};
 }
 $("#imgRot").addEventListener("click",async()=>{
   const p=selPin(), i=+$("#imgView").dataset.i, list=$("#imgView").dataset.list||"photos", old=p&&p[list][i];
