@@ -685,7 +685,7 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 .ichip2{font-size:13px;font-weight:700;color:#E31937;background:#FCE4E7;border-radius:999px;padding:4px 12px}
 #sdBody select.inp{width:100%}
 /* 3.56 내보내기 */
-.tmgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tmgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .tmgrid button{padding:10px 6px;border-radius:12px;background:var(--soft);font-weight:700;font-size:14px;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.25}
 .tmgrid button small{font-size:11px;font-weight:600;color:var(--sub)}
 .tmgrid button.on{background:#3A3A37;color:#fff}.tmgrid button.on small{color:#D9D8D3}
@@ -1080,8 +1080,8 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
     <div class="vchips" id="setTeam"></div>
     <div class="setsub">사진 화질 <small>사진 한 장 기준 저 약 0.2MB · 보통 약 0.6MB · 고 약 2MB</small></div>
     <div class="seg" id="setPhoto"><button data-v="low">저화질</button><button data-v="normal">보통</button><button data-v="high">고화질</button></div>
-    <div class="setsub">내보내기 기본 양식 <small>한 팀만 보고 있으면 그 팀 양식(공사 하자조치요청서 · 품질 균열관리 · 안전 순회점검)</small></div>
-    <div class="tmgrid" id="setTmpl"><button data-v="internal">내부 관리 현황</button><button data-v="vendor">하자조치요청서</button><button data-v="crack">균열관리사진대지</button><button data-v="patrol">현장순회점검 보고서</button></div>
+    <div class="setsub">내보내기 기본 양식 <small>한 팀만 보고 있으면 그 팀 양식(공사 하자조치요청서 · 품질 균열관리)</small></div>
+    <div class="tmgrid" id="setTmpl"><button data-v="internal">내부 관리 현황</button><button data-v="vendor">하자조치요청서</button><button data-v="crack">균열관리사진대지</button></div>
     <div class="setsub">사진대지에 넣을 사진</div>
     <div class="seg" id="setPh"><button data-v="0">대표 사진만</button><button data-v="1">사진 전부</button></div>
     <div class="setsub">저장 공간</div>
@@ -1152,7 +1152,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.89";
+const APP_VER = "3.90";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -1267,7 +1267,7 @@ function renderPrefs(){
   const mt=myPref("myTeam","");
   $("#setTeam").innerHTML=`<button class="vchip${mt?"":" on"}" data-mt="">마지막에 쓴 팀</button>`+TEAMS.map(([v,n,c])=>`<button class="vchip${mt===v?" on":""}" data-mt="${v}" style="${mt===v?`background:${c}`:""}">${n}</button>`).join("");
   const seg=(id,val)=>document.querySelectorAll(id+" button").forEach(b=>b.classList.toggle("on",b.dataset.v===val));
-  seg("#setPhoto",myPref("photoQ","normal")); seg("#setTmpl",["vendor","crack","patrol"].includes(myPref("expTmpl",""))?myPref("expTmpl",""):"internal"); seg("#setPh",myPref("expAllPhotos","0")==="1"?"1":"0");
+  seg("#setPhoto",myPref("photoQ","normal")); seg("#setTmpl",["vendor","crack"].includes(myPref("expTmpl",""))?myPref("expTmpl",""):"internal"); seg("#setPh",myPref("expAllPhotos","0")==="1"?"1":"0");
   $("#siteTxt").textContent=SITE||"(없음)";
 }
 $("#setTeam").addEventListener("click",e=>{ const b=e.target.closest("[data-mt]"); if(!b) return; setPref("myTeam",b.dataset.mt); renderPrefs(); });
@@ -3522,8 +3522,8 @@ $("#expBtn").addEventListener("click",async()=>{
 });
 /* 핀 표시 도면 + 사진대지 PDF를 만들어 보내기·저장 창을 띄운다 (도면 화면 내보내기, 목록 ⋯ 공유하기 공용) */
 /* 사진대지 양식: 팀마다 쓰는 서식 */
-const TMPLS=[["internal","내부 관리 현황","사진대지"],["vendor","하자조치요청서","조치요청서"],["crack","균열관리사진대지","균열관리사진대지"],["patrol","현장순회점검 보고서","순회점검보고서"]];
-const TEAM_TMPL={공사:"vendor",품질:"crack",안전:"patrol"};
+const TMPLS=[["internal","내부 관리 현황","사진대지"],["vendor","하자조치요청서","조치요청서"],["crack","균열관리사진대지","균열관리사진대지"]];
+const TEAM_TMPL={공사:"vendor",품질:"crack"};
 const crkOf=l=>{ const c=l.filter(p=>workOf(p)==="균열"); return c.length?c:l; };   // 균열 핀만 (균열 핀이 없으면 고른 핀 그대로)
 async function showExport(drawing,allPins,fromHome){
   const body=$("#expBody");
