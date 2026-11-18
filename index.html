@@ -228,6 +228,7 @@ textarea.inp{min-height:90px;resize:vertical}
 .cmform button:disabled{opacity:.5}
 .li .cmc{color:var(--sub);font-weight:600}
 .dates{font-size:12px;color:var(--sub);margin-top:14px;line-height:1.6}
+.dtin{font:inherit;font-size:12px;color:var(--ink,#1E2226);background:transparent;border:0;border-bottom:1px dashed var(--sub);padding:0 2px;border-radius:0;min-height:0;width:auto;-webkit-appearance:none;appearance:none}
 .li{display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}
 .li:last-child{border-bottom:0}
 .li .t{flex:1;min-width:0}
@@ -1122,7 +1123,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.75";
+const APP_VER = "3.76";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -1130,6 +1131,7 @@ const pgLabel=(d,n)=>pgName(d,n)||(d&&d.pages>1?n+"쪽":"");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,"0");
+const dtLocal=t=>{const d=new Date(t||Date.now());return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;};
 const fmtDate=t=>{const d=new Date(t);return `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;};
 const dayStr=t=>{const d=new Date(t);return `${String(d.getFullYear()).slice(2)}${pad(d.getMonth()+1)}${pad(d.getDate())}`;};
 let toastT;
@@ -1155,7 +1157,12 @@ const dbGet=(n,k)=>store(n,"readonly",s=>s.get(k));
 const dbPut=(n,v)=>store(n,"readwrite",s=>s.put(v));
 const dbDel=(n,k)=>store(n,"readwrite",s=>s.delete(k));
 const dbAll=n=>store(n,"readonly",s=>s.getAll());
-const pinsOf=id=>store("pins","readonly",s=>s.index("drawing").getAll(id));
+const pinsOf=id=>store("pins","readonly",s=>s.index("drawing").getAll(id)).then(l=>renumber(l||[]));
+/* 3.76 핀 번호 = 도면·팀마다 찍은 날짜(created) 순서 (같으면 id 순). 날짜를 고치거나 핀을 지우면 번호가 다시 매겨진다 */
+function renumber(list){ const g={};
+  list.forEach(p=>{ if(p.deleted||p.id==="temp") return; const k=(p.drawingId||"")+"|"+(p.team||""); (g[k]=g[k]||[]).push(p); });
+  Object.values(g).forEach(a=>{ a.sort((x,y)=>(x.created||0)-(y.created||0)||String(x.id).localeCompare(String(y.id))); a.forEach((p,i)=>{ p.no=i+1; }); });
+  return list; }
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}catch(e){}
 
 /* ---------- pdf.js ---------- */
@@ -1934,8 +1941,7 @@ async function pushDirty_(drawingId){
       const j=await api({action:"savePin",item:pin,photos});
       const cur=V.pins.find(q=>q.id===p0.id)||await dbGet("pins",p0.id); if(!cur) continue;
       if(j.pin.deleted){ V.pins=V.pins.filter(q=>q.id!==cur.id); await dbDel("pins",cur.id); toast(`${pinLabel(cur)} 핀은 다른 사람이 삭제했습니다`); continue; }
-      if(cur.no!==j.pin.no&&(cur.team||"")===(j.pin.team||"")) toast(`다른 사람과 번호가 겹쳐 ${pinLabel(cur)} → ${pinLabel({...cur,no:j.pin.no})}(으)로 바꿨습니다`,3500);
-      cur.no=j.pin.no; cur.serverUpdated=j.pin.updated;
+      cur.serverUpdated=j.pin.updated;   // 번호는 찍은 날짜 순서로 앱에서 매긴다 (3.76)
       if(cur.updated===p0.updated){ cur.by=j.pin.by; cur.status=j.pin.status; cur.doneAt=j.pin.doneAt; cur.doneBy=j.pin.doneBy||""; }   // 만든 사람·완료한 사람은 서버 기록을 따른다
       for(const sp of [...(j.pin.photos||[]),...(j.pin.donePhotos||[])]){ const lp=[...cur.photos,...(cur.donePhotos||[])].find(x=>x.k===sp.k); if(lp) lp.id=sp.id; }
       if(cur.updated===p0.updated) cur.dirty=false;
@@ -2410,6 +2416,7 @@ function renderCnt(){
   $("#cntDock").innerHTML=multi?`보기 핀 <b>${all.length}</b><span>·</span>이 쪽 <b>${pg}</b>`:`보기 핀 <b>${all.length}</b>`;
 }
 function drawPins(){
+  renumber(V.pins);
   drawShapes(); renderCnt();
   const list=visPins().filter(p=>p.page===V.pageNo).sort(pinCmp);
   pinLayer.innerHTML=list.map(p=>{
@@ -2794,15 +2801,21 @@ function setTeamUI(p){
 $("#pTeam").addEventListener("click",e=>{ const b=e.target.closest("button"), p=selPin(); if(!b||!p||!canEdit(p)||p.team===b.dataset.v) return;
   const before=pinLabel(p);
   p.team=b.dataset.v; try{localStorage.setItem("lastTeam",p.team);}catch(_){}
-  p.no=nextNo([...V.pins],p.team,p.id);   // 팀이 바뀌면 그 팀의 번호로
+  renumber(V.pins);   // 팀이 바뀌면 그 팀에서 찍은 날짜 순서 번호로
   $("#pBadge").textContent=mapLabel(p); $("#pTitle").textContent=pinTitle(p);
   savePin(p); setTeamUI(p); drawPins(); renderTeamBar(); if(!$("#listSheet").hidden) renderList();
   if(before!==pinLabel(p)) toast(`${before} → ${pinLabel(p)}(으)로 바뀌었습니다`); });
+$("#pDates").addEventListener("change",e=>{ if(e.target.id!=="pCreated") return; const p=selPin(); if(!p||!canEdit(p)) return;
+  const t=new Date(e.target.value).getTime(); if(!isFinite(t)){ e.target.value=dtLocal(p.created); return; }
+  const before=pinLabel(p); p.created=t; renumber(V.pins);   // 찍은 날짜를 고치면 그 팀 번호를 날짜 순서로 다시 매긴다
+  $("#pBadge").textContent=mapLabel(p); $("#pTitle").textContent=pinTitle(p);
+  savePin(p); drawPins(); renderTeamBar(); if(!$("#listSheet").hidden) renderList();
+  toast(before!==pinLabel(p)?`찍은 날짜를 고쳐 ${before} → ${pinLabel(p)}(으)로 바뀌었습니다`:"찍은 날짜를 고쳤습니다"); });
 function pinTitle(p){ return `${p.team?teamName(p.team)+" ":""}${p.no}번 ${kindLabel(p)}`+(pgLabel(V.drawing,p.page)?` · ${pgLabel(V.drawing,p.page)}`:""); }
 function setStatusUI(p){
   document.querySelectorAll("#pStatus button").forEach(b=>b.classList.toggle("on",b.dataset.v===(p.status||"open")));
   $("#pBadge").classList.toggle("done",p.status==="done"); $("#pBadge").style.background=p.status==="done"?"":teamColor(p.team); $("#pBadge").style.setProperty("--pc",teamColor(p.team));
-  $("#pDates").innerHTML=`등록 ${fmtDate(p.created)}${p.by?" · "+esc(p.by):""}`+(p.status==="done"&&p.doneAt?`<br>조치완료 ${fmtDate(p.doneAt)}${p.doneBy?" · "+esc(p.doneBy):""}`:"")+(p.editor&&p.editor!==p.by?`<br>마지막 수정 ${esc(p.editor)}`:"");
+  $("#pDates").innerHTML=(canEdit(p)?`찍은 날짜 <input type="datetime-local" class="dtin" id="pCreated" value="${dtLocal(p.created)}" max="${dtLocal(Date.now())}">`:`찍은 날짜 ${fmtDate(p.created)}`)+`${p.by?" · "+esc(p.by):""}`+(p.status==="done"&&p.doneAt?`<br>조치완료 ${fmtDate(p.doneAt)}${p.doneBy?" · "+esc(p.doneBy):""}`:"")+(p.editor&&p.editor!==p.by?`<br>마지막 수정 ${esc(p.editor)}`:"");
 }
 /* 사진은 두 묶음: photos(조치 전·하자 사진), donePhotos(조치완료 사진) */
 const canDonePhoto=p=>canEdit(p)||(cloudOn()&&p.doneBy===myName())||!cloudOn();   // 완료 사진은 만든 사람·관리자·완료한 사람
@@ -3304,15 +3317,19 @@ async function showExport(drawing,allPins,fromHome){
   let allPh=false; try{ allPh=localStorage.getItem("expAllPhotos")==="1"; }catch(e){}
   let tmpl="internal"; try{ const t=localStorage.getItem("expTmpl"); if(TMPLS.some(x=>x[0]===t)) tmpl=t; }catch(e){}
   { const ts=[...sel].filter(Boolean); if(ts.length===1&&TEAM_TMPL[ts[0]]&&!fromHome) tmpl=TEAM_TMPL[ts[0]]; }   // 한 팀만 보고 있으면 그 팀 서식
+  // 3.76 조치 상태: 하자조치요청서는 처음부터 '미조치만' (조치완료 핀은 빼고 낸다)
+  let st=tmpl==="vendor"?"open":"all"; const stPass=p=>st==="all"||(st==="open"?p.status!=="done":p.status==="done");
   const pick=()=>new Promise(res=>{
-    const draw=()=>{ const l=allPins.filter(p=>sel.has(p.team||"")&&evPass(p)&&inPer(p)), n=l.length, blocks=l.reduce((a,p)=>a+(allPh?photoRows(p):1),0);
+    const draw=()=>{ const l=allPins.filter(p=>sel.has(p.team||"")&&evPass(p)&&inPer(p)&&stPass(p)), n=l.length, blocks=l.reduce((a,p)=>a+(allPh?photoRows(p):1),0);
       body.innerHTML=`<div class="lbl">사진대지 양식</div>
         <div class="tmgrid" id="expTm">${TMPLS.map(([v,t])=>`<button data-v="${v}" class="${tmpl===v?"on":""}">${t}${Object.keys(TEAM_TMPL).find(k=>TEAM_TMPL[k]===v)?`<small>${Object.keys(TEAM_TMPL).find(k=>TEAM_TMPL[k]===v)}팀</small>`:""}</button>`).join("")}</div>
         <p style="font-size:13px;color:var(--sub);margin-top:6px">${tmpl==="crack"?"「균열관리사진대지」: 맨 앞에 균열 관리 대장(번호·위치·내용·발생일·보수일), 핀마다 발생 사진 | 보수 후 사진과 폭·길이·보수 방법 적는 칸.":tmpl==="patrol"?"「현장순회점검 보고서」: 맨 앞에 점검 개요·결재란·지적사항 표, 핀마다 지적 사진 | 조치 사진과 지적 내용·조치 결과.":tmpl==="vendor"?"「하자 조치 요청서」: 업체별로 쪽을 나누고, 조치 전 사진만 넣어요(조치 후 칸 없음). 업체 이름만 적고 공종·팀·등록한 사람·등록 날짜는 빼요.":"맨 앞에 전체·팀별·업체별·공종별 미조치/완료 개수와 조치율, 핀 목록 표를 넣고 그 뒤에 사진대지가 나와요."}</p>
         <div class="lbl">넣을 팀 (여러 팀 고를 수 있음)</div><div class="tchips" id="expTeams">${teamChips(sel,none)}</div>
         <div class="lbl">넣을 업체</div><div class="vchips" id="expV">${evChips("v",evs)}</div>
         <div class="lbl">넣을 공종 <small style="font-weight:500;color:var(--sub)">· 고른 업체의 공종만</small></div><div class="vchips" id="expW">${evChips("w",ews)}</div>
-        <div class="lbl">기간 <small style="font-weight:500;color:var(--sub)">· 핀을 등록한 날짜</small></div>
+        <div class="lbl">넣을 핀 <small style="font-weight:500;color:var(--sub)">· 조치 상태</small></div>
+        <div class="seg" id="expSt">${[["all","전체"],["open","미조치만"],["done","조치완료만"]].map(([v,t])=>`<button data-v="${v}" class="${st===v?"on":""}">${t}</button>`).join("")}</div>
+        <div class="lbl">기간 <small style="font-weight:500;color:var(--sub)">· 핀을 찍은 날짜</small></div>
         <div class="seg" id="expPer">${[["all","전체"],["today","오늘"],["week","최근 7일"],["month","이번 달"],["custom","직접 입력"]].map(([v,t])=>`<button data-v="${v}" class="${per===v?"on":""}">${t}</button>`).join("")}</div>
         ${per==="custom"?`<div class="perrow"><input type="date" class="inp" id="expFrom" value="${pFrom}"><span>~</span><input type="date" class="inp" id="expTo" value="${pTo}"></div>`:""}
         <div class="lbl">사진대지에 넣을 사진</div>
@@ -3321,10 +3338,11 @@ async function showExport(drawing,allPins,fromHome){
         <p>핀 ${n}개 · 사진대지 ${blocks}칸 (${Math.ceil(blocks/2)}쪽) · 핀 표시 도면 + 사진대지 (A4 한 장에 2칸)</p><button id="expPv" class="sec" ${n?"":"disabled"}>미리보기</button><button id="expGo" ${n?"":"disabled"}>PDF 만들기</button>`;
       $("#expTeams").onclick=e=>{ const b=e.target.closest("[data-team]"); if(!b) return; toggleTeam(sel,b.dataset.team); draw(); };
       $("#expV").onclick=$("#expW").onclick=e=>{ const b=e.target.closest("[data-vfk]"); if(!b) return; const k=b.dataset.vfk; evToggle(k,b.dataset.vfv,k==="v"?evs:ews); scopeW(); draw(); };
+      $("#expSt").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; st=b.dataset.v; draw(); };
       $("#expPer").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; per=b.dataset.v; draw(); };
       if($("#expFrom")) $("#expFrom").onchange=$("#expTo").onchange=()=>{ pFrom=$("#expFrom").value; pTo=$("#expTo").value; draw(); };
       $("#expPh").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; allPh=b.dataset.v==="all"; try{localStorage.setItem("expAllPhotos",allPh?"1":"0");}catch(_){} draw(); };
-      $("#expTm").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; tmpl=b.dataset.v; try{localStorage.setItem("expTmpl",tmpl);}catch(_){} draw(); };
+      $("#expTm").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; if(tmpl!==b.dataset.v) st=b.dataset.v==="vendor"?"open":"all"; tmpl=b.dataset.v; try{localStorage.setItem("expTmpl",tmpl);}catch(_){} draw(); };
       $("#expPv").onclick=()=>res("pv");
       $("#expGo").onclick=()=>res("go"); };
     draw(); });
@@ -3334,8 +3352,8 @@ async function showExport(drawing,allPins,fromHome){
     for(;;){
       const act=await pick();
       if($("#expSheet").hidden) return;   // 창을 닫았으면 그만
-      const key=[...sel].sort().join(",")+"|"+allPh+"|"+tmpl+"|"+[...(EV.v||[])].join(",")+"|"+[...(EV.w||[])].join(",")+"|"+range().join(",");
-      pinList=allPins.filter(p=>sel.has(p.team||"")&&evPass(p)&&inPer(p));
+      const key=[...sel].sort().join(",")+"|"+allPh+"|"+tmpl+"|"+[...(EV.v||[])].join(",")+"|"+[...(EV.w||[])].join(",")+"|"+range().join(",")+"|"+st;
+      pinList=allPins.filter(p=>sel.has(p.team||"")&&evPass(p)&&inPer(p)&&stPass(p));
       teamsTxt=TEAMS.filter(t=>sel.has(t[0])).map(t=>t[1]).join("·")||"팀 없음";
       if(!bytes||bytes.key!==key){
         msg(act==="pv"?"미리보기를 만드는 중…":"핀이 표시된 도면과 사진대지를 PDF로 만드는 중…");
