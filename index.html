@@ -675,7 +675,7 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 .photos .add small{font-size:11px;color:#9A9A94}
 .photos .add b{line-height:1.1}
 #pinSheet.drop{outline:3px dashed #E31937;outline-offset:-6px}
-.lmove{margin-top:14px;width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--soft);font-weight:700;font-size:15px}
+.lmove{flex:none;padding:7px 11px;border:1px solid var(--line);border-radius:999px;background:var(--soft);font-weight:700;font-size:13px;white-space:nowrap}
 .mvlist{max-height:40vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:4px 8px}
 .mvrow{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);font-size:14px}
 .mvrow:last-child{border-bottom:0}
@@ -982,14 +982,13 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <!-- 핀 목록 -->
 <div class="sheet" id="listSheet" data-lb="C3 핀 목록" hidden>
-  <div class="sh"><h2 id="lTitle">핀 목록</h2><button class="x" data-close>✕</button></div>
+  <div class="sh"><h2 id="lTitle">핀 목록</h2><button class="lmove" id="lMove" hidden>⇄ 다른 쪽으로 옮기기</button><button class="x" data-close>✕</button></div>
   <div class="sb">
     <div class="seg" id="lMode" hidden style="margin-bottom:10px"><button data-v="pins" class="a on">핀</button><button data-v="cm" class="a">댓글</button></div>
     <div class="tchips" id="lTeams"></div>
     <div class="lpages" id="lPages"></div>
     <div class="seg" id="lFilter"><button data-v="all" class="a on">전체</button><button data-v="open" class="o">미조치</button><button data-v="done" class="d">조치완료</button></div>
     <div id="lItems" style="margin-top:6px"></div>
-    <button class="sec lmove" id="lMove" hidden>핀을 다른 쪽으로 옮기기</button>
   </div>
 </div>
 
@@ -1153,7 +1152,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.88";
+const APP_VER = "3.89";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -3242,7 +3241,7 @@ function renderCmList(){
     :`<div class="empty" style="padding:30px">아직 댓글이 없어요</div>`;
 }
 function renderList(){
-  $("#lMove").hidden=!(V.drawing&&V.drawing.pages>1&&V.pins.some(p=>p.id!=="temp"&&!p.deleted&&canEdit(p)));
+  $("#lMove").hidden=!(V.drawing&&V.drawing.pages>1&&V.pins.some(p=>p.id!=="temp"&&!p.deleted&&canEdit(p)))||lMode==="cm";
   const cmTab=cmOn(); $("#lMode").hidden=!cmTab; if(!cmTab) lMode="pins";
   document.querySelectorAll("#lMode button").forEach(b=>{ b.classList.toggle("on",b.dataset.v===lMode); if(b.dataset.v==="cm") b.textContent=`댓글 ${(V.cm||[]).filter(c=>V.pins.some(p=>p.id===c.pinId&&!p.deleted)).length}`; });
   ["#lTeams","#lPages","#lFilter"].forEach(x=>$(x).hidden=lMode==="cm");
