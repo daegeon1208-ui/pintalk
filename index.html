@@ -1123,7 +1123,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.76";
+const APP_VER = "3.77";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -2529,10 +2529,10 @@ vp.addEventListener("pointerdown",e=>{
     if(h&&(h.grip||V.addKind==="rect")){ startHandle(h,p); return; }   // 바깥 손잡이(사각형은 모서리도)는 바로 끌기
     if(h){ startPan(p,false); lpTimer=setTimeout(()=>{ lpTimer=null; if(G&&G.type==="pan"&&!G.moved&&ptrs.size===1) startHandle(h,p); },300); return; } }   // 다각형 점은 조금 길게 눌러 끌기
   const drawMode=V.mode==="capture"||(V.mode==="add"&&(V.addKind==="sketch"||(V.addKind==="rect"&&V.draft&&V.draft.pts.length<2)));
-  if(ptrs.size===1&&drawMode){ const p=rel(e); clearLP(); G={type:"draw",pts:[normPt(p)],sp:p}; if(V.draft.kind!=="sketch"){V.draft.pts=[];} return; }
+  if(ptrs.size===1&&drawMode){ const p=rel(e); clearLP(); G={type:"draw",pts:[normPt(p)],sp:p,prev:V.draft.pts.slice()}; if(V.draft.kind!=="sketch"){V.draft.pts=[];} return; }
   if(ptrs.size===1){ const p=rel(e); startPan(p,false); lpTimer=setTimeout(()=>longPress(p),450); }
   else if(ptrs.size===2){
-    clearLP(); if(V.draft&&V.draft.kind!=="sketch"&&V.draft.kind!=="poly") V.draft.pts=[];
+    clearLP(); if(G&&G.type==="draw"&&V.draft){ V.draft.pts=G.prev||[]; drawShapes(); }   // 그리던 선만 취소하고, 이미 그려 둔 사각형·구역은 그대로 둔다 (3.77)
     const [a,b]=[...ptrs.values()];
     G={type:"pinch",d:Math.hypot(a.x-b.x,a.y-b.y)||1,mx:(a.x+b.x)/2,my:(a.y+b.y)/2,k:V.k,tx:V.tx,ty:V.ty,moved:true};
   }
@@ -2562,7 +2562,7 @@ function endPtr(e){
   const p=rel(e); ptrs.delete(e.pointerId); clearLP();
   if(G&&G.type==="drag"){ ptrs.clear(); endDrag(e.type==="pointerup"); return; }
   if(G&&G.type==="handle"){ G=null; ptrs.clear(); drawShapes(); updateModeUI(); return; }
-  if(G&&G.type==="draw"){ const g=G; G=null; ptrs.clear(); if(e.type==="pointerup") endDraw(g,p); else { if(V.draft&&V.draft.kind!=="sketch") V.draft.pts=[]; drawShapes(); } return; }
+  if(G&&G.type==="draw"){ const g=G; G=null; ptrs.clear(); if(e.type==="pointerup") endDraw(g,p); else { if(V.draft&&V.draft.kind!=="sketch") V.draft.pts=g.prev||[]; drawShapes(); } return; }
   if(G&&G.type==="pan"&&!G.moved&&Date.now()-G.t<600&&e.type==="pointerup") onTap(p);
   if(ptrs.size===1){startPan([...ptrs.values()][0],true);}
   else if(ptrs.size===0){G=null;scheduleDetail();}
