@@ -1123,7 +1123,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.78";
+const APP_VER = "3.79";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -1930,28 +1930,44 @@ async function syncDrawings(){
 /* 1) 보내기: 고친 핀 */
 let pushLock=Promise.resolve();
 function pushDirty(id){ const r=pushLock.then(()=>pushDirty_(id)); pushLock=r.catch(()=>{}); return r; }
+let photoAhead=true;   // 서버가 사진 먼저 저장(savePhotos)을 알면 true (3.79)
 async function pushDirty_(drawingId){
     const dirty=(await pinsOf(drawingId)).filter(p=>p.dirty);
     if(dirty.length) setSync("wait",`보내는 중 ${dirty.length}`);
     const many=dirty.length>=3; let k=0;   // 여러 개를 올릴 때는 몇 개째인지 보여 준다 (3.78)
     const prog=()=>{ if(many) toast(`핀 올리는 중 ${k}/${dirty.length} · 다 올라갈 때까지 핀톡을 켜 두세요`,120000); };
     prog();
-    try{
-    for(const p0 of dirty){ k++;
-      if(p0.deleted){ await api({action:"deletePin",id:p0.id,drawingId:p0.drawingId}); await dbDel("pins",p0.id); continue; }
-      const photos={}, out=l=>(l||[]).map(x=>{ if(!x.k)x.k=uid(); if(!x.id&&x.data) photos[x.k]=bufToB64(x.data); return {k:x.k,id:x.id||null,w:x.w,h:x.h,rep:x.rep?true:undefined}; });
+    // 핀 하나 보내기: 사진은 먼저 드라이브에 저장(서버가 잠그지 않아 동시에 됨)하고, 핀 자료는 사진 id만 담아 짧게 보낸다
+    const one=async p0=>{
+      if(p0.deleted){ await api({action:"deletePin",id:p0.id,drawingId:p0.drawingId}); await dbDel("pins",p0.id); return; }
+      const all=[...(p0.photos||[]),...(p0.donePhotos||[])]; all.forEach(x=>{ if(!x.k) x.k=uid(); });
+      const todo=all.filter(x=>!x.id&&x.data);
+      if(photoAhead&&todo.length){
+        try{
+          const ph={}; todo.forEach(x=>{ ph[x.k]=bufToB64(x.data); });
+          const r=await api({action:"savePhotos",drawingId:p0.drawingId,prefix:pinLabel(p0)+" 핀",photos:ph});
+          todo.forEach(x=>{ if(r.ids&&r.ids[x.k]) x.id=r.ids[x.k]; });
+          const cur=V.pins.find(q=>q.id===p0.id)||await dbGet("pins",p0.id);   // 받은 사진 id는 바로 적어 둔다 (다시 올리지 않게)
+          if(cur){ [...(cur.photos||[]),...(cur.donePhotos||[])].forEach(x=>{ const t=todo.find(y=>y.k===x.k); if(t&&t.id) x.id=t.id; }); await dbPut("pins",cur); }
+        }catch(e){ if(/알 수 없는 요청/.test(e.message)) photoAhead=false; else throw e; }   // 예전 서버면 예전처럼 핀과 함께 보낸다
+      }
+      const photos={}, out=l=>(l||[]).map(x=>{ if(!x.id&&x.data) photos[x.k]=bufToB64(x.data); return {k:x.k,id:x.id||null,w:x.w,h:x.h,rep:x.rep?true:undefined}; });
       const pin={...p0,photos:out(p0.photos),donePhotos:out(p0.donePhotos)};
       delete pin.dirty; delete pin.serverUpdated;
       const j=await api({action:"savePin",item:pin,photos});
-      const cur=V.pins.find(q=>q.id===p0.id)||await dbGet("pins",p0.id); if(!cur) continue;
-      if(j.pin.deleted){ V.pins=V.pins.filter(q=>q.id!==cur.id); await dbDel("pins",cur.id); toast(`${pinLabel(cur)} 핀은 다른 사람이 삭제했습니다`); continue; }
+      const cur=V.pins.find(q=>q.id===p0.id)||await dbGet("pins",p0.id); if(!cur) return;
+      if(j.pin.deleted){ V.pins=V.pins.filter(q=>q.id!==cur.id); await dbDel("pins",cur.id); toast(`${pinLabel(cur)} 핀은 다른 사람이 삭제했습니다`); return; }
       cur.serverUpdated=j.pin.updated;   // 번호는 찍은 날짜 순서로 앱에서 매긴다 (3.76)
       if(cur.updated===p0.updated){ cur.by=j.pin.by; cur.status=j.pin.status; cur.doneAt=j.pin.doneAt; cur.doneBy=j.pin.doneBy||""; }   // 만든 사람·완료한 사람은 서버 기록을 따른다
       for(const sp of [...(j.pin.photos||[]),...(j.pin.donePhotos||[])]){ const lp=[...cur.photos,...(cur.donePhotos||[])].find(x=>x.k===sp.k); if(lp) lp.id=sp.id; }
       if(cur.updated===p0.updated) cur.dirty=false;
-      await dbPut("pins",cur); prog();
-    }
-    }catch(e){ if(many) toast(`핀 올리다 멈췄습니다 (${k-1}/${dirty.length}) · 다시 연결되면 이어서 올립니다`,5000); throw e; }
+      await dbPut("pins",cur);
+    };
+    // 3개씩 동시에 보낸다. 하나라도 실패하면 새로 시작하지 않고, 하던 것만 마친 뒤 멈춘다
+    let next=0, err=null, done=0;
+    const worker=async()=>{ while(!err&&next<dirty.length){ const p0=dirty[next++]; try{ await one(p0); done++; k=done; prog(); }catch(e){ err=err||e; } } };
+    await Promise.all([worker(),worker(),worker()]);
+    if(err){ if(many) toast(`핀 올리다 멈췄습니다 (${done}/${dirty.length}) · 다시 연결되면 이어서 올립니다`,5000); throw err; }
     if(many) toast(`핀 ${dirty.length}개를 공유 서버에 다 올렸습니다`,3000);
 }
 let syncing=false, syncAgain=false;
