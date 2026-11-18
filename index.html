@@ -826,6 +826,12 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 #home .dcard .favb.pop{animation:favPop .42s cubic-bezier(.3,1.8,.5,1)}
 @keyframes favPop{0%{transform:scale(.8)}55%{transform:scale(1.18)}100%{transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){#home .dcard .favb,#home .dcard .more,#home .dcard .rget{transition:none} #home .dcard .favb.pop{animation:none}}
+/* 3.82 컴퓨터(마우스·넓은 화면): 핀 창을 아래가 아니라 오른쪽 옆에 */
+@media (pointer:fine) and (hover:hover) and (min-width:900px){
+  #pinSheet{left:auto;right:0;top:0;bottom:0;height:auto!important;max-height:none;width:min(40%,460px);max-width:none;margin:0;border-radius:18px 0 0 18px;box-shadow:-6px 0 20px rgba(0,0,0,.18);transition:none}
+  #pinSheet.full{height:auto!important}
+  #pinSheet .grab{display:none}
+}
 </style>
 </head>
 <body>
@@ -1125,7 +1131,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.81";
+const APP_VER = "3.82";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -1466,7 +1472,7 @@ function setPinSheet(state){
 function centerOnPin(p){
   if(!V.page||p.page!==V.pageNo) return;
   const r=vp.getBoundingClientRect(), sb=$("#pinSheet").getBoundingClientRect(), head=p.shape?0:22;   // 점 핀은 머리가 위로 올라와 있어 조금 내려 맞춤
-  if(LAND.matches){   // 가로: 핀 창이 오른쪽 옆에 있으니 왼쪽 남은 도면의 가운데
+  if(LAND.matches||DESK.matches){   // 가로·컴퓨터: 핀 창이 오른쪽 옆에 있으니 왼쪽 남은 도면의 가운데
     const l=resv().l, visW=Math.max(80,Math.min(r.width,sb.left-r.left));
     V.tx=(l+visW)/2-p.nx*V.pw*V.k; V.ty=r.height/2+head-p.ny*V.ph*V.k;
   }else{
@@ -2239,6 +2245,7 @@ async function showPage(n){
 }
 /* 떠 있는 버튼 자리: 세로 화면은 아래(84px), 가로 화면은 왼쪽 팀 버튼·오른쪽 핀 버튼 */
 const LAND=matchMedia("(orientation:landscape) and (max-height:600px)");
+const DESK=matchMedia("(pointer:fine) and (hover:hover) and (min-width:900px)");   // 컴퓨터: 핀 창이 오른쪽 옆 (3.82)
 function resv(){
   if(!LAND.matches) return {l:0,r:0,b:84};
   const tb=$("#teamBar"), bar=document.querySelector(".toolbar");
