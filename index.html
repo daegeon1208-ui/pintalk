@@ -1153,7 +1153,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.85";
+const APP_VER = "3.86";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -3461,22 +3461,20 @@ async function buildCrackXlsx(drawing,pinList,progress,opt){
     await addImg(ws,cv,{col:0,row:5},{col:16,row:7});
   }
   Object.values(imgs).forEach(c=>{ c.width=c.height=0; });
-  // 3) 사진대지 (같은 쪽 균열 5개씩)
-  const S0=T.getWorksheet("사진대지"); let sn=0;
-  for(const n of pages){ const lp=pins.filter(p=>p.page===n);
-    for(let i=0;i<lp.length;i+=5){ const grp=lp.slice(i,i+5); sn++;
-      progress&&progress(`사진대지 만드는 중… (${sn})`);
-      const ws=clone(S0,safeName(`사진대지 ${sn}`,used));
-      const uniq=a=>[...new Set(a.filter(Boolean))].join(", ");
+  // 3) 사진대지 (같은 쪽 균열 5개씩) · 4) 사진장부 (3.86: 같은 원본 양식에 핀 사진 전부를 5장씩)
+  const S0=T.getWorksheet("사진대지");
+  const uniq=a=>[...new Set(a.filter(Boolean))].join(", ");
+  const photoSheet=async(title,n,items)=>{
+      const ws=clone(S0,safeName(title,used)), grp=[...new Set(items.map(x=>x.p))];
       ws.getCell("C4").value=drawing.name; ws.getCell("L4").value=" "+(pgLabel(drawing,n)||"");
       ws.getCell("T4").value=uniq(grp.map(p=>(p.crack||{}).cause))||"건조수축균열";
       ws.getCell("C5").value=ymd(Math.min(...grp.map(p=>p.created||Date.now())));
       ws.getCell("L5").value=uniq(grp.map(p=>(p.crack||{}).method))||"크랙게이지";
       const dn=grp.filter(p=>p.status==="done").length; ws.getCell("T5").value=dn?(dn===grp.length?"보수 완료":`보수 ${dn}/${grp.length}`):"미보수";
-      grp.forEach((p,j)=>fill(ws,17+j,p)); signs(ws,22);
-      for(let j=0;j<grp.length;j++){ const p=grp[j], ph=photoOrder(p.photos).find(x=>{ return true; });
+      grp.slice(0,5).forEach((p,j)=>fill(ws,17+j,p)); signs(ws,22);
+      for(let j=0;j<items.length;j++){ const {p,ph,tag}=items[j];
         const W=pxW(ws,2+4*j,6+4*j), H=pxH(ws,7,13);
-        const lab=c=>{ c.save(); const fz=Math.max(14,c.canvas.width*0.06); c.font=`bold ${fz}px sans-serif`; c.fillStyle="rgba(0,0,0,.6)"; const t=pinLabel(p), tw=c.measureText(t).width; c.fillRect(8,8,tw+fz*0.8,fz*1.4); c.fillStyle="#fff"; c.textBaseline="middle"; c.fillText(t,8+fz*0.4,8+fz*0.7); c.restore(); };
+        const lab=c=>{ c.save(); const fz=Math.max(14,c.canvas.width*0.06); c.font=`bold ${fz}px sans-serif`; c.fillStyle="rgba(0,0,0,.6)"; const t=pinLabel(p)+(tag?" "+tag:""), tw=c.measureText(t).width; c.fillRect(8,8,tw+fz*0.8,fz*1.4); c.fillStyle="#fff"; c.textBaseline="middle"; c.fillText(t,8+fz*0.4,8+fz*0.7); c.restore(); };
         let cv=null;
         if(ph&&(ph.data||await ensurePhoto(p,ph))&&ph.data){
           const im=await createImageBitmap(new Blob([ph.data],{type:ph.type||"image/jpeg"}));
@@ -3489,36 +3487,15 @@ async function buildCrackXlsx(drawing,pinList,progress,opt){
       ["일반","관통","누수관통"].forEach((t,k)=>{ const W=pxW(ws,22,24), H=pxH(ws,8+k,9+k), c=document.createElement("canvas"); c.width=Math.round(W*2); c.height=Math.round(H*2);
         const g=c.getContext("2d"); crkStroke(g,c.width*0.15,c.height/2,c.width*0.85,c.height/2,Math.max(3,c.height*0.07),t);
         const id=out.addImage({base64:c.toDataURL("image/png"),extension:"png"}); ws.addImage(id,{tl:{col:22,row:8+k},br:{col:24,row:9+k},editAs:"oneCell"}); });
-    }
-  }
-  // 4) 사진장부 (3.85): 균열마다 발생·보수 후 대표 사진을 자르지 않고 크게, 한 쪽에 3개
-  { progress&&progress("사진장부 만드는 중…");
-    const ws=out.addWorksheet(safeName("사진장부",used),{pageSetup:{paperSize:9,orientation:"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,horizontalCentered:true,
-      margins:{left:0.5,right:0.5,top:0.5,bottom:0.5,header:0.3,footer:0.3}},views:[{showGridLines:false}]});
-    [23,23,23,23].forEach((w,i)=>ws.getColumn(i+1).width=w);
-    const TH={style:"thin",color:{argb:"FF000000"}}, box={top:TH,left:TH,bottom:TH,right:TH}, F=(sz,b)=>({name:"맑은 고딕",size:sz,bold:!!b});
-    const put=(r,c0,c1,v,o)=>{ o=o||{}; if(c1>c0) ws.mergeCells(r,c0,r,c1); const cell=ws.getCell(r,c0); cell.value=v; cell.font=F(o.sz||10,o.b);
-      cell.alignment={vertical:"middle",horizontal:o.h||"center",wrapText:true}; for(let c=c0;c<=c1;c++){ const x=ws.getCell(r,c); x.border=box; if(o.fill) x.fill={type:"pattern",pattern:"solid",fgColor:{argb:o.fill}}; } };
-    const head=r=>{ ws.mergeCells(r,1,r,4); const t=ws.getCell(r,1); t.value="균 열 사 진 장 부"; t.font=F(18,true); t.alignment={horizontal:"center",vertical:"middle"}; ws.getRow(r).height=36;
-      ws.mergeCells(r+1,1,r+1,4); const u=ws.getCell(r+1,1); u.value=" 공 사 명 : "+(SITE||"")+"     위    치 : "+drawing.name; u.font=F(10); u.alignment={vertical:"middle"}; ws.getRow(r+1).height=22; return r+2; };
-    const PH_H=170, cw=pxW(ws,0,2), ch=PH_H*96/72;
-    const pic=async(p,ph,r,c0)=>{ let cv;
-      if(ph&&(ph.data||await ensurePhoto(p,ph))&&ph.data){ const im=await createImageBitmap(new Blob([ph.data],{type:ph.type||"image/jpeg"}));
-        cv=fit(im,im.width,im.height,cw,ch,4,(g,dx,dy,dw,dh)=>{ const lw=Math.max(3,Math.max(dw,dh)*0.01); (ph.lines||[]).forEach(l=>crkStroke(g,dx+l[0]*dw,dy+l[1]*dh,dx+l[2]*dw,dy+l[3]*dh,lw,(p.crack||{}).type)); }); im.close&&im.close(); }
-      else { const c=document.createElement("canvas"); c.width=Math.round(cw*2); c.height=Math.round(ch*2); const g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,c.width,c.height); g.fillStyle="#999"; g.font=`${c.width*0.05}px sans-serif`; g.textAlign="center"; g.fillText(ph===null?"보수 전":"사진 없음",c.width/2,c.height/2); cv=c; }
-      await addImg(ws,cv,{col:c0,row:r-1},{col:c0+2,row:r}); };
-    let r=head(1);
-    for(let i=0;i<pins.length;i++){ const p=pins[i], c=p.crack||{};
-      if(i&&i%3===0){ ws.getRow(r-1).addPageBreak(); r=head(r); }
-      progress&&progress(`사진장부 만드는 중… (${i+1}/${pins.length})`);
-      put(r,1,1,"No. "+pinLabel(p),{b:true,fill:"FFEFEFEF"}); put(r,2,4," 위치 : "+([pgLabel(drawing,p.page),(p.text||"").replace(/\n/g," ")].filter(Boolean).join(" · ")||"-"),{h:"left"}); ws.getRow(r).height=22; r++;
-      put(r,1,2,"발 생 사 진",{fill:"FFEFEFEF"}); put(r,3,4,"보 수 후 사 진",{fill:"FFEFEFEF"}); ws.getRow(r).height=20; r++;
-      ws.getRow(r).height=PH_H; for(let k=1;k<=4;k++) ws.getCell(r,k).border=box;
-      await pic(p,photoOrder(p.photos)[0],r,0); await pic(p,p.status==="done"?(photoOrder(p.donePhotos)[0]||undefined):null,r,2); r++;
-      const info=[`발견일 ${ymd(p.created)}`,c.w?`균열폭 ${c.w}mm`:"",c.len?`길이 ${c.len}m`:"",(c.type||"일반")+"균열",c.cause||"",c.pour?`타설일 ${pourTxt(c.pour)}`:"",p.status==="done"?`보수 ${ymd(p.doneAt)}${c.fix?" ("+c.fix+")":""}`:"미보수"].filter(Boolean).join("  ·  ");
-      put(r,1,4," "+info,{h:"left",sz:9}); ws.getRow(r).height=22; r++;
-      ws.getRow(r).height=10; r++; }
-    ws.pageSetup.printArea=`A1:D${r-1}`; }
+  };
+  let sn=0;
+  for(const n of pages){ const lp=pins.filter(p=>p.page===n);
+    for(let i=0;i<lp.length;i+=5){ sn++; progress&&progress(`사진대지 만드는 중… (${sn})`);
+      await photoSheet(`사진대지 ${sn}`,n,lp.slice(i,i+5).map(p=>({p,ph:photoOrder(p.photos)[0]}))); } }
+  let bn=0;
+  for(const n of pages){ const all=[];
+    pins.filter(p=>p.page===n).forEach(p=>{ photoOrder(p.photos).forEach(ph=>all.push({p,ph})); photoOrder(p.donePhotos).forEach(ph=>all.push({p,ph,tag:"보수 후"})); });
+    for(let i=0;i<all.length;i+=5){ bn++; progress&&progress(`사진장부 만드는 중… (${bn})`); await photoSheet(`사진장부 ${bn}`,n,all.slice(i,i+5)); } }
   progress&&progress("엑셀 파일을 저장하는 중…");
   return new Uint8Array(await out.xlsx.writeBuffer());
 }
@@ -3585,7 +3562,7 @@ async function showExport(drawing,allPins,fromHome){
         <div class="seg" id="expPer">${[["all","전체"],["today","오늘"],["week","최근 7일"],["month","이번 달"],["custom","직접 입력"]].map(([v,t])=>`<button data-v="${v}" class="${per===v?"on":""}">${t}</button>`).join("")}</div>
         ${per==="custom"?`<div class="perrow"><input type="date" class="inp" id="expFrom" value="${pFrom}"><span>~</span><input type="date" class="inp" id="expTo" value="${pTo}"></div>`:""}
         ${tmpl==="crack"?`<div class="lbl">파일 형식</div><div class="seg" id="expFmt"><button data-v="xlsx" class="${fmt==="xlsx"?"on":""}">엑셀 (원본 양식)</button><button data-v="pdf" class="${fmt==="pdf"?"on":""}">PDF</button></div>`:""}
-        ${XL()?`<p style="font-size:13px;color:var(--sub);margin-top:6px">「콘크리트 구조물 균열관리 현황」 엑셀 양식 그대로 균열관리대장·평면도·사진대지(한 장에 균열 5개)를 채우고, 사진을 자르지 않고 크게 넣은 사진장부(한 쪽에 3개)도 붙입니다. 품질팀 균열 핀이 모두 들어가요.</p>
+        ${XL()?`<p style="font-size:13px;color:var(--sub);margin-top:6px">「콘크리트 구조물 균열관리 현황」 엑셀 양식 그대로 균열관리대장·평면도·사진대지(한 장에 균열 5개)를 채우고, 핀 사진 전부를 같은 사진대지 양식에 5장씩 넣은 사진장부도 붙입니다. 품질팀 균열 핀이 모두 들어가요.</p>
         <div class="crkg" style="margin-top:6px"><label>조사자<input class="inp" id="expWho" value="${esc(cWho)}" autocomplete="off"></label><label>확인자<input class="inp" id="expChk" value="${esc(cChk)}" autocomplete="off"></label></div>`:`<div class="lbl">사진대지에 넣을 사진</div>
         <div class="seg" id="expPh"><button data-v="rep" class="${allPh?"":"on"}">대표 사진만</button><button data-v="all" class="${allPh?"on":""}">사진 전부</button></div>
         <p style="font-size:13px;color:var(--sub);margin-top:6px">${allPh?"핀마다 조치 전·후 사진을 한 칸에 한 장씩 짝지어 모두 넣습니다(대표 사진이 먼저).":"핀마다 조치 전·후 대표 사진 한 장씩, 핀 하나에 한 칸입니다."}</p>`}
