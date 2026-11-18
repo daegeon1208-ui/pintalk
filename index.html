@@ -1153,7 +1153,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.87";
+const APP_VER = "3.88";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -3331,7 +3331,7 @@ async function openCapture(pts,keep){
         <button id="capUndo" class="sm">되돌리기</button><button id="capClear" class="sm">모두 지우기</button></div>
       <p id="capPenHint" class="caphint" ${CAP.pen?"":"hidden"}>한 손가락으로 그리고, 두 손가락으로 벌려 확대하거나 옮기세요. 다 그렸으면 ✎ 를 다시 눌러 끄세요.</p>
       <div class="capwrap"><canvas id="capView" class="capimg"></canvas><button class="capfit" id="capFit" hidden>전체 보기</button></div>`
-      +(canShare?`<button id="capShare">보내기 (카톡·메일·사진에 저장)</button>`:"")
+      +(canShare?`<button id="capShare">보내기 (메일·사진에 저장)</button>`:"")
       +(canCopy?`<button id="capCopy" class="sec">복사 (다른 앱에 붙여넣기)</button>`:"")
       +`<button id="capSave" class="sec">그림 열기·저장</button>`;
     const view=$("#capView"); view.width=cv.width; view.height=cv.height;
@@ -3347,7 +3347,7 @@ async function openCapture(pts,keep){
     capPenEvents(view);
     const sb=$("#capShare"); if(sb) sb.onclick=async()=>{try{await navigator.share({files:[capFile]});}catch(e){}};
     const cb=$("#capCopy"); if(cb) cb.onclick=async()=>{
-      try{ await navigator.clipboard.write([new ClipboardItem({"image/png":capFile})]); toast("복사했습니다. 카톡 등에서 붙여넣기 하세요"); }
+      try{ await navigator.clipboard.write([new ClipboardItem({"image/png":capFile})]); toast("복사했습니다. 보낼 곳에서 붙여넣기 하세요"); }
       catch(e){ toast("이 브라우저에서는 복사가 안 됩니다. 보내기를 써 주세요",3500); } };
     $("#capSave").onclick=()=>{ const a=document.createElement("a"); a.href=capUrl; a.download=capFile.name; a.target="_blank"; a.click(); };
   }catch(err){ console.error(err); body.innerHTML=`<p>캡처하지 못했습니다: ${esc(err.message)}</p>`; }
@@ -3629,7 +3629,7 @@ async function showExport(drawing,allPins,fromHome){
     const canShare=navigator.canShare&&navigator.canShare({files:[new File([bytes],X?"a.xlsx":"a.pdf",{type:MT})]});
     body.innerHTML=`<p>${esc(teamsTxt)} · 핀 ${pinList.length}개 (미조치 ${o} · 완료 ${pinList.length-o}) · ${X?"균열관리대장 + 평면도 + 사진대지 + 사진장부 (엑셀)":"도면 + 사진대지"}</p>
       <div class="lbl">파일 이름</div><input class="inp" id="expName" autocomplete="off" value="${esc(`${drawing.name}_${X?"균열관리현황":(TMPLS.find(x=>x[0]===tmpl)||TMPLS[0])[2]}_${dayStr(Date.now())}`)}">`
-      +(canShare?`<button id="expShare">보내기 (카톡·메일·파일에 저장)</button>`:"")
+      +(canShare?`<button id="expShare">보내기 (메일·파일에 저장)</button>`:"")
       +`<a id="expOpen" class="${canShare?"sec":""}" ${X?"":'target="_blank"'}>${X?"엑셀 저장":"PDF 열기·저장"}</a>`;
     makeFile();
     $("#expName").addEventListener("input",makeFile);
@@ -3937,10 +3937,10 @@ const TOUR=[
   {t:"#listSheet",x:"찍은 핀이 모두 나와요. <b>미조치·조치완료</b>, 팀으로 거를 수 있고, 핀을 누르면 그 위치로 이동해요.",next:1,post:()=>closeSheets()},
   {t:"#expBtn",x:"<b>내보내기</b>를 누르세요.",go:()=>sheetOpen("#actSheet")||sheetOpen("#expSheet")},
   {t:()=>$('#actSheet [data-v="pdf"]'),x:"<b>부분 캡처</b>는 도면 일부를 그림으로, <b>PDF 만들기</b>는 핀 표시 도면과 사진대지를 한 파일로 만들어요. <b>PDF 만들기</b>를 눌러 보세요.",go:()=>sheetOpen("#expSheet")},
-  {t:"#expSheet",x:"보낼 <b>팀</b>을 고르고 <b>미리보기</b>로 먼저 확인할 수 있어요. 만들면, 핀 표시 도면 + <b>사진대지</b>(한 쪽에 핀 2개: 조치 전·후 사진, 내용, 위치도) PDF를 카톡 등으로 바로 보낼 수 있어요.",next:1,post:()=>closeSheets()},
+  {t:"#expSheet",x:"보낼 <b>팀</b>을 고르고 <b>미리보기</b>로 먼저 확인할 수 있어요. 만들면, 핀 표시 도면 + <b>사진대지</b>(한 쪽에 핀 2개: 조치 전·후 사진, 내용, 위치도) PDF를 바로 보내거나 파일로 저장할 수 있어요.",next:1,post:()=>closeSheets()},
   {t:"#backBtn",x:"<b>‹ 목록</b>을 눌러 도면 목록으로 돌아가세요.",go:()=>!$("#home").hidden},
   {t:"#cloudBtn",x:"이 버튼은 <b>연결</b> 상태예요. 로그인하면 <b>초록 동그라미</b>(연결 확인)로 바뀌고, 협업 도면을 여러 사람이 함께 봐요. 눌러서 로그아웃할 수도 있어요.",next:1,post:()=>closeSheets()},
-  {t:"#importBtn",x:"이제 실제 도면을 쓰려면 <b>도면 불러오기</b>로 카톡·파일 앱에 받은 PDF나 DWG를 고르면 돼요.",next:1,pre:()=>closeSheets()},
+  {t:"#importBtn",x:"이제 실제 도면을 쓰려면 <b>도면 불러오기</b>로 메일·파일 앱에 받은 PDF나 DWG를 고르면 돼요.",next:1,pre:()=>closeSheets()},
   {t:"#hTabs",x:"<b>협업 도면</b>은 공유 서버에 올라가서 함께 쓰는 사람 모두가 같은 도면·핀·사진·댓글을 봐요. (로그인 필요)<br><b>개인 도면</b>은 내 휴대폰에만 저장돼서 나만 보고, 인터넷이 없어도 써요. 도면 <b>⋯</b> 메뉴에서 서로 바꿀 수 있어요.",next:1,pre:()=>{ closeSheets(); tourHome(); renderHome(); }},
   {t:()=>$('[data-more="sample"]'),x:"도면 오른쪽 <b>⋯</b>를 누르면 <b>도면 설정</b>이 나와요. 눌러 보세요.",go:()=>sheetOpen("#actSheet"),pre:()=>closeSheets()},
   {t:"#actSheet",x:"<b>도면 설정</b>이에요. <b>공유하기</b>(PDF 보내기) · <b>도면 정보</b>(참가자·최근 변경) · <b>이름 바꾸기</b> · <b>쪽 편집</b> · <b>도면 복사</b> · <b>삭제</b>. 협업 도면에는 <b>개인 도면으로 바꾸기 · 협업 요청 · 비밀번호 걸기</b>도 있어요.",next:1,post:()=>closeSheets()},
