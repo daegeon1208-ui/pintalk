@@ -802,6 +802,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 #home .dcard .favb{box-shadow:2px 2px 5px rgba(150,158,170,.55),-2px -2px 5px rgba(255,255,255,.92)!important;background:#E3E6EA!important}
 #home .dcard .favb.on{box-shadow:inset 2px 2px 4px rgba(150,158,170,.55),inset -2px -2px 4px rgba(255,255,255,.92)!important}
 #home .dcard .more{box-shadow:2px 2px 5px rgba(150,158,170,.55),-2px -2px 5px rgba(255,255,255,.92);background:#E3E6EA}
+#home .dcard .more.lk,#home .dcard .more.lk:active{opacity:.35;box-shadow:none;transform:none}
 #home .fab{box-shadow:6px 6px 14px rgba(150,158,170,.55),-6px -6px 14px rgba(255,255,255,.92)!important}
 #home header .hbtn.ico{width:40px;height:40px;border-radius:50%;box-shadow:4px 4px 8px rgba(150,158,170,.55),-4px -4px 8px rgba(255,255,255,.92)!important}
 #home header .hbtn:not(#cloudBtn):active{box-shadow:inset 3px 3px 6px rgba(150,158,170,.55),inset -3px -3px 6px rgba(255,255,255,.92)!important}
@@ -1123,7 +1124,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.79";
+const APP_VER = "3.80";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -1498,7 +1499,7 @@ async function renderHome(){
     const np=new Set([...mine.map(p=>p.by),...mine.filter(p=>p.status==="done").map(p=>p.doneBy)].filter(Boolean)).size;
     return `<div class="dcard${fv.has(d.id)?" fav":""}" data-id="${d.id}"><div class="meta"><div class="nm">${ftIcon(d)}${lockIcon(d)}${d.private?'<span class="ftype prv">개인</span>':""}${esc(d.name)}</div>
       <div class="sm"><span class="cnt o">미조치 ${o}</span><span class="cnt d">완료 ${dn}</span> ${d.pages}쪽 · ${d.sample?"연습용 · 공유 안 됨":fmtDate(d.created).slice(0,10)}${d.private?" · 나만 보기":d.cloud&&cloudOn()?" · 공유":""}${np&&!d.private?` · 참가 ${np}명`:""}</div></div>
-      <button class="favb${fv.has(d.id)?" on":""}" data-fav="${d.id}" aria-label="${fv.has(d.id)?"즐겨찾기 풀기":"즐겨찾기"}" aria-pressed="${fv.has(d.id)}"><svg viewBox="0 0 24 24"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg></button><button class="more" data-more="${d.id}">⋯</button></div>`;}).join("")
+      <button class="favb${fv.has(d.id)?" on":""}" data-fav="${d.id}" aria-label="${fv.has(d.id)?"즐겨찾기 풀기":"즐겨찾기"}" aria-pressed="${fv.has(d.id)}"><svg viewBox="0 0 24 24"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg></button><button class="more${d.locked&&!lockFree(d)&&!lockPws[d.id]?" lk":""}" data-more="${d.id}"${d.locked&&!lockFree(d)&&!lockPws[d.id]?' aria-disabled="true"':""}>⋯</button></div>`;}).join("")
   +showRem.map(d=>`<div class="dcard remote" data-remote="${d.id}"><div class="meta"><div class="nm">${ftIcon(d)}${lockIcon(d)}${esc(d.name)}</div>
       <div class="sm"><span class="cnt o">미조치 ${d.open||0}</span><span class="cnt d">완료 ${d.done||0}</span> ${d.pages}쪽${d.by?" · "+esc(d.by):""}${(d.parts||[]).length?` · 참가 ${d.parts.length}명`:""}</div>
       <div class="sm rtag">공유 도면 · 아직 이 휴대폰에 없음</div></div><span class="rget" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M5 19.5h14"/></svg><b>받기</b></span></div>`).join("");
@@ -1528,6 +1529,7 @@ $("#dlist").addEventListener("click",async e=>{
   if(fb){ e.stopPropagation(); const id=fb.dataset.fav, on=toggleFav(id); await renderHome(); const nb=document.querySelector(`#dlist [data-fav="${CSS.escape(id)}"]`); if(nb){ nb.classList.add("pop"); setTimeout(()=>nb.classList.remove("pop"),450); } toast(on?"즐겨찾기했어요. 목록 맨 위에 고정돼요":"즐겨찾기를 풀었어요",2000); return; }
   const more=e.target.closest("[data-more]");
   if(more){
+    if(more.classList.contains("lk")){ e.stopPropagation(); toast("비밀번호가 걸린 도면입니다. 도면을 열어 비밀번호를 푼 뒤 설정할 수 있어요",3500); return; }   // 3.80 잠금을 풀기 전에는 도면 설정을 못 연다
     const d=await dbGet("drawings",more.dataset.more), shared=cloudOn()&&d.cloud;
     const mp=(await pinsOf(d.id)).filter(p=>!p.deleted), mo=mp.filter(p=>p.status!=="done").length;
     if(!await ensureUnlocked(d)) return;
