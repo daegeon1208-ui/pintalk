@@ -798,46 +798,17 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 .tmgrid.liq>i.lq{z-index:1}
 .tmgrid.liq>button.on{z-index:2}
 
-/* ===== 3.69 도면 목록(B1) 뉴모피즘: 바탕·머리줄·카드를 한 색으로, 그림자로만 떠오르고 들어간다 ===== */
-#home{--bg:#E3E6EA;--card:#E3E6EA;--chip:#E3E6EA;--soft:#E3E6EA;--line:transparent;background:#E3E6EA}
-#home main,#home .htop{background:#E3E6EA!important}
-#home header{background:#E3E6EA!important;color:#2E3440!important;box-shadow:0 6px 14px rgba(150,158,170,.55)!important}
-#home header h1{color:#2E3440}
-#home header .hbtn:not(#cloudBtn){background:#E3E6EA!important;color:#2E3440!important;box-shadow:3px 3px 6px rgba(150,158,170,.55),-3px -3px 6px rgba(255,255,255,.92)!important}
-#home header .hbtn svg{stroke:#2E3440}
-#home .hsearch{background:#E3E6EA;border:0;box-shadow:inset 4px 4px 8px rgba(150,158,170,.55),inset -4px -4px 8px rgba(255,255,255,.92)}
-#home .hsearch #hq{background:none}
-#home .hfilter{background:#E3E6EA!important;box-shadow:inset 4px 4px 8px rgba(150,158,170,.55),inset -4px -4px 8px rgba(255,255,255,.92)!important}
-#home .hfilter button.on{background:#E3E6EA!important;color:#E31937!important;font-weight:800}
-#home .hfilter button.on{box-shadow:3px 3px 7px rgba(150,158,170,.55),-3px -3px 7px rgba(255,255,255,.92)!important}
-#home .dcard{background:#E3E6EA;border:0!important;border-radius:20px;box-shadow:6px 6px 14px rgba(150,158,170,.55),-6px -6px 14px rgba(255,255,255,.92)!important;margin-bottom:16px}
-#home .dcard:active:not(:has(.favb:active,.more:active,.rget:active)){box-shadow:inset 4px 4px 9px rgba(150,158,170,.55),inset -4px -4px 9px rgba(255,255,255,.92)!important}
-#home .dcard.remote{box-shadow:inset 3px 3px 7px rgba(150,158,170,.55),inset -3px -3px 7px rgba(255,255,255,.92)!important}
-#home .dcard .cnt,#home .dcard .tcnt{box-shadow:inset 2px 2px 4px rgba(150,158,170,.55),inset -2px -2px 4px rgba(255,255,255,.92);border:0}
-#home .dcard .favb{box-shadow:2px 2px 5px rgba(150,158,170,.55),-2px -2px 5px rgba(255,255,255,.92)!important;background:#E3E6EA!important}
-#home .dcard .favb.on{box-shadow:inset 2px 2px 4px rgba(150,158,170,.55),inset -2px -2px 4px rgba(255,255,255,.92)!important}
-#home .dcard .more{box-shadow:2px 2px 5px rgba(150,158,170,.55),-2px -2px 5px rgba(255,255,255,.92);background:#E3E6EA}
-#home .dcard .more.lk,#home .dcard .more.lk:active{opacity:.35;box-shadow:none;transform:none}
-#home .fab{box-shadow:6px 6px 14px rgba(150,158,170,.55),-6px -6px 14px rgba(255,255,255,.92)!important}
-#home header .hbtn.ico{width:40px;height:40px;border-radius:50%;box-shadow:4px 4px 8px rgba(150,158,170,.55),-4px -4px 8px rgba(255,255,255,.92)!important}
-#home header .hbtn:not(#cloudBtn):active{box-shadow:inset 3px 3px 6px rgba(150,158,170,.55),inset -3px -3px 6px rgba(255,255,255,.92)!important}
-/* 3.70 왼쪽 로고와 연결 표시등은 뉴모피즘 없이 원래 모양 */
-#home header .hlogo{box-shadow:none!important;border-radius:10px}   /* 3.72 그림자 없음 (사용자 요청) */
-#home .asuser{background:#E3E6EA;box-shadow:inset 2px 2px 5px rgba(150,158,170,.55),inset -2px -2px 5px rgba(255,255,255,.92)}
-
-/* 3.70 아직 받지 않은 공유 도면: 점선 대신 오목하게 눌린 카드 + 오른쪽 볼록한 '받기' 단추 */
-.dcard.remote{border-style:solid}
-#home .dcard.remote{box-shadow:inset 5px 5px 10px rgba(150,158,170,.55),inset -5px -5px 10px rgba(255,255,255,.92)!important}
-#home .dcard.remote .nm{color:#5B6170}
-#home .dcard.remote .cnt{opacity:.75}
+/* 3.91 도면 목록(B1)은 3.68 디자인으로 되돌림 (뉴모피즘 화면 빼고 버튼만 볼록). 받기 단추·눌림 탄력은 납작한 모양으로 유지 */
+#home .dcard .more.lk,#home .dcard .more.lk:active{opacity:.35;transform:none}
+#home header .hlogo{box-shadow:none!important}   /* 3.72 로고 그림자 없음 (사용자 요청) 유지 */
+.dcard.remote .nm{color:#5B6170}
+.dcard.remote .cnt{opacity:.75}
 .dcard .rtag{color:#7A8090;font-weight:600}
-.dcard .rget{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:52px;height:52px;margin-right:4px;border-radius:16px;background:#E3E6EA;color:#E31937;box-shadow:4px 4px 8px rgba(150,158,170,.55),-4px -4px 8px rgba(255,255,255,.92)}
+.dcard .rget{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:52px;height:52px;margin-right:4px;border-radius:14px;background:var(--card);border:1.5px solid #E31937;color:#E31937}
 .dcard .rget svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .dcard .rget b{font-size:11px;font-weight:800}
-
-/* 3.73 도면 카드의 별·⋯·받기 단추를 누르면 카드가 아니라 그 단추만 쏙 들어갔다 튀어 오른다 */
-#home .dcard .favb,#home .dcard .more,#home .dcard .rget{transition:transform .32s cubic-bezier(.3,1.8,.5,1),box-shadow .18s}
-#home .dcard .favb:active,#home .dcard .more:active,#home .dcard .rget:active{transform:scale(.88);transition:transform .08s,box-shadow .08s;box-shadow:inset 3px 3px 6px rgba(150,158,170,.55),inset -3px -3px 6px rgba(255,255,255,.92)!important}
+#home .dcard .favb,#home .dcard .more,#home .dcard .rget{transition:transform .32s cubic-bezier(.3,1.8,.5,1)}
+#home .dcard .favb:active,#home .dcard .more:active,#home .dcard .rget:active{transform:scale(.88);transition:transform .08s}
 #home .dcard .favb.pop{animation:favPop .42s cubic-bezier(.3,1.8,.5,1)}
 @keyframes favPop{0%{transform:scale(.8)}55%{transform:scale(1.18)}100%{transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){#home .dcard .favb,#home .dcard .more,#home .dcard .rget{transition:none} #home .dcard .favb.pop{animation:none}}
@@ -1152,7 +1123,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.90";
+const APP_VER = "3.91";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
