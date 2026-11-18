@@ -1123,7 +1123,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.77";
+const APP_VER = "3.78";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -1559,8 +1559,8 @@ $("#dlist").addEventListener("click",async e=>{
         if(!cloudSet()){ toast("먼저 위의 '공유'에서 연결해 주세요",3500); return; }
         if(!confirm(`「${d.name}」을(를) 협업 도면으로 바꿀까요?\n공유 서버에 올라가서 함께 쓰는 사람들이 도면과 핀을 보고 같이 씁니다.`)) return;
         d.private=false; await dbPut("drawings",d); await renderHome();
-        if(cloudOn()){ toast("공유 서버에 올리는 중…",60000); await syncDrawings(); $("#toast").hidden=true; }
-        toast(cloudOn()?"협업 도면으로 바꿨습니다":"협업 도면으로 바꿨습니다. 공유에 연결하면 올라갑니다",3000);
+        if(cloudOn()){ toast("공유 서버에 올리는 중…",60000); await syncDrawings(); if(/^공유 서버에 올리는 중/.test($("#toast").textContent)) toast("협업 도면으로 바꿨습니다",3000); }
+        else toast("협업 도면으로 바꿨습니다. 공유에 연결하면 올라갑니다",3000);
       }
       else if(act==="toPrivate") await makePrivate(d,shared);
       else if(act==="invite"){ await inviteMenu(d); }
@@ -1933,7 +1933,11 @@ function pushDirty(id){ const r=pushLock.then(()=>pushDirty_(id)); pushLock=r.ca
 async function pushDirty_(drawingId){
     const dirty=(await pinsOf(drawingId)).filter(p=>p.dirty);
     if(dirty.length) setSync("wait",`보내는 중 ${dirty.length}`);
-    for(const p0 of dirty){
+    const many=dirty.length>=3; let k=0;   // 여러 개를 올릴 때는 몇 개째인지 보여 준다 (3.78)
+    const prog=()=>{ if(many) toast(`핀 올리는 중 ${k}/${dirty.length} · 다 올라갈 때까지 핀톡을 켜 두세요`,120000); };
+    prog();
+    try{
+    for(const p0 of dirty){ k++;
       if(p0.deleted){ await api({action:"deletePin",id:p0.id,drawingId:p0.drawingId}); await dbDel("pins",p0.id); continue; }
       const photos={}, out=l=>(l||[]).map(x=>{ if(!x.k)x.k=uid(); if(!x.id&&x.data) photos[x.k]=bufToB64(x.data); return {k:x.k,id:x.id||null,w:x.w,h:x.h,rep:x.rep?true:undefined}; });
       const pin={...p0,photos:out(p0.photos),donePhotos:out(p0.donePhotos)};
@@ -1945,8 +1949,10 @@ async function pushDirty_(drawingId){
       if(cur.updated===p0.updated){ cur.by=j.pin.by; cur.status=j.pin.status; cur.doneAt=j.pin.doneAt; cur.doneBy=j.pin.doneBy||""; }   // 만든 사람·완료한 사람은 서버 기록을 따른다
       for(const sp of [...(j.pin.photos||[]),...(j.pin.donePhotos||[])]){ const lp=[...cur.photos,...(cur.donePhotos||[])].find(x=>x.k===sp.k); if(lp) lp.id=sp.id; }
       if(cur.updated===p0.updated) cur.dirty=false;
-      await dbPut("pins",cur);
+      await dbPut("pins",cur); prog();
     }
+    }catch(e){ if(many) toast(`핀 올리다 멈췄습니다 (${k-1}/${dirty.length}) · 다시 연결되면 이어서 올립니다`,5000); throw e; }
+    if(many) toast(`핀 ${dirty.length}개를 공유 서버에 다 올렸습니다`,3000);
 }
 let syncing=false, syncAgain=false;
 async function syncPins(){
