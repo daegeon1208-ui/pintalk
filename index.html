@@ -677,6 +677,7 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 .photos .add b{line-height:1.1}
 .photos .add b svg.ico{width:30px;height:30px;display:block;color:#2B2F33}
 #pinSheet.drop{outline:3px dashed #E31937;outline-offset:-6px}
+#home.drop::after{content:"여기에 놓으면 도면을 불러와요 (PDF·DWG)";position:fixed;inset:10px;z-index:50;display:flex;align-items:center;justify-content:center;border:3px dashed #E31937;border-radius:18px;background:rgba(255,255,255,.82);color:#E31937;font-size:20px;font-weight:700;pointer-events:none}   /* 4.13 */
 .lacts{display:flex;justify-content:flex-end;gap:8px;margin:0 0 10px}.lacts:not(:has(button:not([hidden]))){display:none}
 .lmove{flex:none;padding:7px 11px;border:1px solid var(--line);border-radius:999px;background:var(--soft);font-weight:700;font-size:13px;white-space:nowrap}
 .mvlist{max-height:40vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:4px 8px}
@@ -1154,7 +1155,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.12";
+const APP_VER = "4.13";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -1660,13 +1661,23 @@ async function fileToPdf(f,progress){
 $("#importBtn").addEventListener("click",()=>$("#pdfInput").click());
 $("#pdfInput").addEventListener("change",async e=>{
   const f=e.target.files[0]; e.target.value=""; if(!f) return;
-  if(!await fileKind(f)){ toast(notPdfMsg(f),5000); return; }
+  await importFiles([f]);
+});
+/* 4.13 도면 불러오기 (버튼·끌어놓기 공통). 여러 파일이면 차례로 불러오고 마지막 것을 연다 */
+async function importFiles(fs){
+  const ok=[]; for(const f of fs){ if(await fileKind(f)) ok.push(f); else toast(notPdfMsg(f),5000); }
+  if(!ok.length) return;
   let priv=false;
   if(cloudSet()){
-    const how=await chooseAction("이 도면은 어떻게 쓸까요?",[["team","협업 도면","공유 서버에 올려 함께 쓰는 사람과 핀 공유","people"],["private","개인 도면","내 휴대폰에만 · 다른 사람에게 안 보임","lock"]],{sub:f.name});
+    const how=await chooseAction("이 도면은 어떻게 쓸까요?",[["team","협업 도면","공유 서버에 올려 함께 쓰는 사람과 핀 공유","people"],["private","개인 도면","내 휴대폰에만 · 다른 사람에게 안 보임","lock"]],{sub:ok.length>1?`${ok[0].name} 외 ${ok.length-1}개`:ok[0].name});
     if(!how) return; priv=how==="private";
   }
-  toast("도면을 불러오는 중…",120000);
+  let last=null;
+  for(let i=0;i<ok.length;i++){ const id=await importFile(ok[i],priv,ok.length>1?` (${i+1}/${ok.length})`:""); if(id) last=id; }
+  if(last){ $("#toast").hidden=true; if(ok.length>1){ await renderHome(); toast(`도면 ${ok.length}개를 불러왔어요`,2500); } else openDrawing(last); }
+}
+async function importFile(f,priv,cnt){
+  toast("도면을 불러오는 중…"+cnt,120000);
   let src=null;
   try{
     src=await fileToPdf(f,t=>toast(t,120000));
@@ -1678,11 +1689,16 @@ $("#pdfInput").addEventListener("change",async e=>{
     const pn=await pdfPageNames(pdf);
     await dbPut("drawings",{id,name:src.name,pages:pdf.numPages,pageNames:pn,created:now,opened:now,by:myName()||"",kind:src.dwg?"dwg":"pdf",private:priv||undefined});
     pdf.destroy();
-    if(pn.some(Boolean)) setTimeout(()=>toast(`PDF에 있던 쪽 이름 ${pn.filter(Boolean).length}개를 넣었어요`,3000),1500);
-    $("#toast").hidden=true;
-    openDrawing(id);
-  }catch(err){console.error(err);toast((src&&!src.dwg||!/\.dwg$/i.test(f.name)?"PDF를 열 수 없습니다: ":"DWG를 열 수 없습니다: ")+err.message,5000);}
-});
+    if(pn.some(Boolean)&&!cnt) setTimeout(()=>toast(`PDF에 있던 쪽 이름 ${pn.filter(Boolean).length}개를 넣었어요`,3000),1500);
+    return id;
+  }catch(err){console.error(err);toast(f.name+": "+(src&&!src.dwg||!/\.dwg$/i.test(f.name)?"PDF를 열 수 없습니다: ":"DWG를 열 수 없습니다: ")+err.message,5000); return null;}
+}
+/* 4.13 컴퓨터: 도면 목록 화면에 PDF·DWG 파일을 끌어다 놓으면 불러온다 */
+{ const H=$("#home"), isF=e=>[...(e.dataTransfer&&e.dataTransfer.types||[])].includes("Files");
+  const can=()=>!H.hidden&&$("#viewer").hidden&&!document.querySelector(".sheet:not([hidden])");
+  H.addEventListener("dragover",e=>{ if(isF(e)&&can()){ e.preventDefault(); e.dataTransfer.dropEffect="copy"; H.classList.add("drop"); } });
+  H.addEventListener("dragleave",e=>{ if(!H.contains(e.relatedTarget)) H.classList.remove("drop"); });
+  H.addEventListener("drop",e=>{ if(!isF(e)) return; e.preventDefault(); H.classList.remove("drop"); if(can()&&e.dataTransfer.files.length) importFiles([...e.dataTransfer.files]); }); }
 
 /* 도면 복사: 같은 PDF로 새 도면을 만든다. 핀·사진까지 복사할지 고른다 */
 async function copyDrawing(d){
@@ -1979,7 +1995,7 @@ function pushDirty(id){ const r=pushLock.then(()=>pushDirty_(id)); pushLock=r.ca
 let photoAhead=true;   // 서버가 사진 먼저 저장(savePhotos)을 알면 true (3.79)
 async function pushDirty_(drawingId){
     const dirty=(await pinsOf(drawingId)).filter(p=>p.dirty);
-    if(dirty.length) setSync("wait",`보내는 중 ${dirty.length}`);
+    if(dirty.length) setSync("wait",`핀 ${dirty.length}개 보내는 중`);
     const many=dirty.length>=3; let k=0;   // 여러 개를 올릴 때는 몇 개째인지 보여 준다 (3.78)
     // 3.87 진행률 %: 사진이 많은 핀은 오래 걸리니 핀 1 + 올릴 사진 수만큼 무게를 준다
     const WT=new Map(dirty.map(p=>[p.id,1+[...(p.photos||[]),...(p.donePhotos||[])].filter(x=>!x.id&&x.data).length])), wOf=p=>WT.get(p.id)||1, W=[...WT.values()].reduce((a,b)=>a+b,0)||1; let wd=0;
