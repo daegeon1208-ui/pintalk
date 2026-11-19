@@ -1146,7 +1146,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.98";
+const APP_VER = "3.99";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -4096,6 +4096,12 @@ const TOUR=[
   {t:"#helpBtn",x:"⚙️ <b>설정</b>: 내 기본 팀, 사진 화질, 내보내기 기본 양식, 저장 공간 정리, 비밀번호 변경이 있어요. <b>따라하기</b>와 <b>사진 가이드</b>도 여기서 다시 볼 수 있어요.",next:1},
   {t:null,x:"다 됐어요! 👏<br>연습한 <b>견본 도면</b>은 지울까요? 남겨 두면 언제든 다시 연습할 수 있어요.",end:1}
 ];
+if(TRY){   // 3.99 체험판 따라하기: 서버 연결·협업 탭·알림 단계는 빼고, 설정·도면 설정 설명에서 협업·비밀번호 내용을 뺀다
+  for(let i=TOUR.length-1;i>=0;i--) if(["#cloudBtn","#hTabs","#noteBtn"].includes(TOUR[i].t)) TOUR.splice(i,1);
+  TOUR[0].x="<b>견본 도면</b>으로 연습해요. 견본 도면을 눌러 열어 보세요.";
+  TOUR.forEach(s=>{ if(s.t==="#actSheet") s.x="<b>도면 설정</b>이에요. <b>공유하기</b>(PDF 보내기) · <b>도면 정보</b> · <b>이름 바꾸기</b> · <b>쪽 편집</b> · <b>도면 복사</b> · <b>삭제</b>를 할 수 있어요.";
+    if(s.t==="#helpBtn") s.x="⚙️ <b>설정</b>: 내 기본 팀, 사진 화질, 내보내기 기본 양식, 저장 공간 정리가 있어요. <b>따라하기</b>와 <b>사진 가이드</b>도 여기서 다시 볼 수 있어요.";
+    if(s.t==="#importBtn") s.x="이제 실제 도면을 쓰려면 <b>도면 불러오기</b>로 메일·파일 앱에 받은 PDF나 DWG를 고르면 돼요. 체험판의 도면·사진·핀은 <b>이 휴대폰에만</b> 저장돼요."; }); }
 function tourHome(){ setPref("homeFilter","private"); $("#hq").value=""; $("#hqX").hidden=true; }   // 견본 도면이 있는 개인 도면 탭으로
 async function startTour(){
   closeSheets();
@@ -4171,8 +4177,9 @@ function tourTick(){
   const round=t.id==="addBtn"||getComputedStyle(t).borderTopLeftRadius.endsWith("%")&&parseFloat(getComputedStyle(t).borderTopLeftRadius)>=50;
   // 알약 버튼 여러 개를 묶은 줄(핀 모양 줄·팀 줄 등)은 줄 전체를 알약 모양으로
   const kids=[...t.querySelectorAll("button")].filter(k=>k.offsetParent!==null), pill=k=>{const r2=k.getBoundingClientRect();return (parseFloat(getComputedStyle(k).borderTopLeftRadius)||0)>=Math.min(r2.width,r2.height)/2-1;};
-  const pillRow=kids.length>1&&kids.every(pill)&&r.height<H*0.3;
-  const rad=round?"50%":tr>=half-1||pillRow?"999px":Math.max(8,tr+Math.max(0,pad))+"px";
+  const oneLine=kids.length>1&&kids.every(k=>Math.abs(k.getBoundingClientRect().top-kids[0].getBoundingClientRect().top)<6);   // 3.99 두 줄로 넘친 버튼 줄은 알약 모양이 어색하므로 둥근 네모로
+  const pillRow=kids.length>1&&oneLine&&kids.every(pill)&&r.height<H*0.3;
+  const rad=round?"50%":(tr>=half-1&&kids.length<=1)||pillRow?"999px":Math.max(8,Math.min(tr,18)+Math.max(0,pad))+"px";
   Object.assign(spot.style,{left:left+"px",top:top+"px",width:(right-left)+"px",height:(bot-top)+"px",borderRadius:rad});
   spot.querySelector(".ring").style.borderRadius=round?"50%":rad==="999px"?"999px":(parseFloat(rad)+6)+"px";
   const land=W>H, big=bot-top>H*0.5, wide=right-left>=400;
