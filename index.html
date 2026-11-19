@@ -821,6 +821,20 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 /* 3.97 체험판: 서버가 필요한 버튼 숨김 */
 .try #cloudBtn,.try #noteBtn,.try #hTabs,.try #fbOpen,.try #pushBtn,.try #pushNote,.try #pwBox,.try #admBox,.try .srv{display:none!important}
 .try header h1::after{content:"체험판";margin-left:8px;padding:2px 8px;border-radius:9px;background:#E31937;color:#fff;font-size:12px;font-weight:700;vertical-align:middle}
+/* 3.98 핀 목록 여러 개 골라 고치기 */
+.li .ck{flex:none;width:22px;height:22px;margin-top:4px;border:2px solid #B5BAB4;border-radius:7px;display:grid;place-items:center;background:#fff}
+.li.on .ck{background:#E31937;border-color:#E31937}.li.on .ck::after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:translate(0,-1px) rotate(45deg)}
+.li.off{opacity:.45}
+#lBar{flex:none;border-top:1px solid var(--line);background:var(--card,#fff);padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px))}
+#lBar .lbtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:14px}
+#lBar .lbtop button{border:0;background:none;color:#E31937;font-weight:700;font-size:14px}
+#lBar .lbbtn{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+#lBar .lbbtn button{border:1px solid var(--line);border-radius:12px;background:var(--soft,#F3F4F2);font-weight:700;font-size:14px;padding:11px 0;color:var(--ink,#1E2226)}
+#lBar .lbbtn button.del{color:#E31937}
+#lBar .lbbtn button:disabled{opacity:.4}
+.bkch{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
+.bkch button{border:1px solid var(--line);border-radius:999px;background:var(--soft,#F3F4F2);padding:8px 12px;font-weight:700;font-size:14px}
+#lSelBtn.on{background:#E31937;color:#fff;border-color:#E31937}
 </style>
 </head>
 <body>
@@ -956,7 +970,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <!-- 핀 목록 -->
 <div class="sheet" id="listSheet" data-lb="C3 핀 목록" hidden>
-  <div class="sh"><h2 id="lTitle">핀 목록</h2><button class="lmove" id="lMove" hidden>⇄ 다른 쪽으로 옮기기</button><button class="x" data-close>✕</button></div>
+  <div class="sh"><h2 id="lTitle">핀 목록</h2><button class="lmove" id="lMove" hidden>⇄ 다른 쪽으로 옮기기</button><button class="lmove" id="lSelBtn">선택</button><button class="x" data-close>✕</button></div>
   <div class="sb">
     <div class="seg" id="lMode" hidden style="margin-bottom:10px"><button data-v="pins" class="a on">핀</button><button data-v="cm" class="a">댓글</button></div>
     <div class="tchips" id="lTeams"></div>
@@ -964,6 +978,8 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
     <div class="seg" id="lFilter"><button data-v="all" class="a on">전체</button><button data-v="open" class="o">미조치</button><button data-v="done" class="d">조치완료</button></div>
     <div id="lItems" style="margin-top:6px"></div>
   </div>
+  <div id="lBar" hidden><div class="lbtop"><b id="lCnt">0개 선택</b><button id="lAll">전체 선택</button></div>
+    <div class="lbbtn"><button data-a="date">날짜</button><button data-a="team">팀</button><button data-a="vw">업체·공종</button><button data-a="del" class="del">삭제</button></div></div>
 </div>
 
 <!-- 업체·공종 필터 -->
@@ -1130,7 +1146,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.97";
+const APP_VER = "3.98";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -3231,7 +3247,7 @@ $("#delPin").addEventListener("click",async()=>{
 });
 
 /* ---------- 핀 목록 ---------- */
-let lFilter="all", lMode="pins";
+let lFilter="all", lMode="pins", lSel=null;   // lSel: 선택 모드일 때 고른 핀 id (3.98)
 function renderCmList(){
   const all=(V.cm||[]).filter(c=>V.pins.some(p=>p.id===c.pinId&&!p.deleted)).sort((a,b)=>b.created-a.created);
   $("#lTitle").textContent=`댓글 목록 (${all.length})`;
@@ -3242,7 +3258,9 @@ function renderCmList(){
     :`<div class="empty" style="padding:30px">아직 댓글이 없어요</div>`;
 }
 function renderList(){
-  $("#lMove").hidden=!(V.drawing&&V.drawing.pages>1&&V.pins.some(p=>p.id!=="temp"&&!p.deleted&&canEdit(p)))||lMode==="cm";
+  $("#lMove").hidden=!(V.drawing&&V.drawing.pages>1&&V.pins.some(p=>p.id!=="temp"&&!p.deleted&&canEdit(p)))||lMode==="cm"||!!lSel;
+  if(lMode==="cm") lSel=null;
+  $("#lSelBtn").hidden=lMode==="cm"; $("#lSelBtn").classList.toggle("on",!!lSel); $("#lSelBtn").textContent=lSel?"선택 끝":"선택"; $("#lBar").hidden=!lSel;
   const cmTab=cmOn(); $("#lMode").hidden=!cmTab; if(!cmTab) lMode="pins";
   document.querySelectorAll("#lMode button").forEach(b=>{ b.classList.toggle("on",b.dataset.v===lMode); if(b.dataset.v==="cm") b.textContent=`댓글 ${(V.cm||[]).filter(c=>V.pins.some(p=>p.id===c.pinId&&!p.deleted)).length}`; });
   ["#lTeams","#lPages","#lFilter"].forEach(x=>$(x).hidden=lMode==="cm");
@@ -3260,15 +3278,73 @@ function renderList(){
     <div class="t"><div class="t1">${esc(vendorOf(p)||"미분류")}${workOf(p)?` <span style="color:var(--sub);font-weight:500">· ${esc(workOf(p))}</span>`:""}</div><div class="t2">${esc(p.text||"(내용 없음)")}</div>
     <div class="t3"><b style="color:${teamColor(p.team)}">${teamName(p.team)}</b> · ${pgLabel(V.drawing,p.page)?esc(pgLabel(V.drawing,p.page))+" · ":""}${p.shape?kindLabel(p)+" · ":""}${fmtDate(p.created)}${p.by?" · "+esc(p.by):""}${p.photos.length?" · 사진 "+p.photos.length:""}${cmOf(p.id).length?` · <span class="cmc">💬 ${cmOf(p.id).length}</span>`:""}</div></div></div>`).join("")
     :`<div class="empty" style="padding:30px">핀이 없습니다</div>`;
+  if(lSel){   // 3.98 선택 모드: 앞에 네모 칸, 고칠 수 없는 핀(다른 사람 핀)은 흐리게
+    [...lSel].forEach(id=>{ if(!list.some(p=>p.id===id)) lSel.delete(id); });
+    document.querySelectorAll("#lItems .li").forEach(el=>{ const p=V.pins.find(q=>q.id===el.dataset.id);
+      el.insertAdjacentHTML("afterbegin",'<i class="ck"></i>'); el.classList.toggle("on",lSel.has(el.dataset.id)); el.classList.toggle("off",!canEdit(p)); });
+    const ok=list.filter(canEdit);
+    $("#lCnt").textContent=`${lSel.size}개 선택`+(ok.length<list.length?` · 다른 사람 핀 ${list.length-ok.length}개는 못 고쳐요`:"");
+    $("#lAll").textContent=ok.length&&lSel.size===ok.length?"모두 풀기":"전체 선택";
+    document.querySelectorAll("#lBar .lbbtn button").forEach(b=>b.disabled=!lSel.size); }
 }
-$("#listBtn").addEventListener("click",()=>{renderList();openSheet("#listSheet");});
+$("#listBtn").addEventListener("click",()=>{lSel=null;renderList();openSheet("#listSheet");});
 $("#lTeams").addEventListener("click",e=>{ const b=e.target.closest("[data-team]"); if(!b) return;
   toggleTeam(teamFilter,b.dataset.team); saveTeamFilter(); renderTeamBar(); drawPins(); renderList(); });
 $("#lMode").addEventListener("click",e=>{const b=e.target.closest("button");if(b){lMode=b.dataset.v;renderList();}});
 $("#lFilter").addEventListener("click",e=>{const b=e.target.closest("button");if(b){lFilter=b.dataset.v;renderList();}});
+/* 3.98 핀 목록에서 여러 개 골라 한꺼번에: 찍은 날짜 · 팀 · 업체·공종 · 삭제 */
+$("#lSelBtn").addEventListener("click",()=>{ lSel=lSel?null:new Set(); renderList(); });
+$("#lAll").addEventListener("click",()=>{ if(!lSel) return;
+  const ok=[...$("#lItems").querySelectorAll(".li")].map(el=>V.pins.find(q=>q.id===el.dataset.id)).filter(p=>p&&canEdit(p));
+  if(ok.length&&lSel.size===ok.length) lSel.clear(); else ok.forEach(p=>lSel.add(p.id)); renderList(); });
+const selPins=()=>V.pins.filter(p=>lSel&&lSel.has(p.id)&&!p.deleted&&canEdit(p));
+async function bulkDone(msg){ renumber(V.pins); lSel=null; sdClose(); drawPins(); renderTeamBar(); renderList(); toast(msg,3000); }
+$("#lBar").addEventListener("click",async e=>{
+  const b=e.target.closest("[data-a]"); if(!b||!lSel||!lSel.size) return;
+  const ps=selPins(), n=ps.length; if(!n) return;
+  const a=b.dataset.a, d0=new Date(ps[0].created||Date.now()), ymd=x=>`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;
+  if(a==="del"){
+    if(!confirm(`고른 핀 ${n}개를 삭제할까요? 사진과 댓글도 함께 지워져요.`)) return;
+    for(const p of ps){ V.pins=V.pins.filter(q=>q.id!==p.id);
+      if(cloudOn()&&V.drawing.cloud){ p.deleted=true; p.photos=[]; await savePin(p); } else await dbDel("pins",p.id); }
+    return bulkDone(`핀 ${n}개를 삭제했어요`);
+  }
+  if(a==="date"){
+    sdOpen("찍은 날짜 바꾸기",`<p class="sdnote">고른 핀 ${n}개의 찍은 날짜를 바꿔요. 시각은 그대로 두고 날짜만 바뀌고, 번호는 날짜 순서로 다시 매겨져요.</p>
+      <input type="date" class="inp" id="bkDate" value="${ymd(d0)}" max="${ymd(new Date())}"><button class="pwbtn" id="bkGo">핀 ${n}개 날짜 바꾸기</button>`);
+    $("#bkGo").onclick=async()=>{ const v=$("#bkDate").value; if(!v) return; const [y,m,dd]=v.split("-").map(Number); $("#bkGo").disabled=true;
+      for(const p of ps){ const t=new Date(p.created||Date.now()); t.setFullYear(y,m-1,dd); p.created=Math.min(t.getTime(),Date.now()); }
+      renumber(V.pins); for(const p of ps) await savePin(p);
+      bulkDone(`핀 ${n}개의 날짜를 ${v.replace(/-/g,".")}(으)로 바꿨어요`); };
+    return;
+  }
+  if(a==="team"){
+    sdOpen("팀 바꾸기",`<p class="sdnote">고른 핀 ${n}개의 팀을 바꿔요. 번호는 새 팀에서 찍은 날짜 순서로 다시 매겨져요.</p>
+      <div class="bkch">${TEAMS.map(([v,nm,c])=>`<button data-t="${v}" style="color:${c}">${nm}</button>`).join("")}</div>`);
+    $("#sdBody").onclick=async ev=>{ const t=ev.target.closest("[data-t]"); if(!t) return; $("#sdBody").onclick=null;
+      for(const p of ps) p.team=t.dataset.t; renumber(V.pins); for(const p of ps) await savePin(p);
+      bulkDone(`핀 ${n}개를 ${teamName(t.dataset.t)}(으)로 바꿨어요`); };
+    return;
+  }
+  if(a==="vw"){
+    const same=f=>ps.every(p=>f(p)===f(ps[0]))?f(ps[0]):"";
+    sdOpen("업체·공종 바꾸기",`<p class="sdnote">고른 핀 ${n}개에 같은 업체·공종을 넣어요. 칸을 비워 두면 그 항목은 그대로 둬요.</p>
+      <div class="bkch">${VENDORS.map(([v,w])=>`<button data-v="${esc(v)}" data-w="${esc(w)}">${esc(v)}</button>`).join("")}</div>
+      <div class="lbl">업체</div><input class="inp" id="bkV" value="${esc(same(vendorOf))}" placeholder="비워 두면 그대로">
+      <div class="lbl">공종</div><input class="inp" id="bkW" value="${esc(same(workOf))}" placeholder="비워 두면 그대로">
+      <button class="pwbtn" id="bkGo">핀 ${n}개 바꾸기</button>`);
+    $("#sdBody").onclick=ev=>{ const c=ev.target.closest("[data-v]"); if(!c) return; $("#bkV").value=c.dataset.v; $("#bkW").value=c.dataset.w; };
+    $("#bkGo").onclick=async()=>{ const v=$("#bkV").value.trim(), w=$("#bkW").value.trim(); if(!v&&!w){ toast("업체나 공종을 넣어 주세요"); return; } $("#bkGo").disabled=true;
+      for(const p of ps){ const nv=v||vendorOf(p), nw=w||workOf(p); p.vendor=nv; p.work=nw; p.trade=[nv,nw].filter(Boolean).join(" "); await savePin(p); }
+      if(typeof renderWorkBar==="function") renderWorkBar();
+      bulkDone(`핀 ${n}개의 업체·공종을 바꿨어요`); };
+  }
+});
 $("#lItems").addEventListener("click",async e=>{
   const it=e.target.closest(".li"); if(!it) return;
   const p=V.pins.find(q=>q.id===it.dataset.id);
+  if(lSel&&lMode==="pins"){ if(!p||!canEdit(p)){ toast("다른 사람이 만든 핀은 만든 사람과 관리자만 고칠 수 있어요"); return; }
+    if(lSel.has(p.id)) lSel.delete(p.id); else lSel.add(p.id); renderList(); return; }
   closeSheets();
   if(p.page!==V.pageNo) await showPage(p.page);
   const cw=vp.clientWidth, ch=vp.clientHeight;
