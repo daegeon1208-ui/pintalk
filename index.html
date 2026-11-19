@@ -1152,7 +1152,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.03";
+const APP_VER = "4.04";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -3768,30 +3768,40 @@ async function showExport(drawing,allPins,fromHome){
       $("#expGo").onclick=()=>res("go"); };
     draw(); });
   const msg=t=>{body.innerHTML=`<p>${esc(t)}</p>`;};
+  /* 4.04 만드는 중 취소: 취소를 누르면 바로 고르는 화면으로 돌아가고, 뒤에서 돌던 작업은 다음 진행 표시 때 멈춘다 */
+  const CANCEL=new Error("취소함"); let runId=0;
+  const run=f=>{ const id=++runId; let stop;
+    const m=t=>{ if(id!==runId) throw CANCEL; body.innerHTML=`<p>${esc(t)}</p><button class="sec" id="expCancel">취소</button>`; $("#expCancel").onclick=()=>{ runId++; stop(); }; };
+    const cp=new Promise((_,rej)=>{ stop=()=>rej(CANCEL); });
+    const p=(async()=>f(m))(); p.catch(()=>{});
+    return Promise.race([p,cp]).finally(()=>{ if(id===runId) runId++; }); };
   let pinList, teamsTxt, bytes=null;
   try{
     for(;;){
       const act=await pick();
+      try{
       if($("#expSheet").hidden) return;   // 창을 닫았으면 그만
       const key=(CK()?"ck|"+fmt+"|"+cWho+"|"+cChk+"|":"")+[...sel].sort().join(",")+"|"+allPh+"|"+tmpl+"|"+[...(EV.v||[])].join(",")+"|"+[...(EV.w||[])].join(",")+"|"+range().join(",")+"|"+st;
       pinList=allPins.filter(p=>sel.has(p.team||"")&&evPass(p)&&inPer(p)&&stPass(p));
       teamsTxt=TEAMS.filter(t=>sel.has(t[0])).map(t=>t[1]).join("·")||"팀 없음";
       if(CK()){ pinList=crkOf(pinList);
-        if(!bytes||bytes.key!==key){ msg(`균열관리 현황 ${XL()?"엑셀":"PDF"}을 만드는 중…`);
-          if(XL()) bytes=await buildCrackXlsx(drawing,pinList,msg,{who:cWho,chk:cChk});
-          else bytes=await crackWbToPdf(await buildCrackXlsx(drawing,pinList,msg,{who:cWho,chk:cChk,wb:true}),msg);
+        if(!bytes||bytes.key!==key){
+          bytes=await run(async m=>{ m(`균열관리 현황 ${XL()?"엑셀":"PDF"}을 만드는 중…`);
+            if(XL()) return await buildCrackXlsx(drawing,pinList,m,{who:cWho,chk:cChk});
+            return await crackWbToPdf(await buildCrackXlsx(drawing,pinList,m,{who:cWho,chk:cChk,wb:true}),m); });
           bytes.key=key; }
         if(XL()||act==="go") break;
         if(await showPreview(bytes)) break;
         if($("#expSheet").hidden) return; continue; }
       if(!bytes||bytes.key!==key){
-        msg(act==="pv"?"미리보기를 만드는 중…":"핀이 표시된 도면과 사진대지를 PDF로 만드는 중…");
         const allSel=TEAMS.every(t=>sel.has(t[0]))&&(!none||sel.has(""));
-        bytes=await buildExport(drawing,pinList,msg,[allSel?"":teamsTxt,perTxt()].filter(Boolean).join(" · "),allPh,tmpl,range()); bytes.key=key;
+        bytes=await run(m=>{ m(act==="pv"?"미리보기를 만드는 중…":"핀이 표시된 도면과 사진대지를 PDF로 만드는 중…");
+          return buildExport(drawing,pinList,m,[allSel?"":teamsTxt,perTxt()].filter(Boolean).join(" · "),allPh,tmpl,range()); }); bytes.key=key;
       }
       if(act==="go") break;
       if(await showPreview(bytes)) break;   // 미리보기에서 "이대로 PDF 만들기"
       if($("#expSheet").hidden) return;
+      }catch(e){ if(e!==CANCEL) throw e; bytes=null; if($("#expSheet").hidden) return; toast("내보내기를 취소했습니다"); }
     }
     let name=""; const X=XL(), MT=X?"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":"application/pdf";
     const makeFile=()=>{
