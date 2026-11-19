@@ -535,6 +535,15 @@ header #backBtn{color:#fff!important;background:none!important}
 #pwDlg .pwbtn{display:block;width:100%;margin-top:4px;padding:13px;border:0;border-radius:14px;background:var(--accent);color:#fff;font-size:15.5px;font-weight:700}
 #pwDlg .pwbtn:disabled{opacity:.55}
 #pvw{position:fixed;inset:0;z-index:22;background:#3A3A37;display:flex;flex-direction:column}
+/* 4.16 사진 화질 비교 */
+#qCmp{position:fixed;inset:0;z-index:23;background:#F4F5F3;display:flex;flex-direction:column}
+#qCmp .qbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;background:#fff;border-bottom:1px solid #E2E4E0}
+#qCmp .qbar b{font-size:17px}#qCmp .qbar button{background:none;border:0;font:inherit;font-size:15px;font-weight:600;color:#E31937;padding:6px 4px}
+#qCmp .qnote{margin:10px 14px 4px;font-size:13px;color:#5B636B;line-height:1.5}
+#qList{flex:1;overflow:auto;padding:6px 12px calc(16px + env(safe-area-inset-bottom,0px))}
+.qrow{background:#fff;border-radius:14px;padding:10px;margin:8px 0;border:2px solid transparent;box-shadow:0 1px 3px rgba(0,0,0,.08)}.qrow.on{border-color:#E31937}
+.qrow .qh{display:flex;align-items:baseline;gap:8px;margin:0 2px 8px}.qrow .qh b{font-size:16px}.qrow .qh span{font-size:12.5px;color:#5B636B}.qrow .qh em{margin-left:auto;font-style:normal;font-size:12px;font-weight:700;color:#E31937}
+.qrow .qi{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}.qrow canvas{width:100%;border-radius:8px;background:#ddd;display:block}
 #pvw[hidden]{display:none}
 #pvw .pvbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;background:#8E8E88;color:#fff;box-shadow:inset 0 -4px 0 #E31937}
 #pvw .pvbar b{font-size:16px}#pvw .pvbar b span{font-weight:500;opacity:.8;font-size:13px}
@@ -999,6 +1008,8 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <!-- 내보내기 -->
 <div id="pvw" data-lb="D2 미리보기" hidden><div class="pvbar"><button id="pvClose">‹ 돌아가기</button><b>미리보기 <span id="pvInfo"></span></b><button id="pvGo">PDF 만들기</button></div><div id="pvPages"></div></div>
+<div id="qCmp" data-lb="E5 사진 화질 비교" hidden><div class="qbar"><button id="qClose">‹ 닫기</button><b>사진 화질 비교</b><button id="qMine">내 사진으로</button><input type="file" id="qFile" accept="image/*,.heic,.heif" hidden></div>
+  <p class="qnote">같은 사진을 화질마다 저장한 모습이에요. 오른쪽은 <b>같은 부분을 크게 확대</b>한 것이라 차이가 잘 보여요. 칸을 누르면 그 화질로 정해져요.</p><div id="qList"></div></div>
 <div class="sheet" id="expSheet" data-lb="D1 내보내기" hidden>
   <div class="sh"><h2>내보내기</h2><button class="x" data-close>✕</button></div>
   <div class="sb exp" id="expBody"></div>
@@ -1079,6 +1090,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
     <div class="vchips" id="setTeam"></div>
     <div class="setsub">사진 화질 <small>사진 한 장 기준 저 약 0.2MB · 보통 약 0.6MB · 고 약 2MB</small></div>
     <div class="seg" id="setPhoto"><button data-v="low">저화질</button><button data-v="normal">보통</button><button data-v="high">고화질</button></div>
+    <button class="sec" id="qCmpBtn" style="margin-top:8px">사진 화질 비교하기 (예시 사진)</button>
     <div class="setsub">내보내기 기본 양식 <small>한 팀만 보고 있으면 그 팀 양식(공사 하자조치요청서 · 품질 균열관리)</small></div>
     <div class="tmgrid" id="setTmpl"><button data-v="internal">내부 관리 현황</button><button data-v="vendor">하자조치요청서</button><button data-v="crack">균열관리사진대지</button></div>
     <div class="setsub">사진대지에 넣을 사진</div>
@@ -1155,7 +1167,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.15";
+const APP_VER = "4.16";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -1370,6 +1382,50 @@ async function openStore(){
   };
 }
 $("#storeBtn").addEventListener("click",openStore);
+/* 4.16 사진 화질 비교: 예시 사진(또는 내 사진)을 저·보통·고 화질로 실제로 줄여 저장해 보고, 같은 부분을 확대해 나란히 보여 준다 */
+const QSET={low:[1024,0.7,"저화질"],normal:[1600,0.82,"보통"],high:[2560,0.9,"고화질"]};
+function qSample(){   // 예시: 콘크리트 벽 균열 + 균열 게이지 + 줄자 (글자·눈금이 화질 차이를 잘 보여 줌)
+  const W=3200,H=2400,c=document.createElement("canvas"); c.width=W; c.height=H; const x=c.getContext("2d");
+  const id=x.createImageData(W,H), d=id.data; let s=7;
+  const rnd=()=>((s=(s*1103515245+12345)&0x7fffffff)/0x7fffffff);
+  for(let i=0;i<W*H;i++){ const v=150+rnd()*42-21+(((i%W)>>6)%3)*2; d[i*4]=v; d[i*4+1]=v+2; d[i*4+2]=v+4; d[i*4+3]=255; }
+  x.putImageData(id,0,0);
+  for(let k=0;k<260;k++){ x.fillStyle=`rgba(${rnd()<.5?60:220},${rnd()<.5?60:220},${rnd()<.5?60:220},${0.05+rnd()*0.08})`; x.beginPath(); x.arc(rnd()*W,rnd()*H,4+rnd()*26,0,7); x.fill(); }
+  x.strokeStyle="rgba(150,150,150,.6)"; x.lineWidth=6; for(const yy of [800,1600]){ x.beginPath(); x.moveTo(0,yy); x.lineTo(W,yy+20); x.stroke(); }   // 거푸집 줄눈
+  x.strokeStyle="#2b2b2b"; x.lineCap="round"; x.lineJoin="round"; let px=300,py=380; x.beginPath(); x.moveTo(px,py);   // 균열
+  for(let k=0;k<70;k++){ px+=28+rnd()*30; py+=18+rnd()*36-10; x.lineWidth=1.5+rnd()*3.5; x.lineTo(px,py); x.stroke(); x.beginPath(); x.moveTo(px,py); }
+  const gx=1450,gy=1080; x.fillStyle="#fbfbf6"; x.fillRect(gx,gy,700,300); x.strokeStyle="#333"; x.lineWidth=3; x.strokeRect(gx,gy,700,300);   // 균열 게이지 카드
+  x.fillStyle="#111"; x.font="bold 34px sans-serif"; x.fillText("CRACK SCALE",gx+30,gy+52);
+  [0.1,0.2,0.3,0.5,0.7,1.0].forEach((w,i)=>{ const lx=gx+40+i*108; x.fillRect(lx,gy+90,Math.max(1,w*6),130); x.font="22px sans-serif"; x.fillText(w.toFixed(1)+"mm",lx-14,gy+260); });
+  const ty=1900; x.fillStyle="#F2C200"; x.fillRect(200,ty,2800,120); x.fillStyle="#111";   // 줄자
+  for(let m=0;m<=280;m++){ const lx=200+m*10, L=m%10?(m%5?22:38):60; x.fillRect(lx,ty,2,L); if(m%10===0){ x.font="bold 30px sans-serif"; x.fillText(String(m/10+50),lx+4,ty+100); } }
+  x.font="26px sans-serif"; x.fillStyle="#222"; x.fillText("101동 B2F 합벽  ·  균열 폭 0.3mm  ·  2026.11.19",220,ty-30);
+  return c;
+}
+async function qEncode(src,q){ const [mx,qq]=QSET[q], s=Math.min(1,mx/Math.max(src.width,src.height));
+  const c=document.createElement("canvas"); c.width=Math.round(src.width*s); c.height=Math.round(src.height*s); c.getContext("2d").drawImage(src,0,0,c.width,c.height);
+  const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",qq)); const im=await loadImage(blob); return {im,blob,w:c.width,h:c.height}; }
+async function openQualCmp(file){
+  const ov=$("#qCmp"), box=$("#qList"); ov.hidden=false; box.innerHTML=`<p class="qnote">예시 사진을 만드는 중…</p>`;
+  let src;
+  try{ if(file){ const f=isHeic(file)?await heicToJpeg(file):file; const im=await loadImage(f); src=document.createElement("canvas"); src.width=im.naturalWidth; src.height=im.naturalHeight; src.getContext("2d").drawImage(im,0,0); }
+    else src=qSample(); }catch(e){ box.innerHTML=`<p class="qnote">사진을 읽지 못했어요: ${esc(e.message)}</p>`; return; }
+  const cur=myPref("photoQ","normal"), rows=[];
+  for(const q of ["low","normal","high"]){ if(ov.hidden) return; rows.push([q,await qEncode(src,q)]); }
+  // 확대할 부분: 예시는 균열 게이지, 내 사진은 가운데
+  const fx=file?0.42:1450/3200, fy=file?0.42:1060/2400, fw=file?0.16:0.24;
+  box.innerHTML=rows.map(([q,r])=>`<div class="qrow${q===cur?" on":""}" data-q="${q}"><div class="qh"><b>${QSET[q][2]}</b><span>${r.w}×${r.h} · ${(r.blob.size/1048576).toFixed(r.blob.size<1048576?2:1)}MB</span>${q===cur?"<em>지금 설정</em>":""}</div><div class="qi"><canvas class="qa"></canvas><canvas class="qb"></canvas></div></div>`).join("");
+  [...box.querySelectorAll(".qrow")].forEach((el,i)=>{ const {im}=rows[i][1], a=el.querySelector(".qa"), b=el.querySelector(".qb"), dpr=Math.min(2,devicePixelRatio||1);
+    const aw=a.clientWidth*dpr; a.width=aw; a.height=aw*im.naturalHeight/im.naturalWidth; a.getContext("2d").drawImage(im,0,0,a.width,a.height);
+    const sw=im.naturalWidth*fw, sh=sw*a.height/a.width, sx=im.naturalWidth*fx, sy=im.naturalHeight*fy;
+    const ctx=a.getContext("2d"); ctx.strokeStyle="#E31937"; ctx.lineWidth=2*dpr; ctx.strokeRect(sx/im.naturalWidth*a.width,sy/im.naturalHeight*a.height,sw/im.naturalWidth*a.width,sh/im.naturalHeight*a.height);
+    const bw=b.clientWidth*dpr; b.width=bw; b.height=a.height/a.width*bw; const g=b.getContext("2d"); g.imageSmoothingEnabled=true; g.drawImage(im,sx,sy,sw,sh,0,0,b.width,b.height); });
+  box.onclick=e=>{ const r=e.target.closest(".qrow"); if(!r) return; setPref("photoQ",r.dataset.q); renderPrefs(); box.querySelectorAll(".qrow").forEach(x=>{ x.classList.toggle("on",x===r); const em=x.querySelector("em"); if(em) em.remove(); }); r.querySelector(".qh").insertAdjacentHTML("beforeend","<em>지금 설정</em>"); toast(`사진 화질을 ${QSET[r.dataset.q][2]}로 정했어요`,2000); };
+}
+$("#qCmpBtn").addEventListener("click",()=>openQualCmp());
+$("#qClose").addEventListener("click",()=>{ $("#qCmp").hidden=true; $("#qList").innerHTML=""; });
+$("#qMine").addEventListener("click",()=>$("#qFile").click());
+$("#qFile").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) openQualCmp(f); });
 /* 관리자: 현장 이름 */
 $("#siteBtn").addEventListener("click",()=>{
   sdOpen("현장 이름",`<p class="sdnote">사진대지·조치 요청서 맨 위에 들어가요. 모든 사람에게 같이 적용돼요.</p><input class="inp" id="sdSite" maxlength="80" value="${esc(SITE)}"><button class="pwbtn" id="sdSave">저장</button>`);
@@ -4258,7 +4314,7 @@ async function tourBack(){
   }finally{ T.busy=false; }
   tourStep(i);
 }
-const TOUR_OVER=["#imgView","#lnEd","#setDlg","#pwDlg","#pvw"];
+const TOUR_OVER=["#imgView","#lnEd","#setDlg","#pwDlg","#pvw","#qCmp"];
 function tourCovered(s){
   if(TOUR_OVER.some(q=>{ const e=$(q); return e&&!e.hidden; })) return true;
   const t=s.t&&vis(s.t); if(!t) return false;
