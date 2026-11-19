@@ -1146,7 +1146,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.99";
+const APP_VER = "4.00";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -2729,14 +2729,21 @@ function setGeom(p){
   Object.assign(p,pdfPoint(p.nx,p.ny));
   if(p.shape) p.shape.pdf=shapePts(p.shape).map(([x,y])=>{const q=pdfPoint(x,y);return [q.px,q.py];});
 }
+/* 4.00 새 핀은 바로 전에 고친 핀의 팀·업체·공종을 그대로 이어받는다 */
+function rememberLast(p){ if(!p||p.id!==myPref("lastNewPin","")) return;   // 마지막으로 새로 찍은 핀을 고칠 때만 기억 (예전 핀을 고칠 때는 안 바뀜)
+  setPref("lastPinSet",JSON.stringify({team:p.team||"",v:vendorOf(p),w:workOf(p)})); }
 async function addPin(nx,ny,shape){
   const now=Date.now();
-  let team=myPref("myTeam","")||myPref("lastTeam","");   // 설정의 내 기본 팀 → 없으면 마지막에 쓴 팀
+  let last=null; try{ last=JSON.parse(myPref("lastPinSet","null")); }catch(e){}
+  let team=(last&&last.team)||myPref("myTeam","")||myPref("lastTeam","");   // 전에 고정한 핀의 팀 → 설정의 내 기본 팀 → 마지막에 쓴 팀
   const shownTeams=TEAMS.map(x=>x[0]).filter(t=>teamFilter.has(t));
-  if(shownTeams.length===1) team=shownTeams[0]; else if(!TEAMS.some(x=>x[0]===team)) team=TEAMS[0][0];   // 한 팀만 보고 있으면 그 팀으로
+  if(!teamFilter.has(team)&&shownTeams.length) team=shownTeams[0];   // 그 팀을 화면에서 꺼 두었으면 보이는 팀으로 (안 보이는 핀이 되지 않게)
+  if(!TEAMS.some(x=>x[0]===team)) team=TEAMS[0][0];
   const no=nextNo(await pinsOf(V.drawing.id),team);
   const pin={id:uid(),drawingId:V.drawing.id,page:V.pageNo,nx,ny,no,status:"open",team,trade:"",text:"",photos:[],by:myName()||"",created:now,updated:now};
+  if(last&&last.team===team&&(last.v||last.w)){ pin.vendor=last.v||""; pin.work=last.w||""; pin.trade=[pin.vendor,pin.work].filter(Boolean).join(" "); }   // 같은 팀이면 업체·공종도
   if(shape) pin.shape=shape;
+  setPref("lastNewPin",pin.id); rememberLast(pin);
   setGeom(pin);
   V.pins.push(pin); await savePin(pin);
   V.mode="view"; updateModeUI(); openPin(pin.id);
@@ -2872,7 +2879,7 @@ function setTeamUI(p){
 }
 $("#pTeam").addEventListener("click",e=>{ const b=e.target.closest("button"), p=selPin(); if(!b||!p||!canEdit(p)||p.team===b.dataset.v) return;
   const before=pinLabel(p);
-  p.team=b.dataset.v; try{localStorage.setItem("lastTeam",p.team);}catch(_){}
+  p.team=b.dataset.v; try{localStorage.setItem("lastTeam",p.team);}catch(_){} rememberLast(p);
   renumber(V.pins);   // 팀이 바뀌면 그 팀에서 찍은 날짜 순서 번호로
   $("#pBadge").textContent=mapLabel(p); $("#pTitle").textContent=pinTitle(p);
   savePin(p); setTeamUI(p); vendorTyping=false; renderVendorUI(p); drawPins(); renderTeamBar(); if(!$("#listSheet").hidden) renderList();
@@ -2954,7 +2961,7 @@ let saveP=null;
 function saveSoon(){saveP=selPin();clearTimeout(saveT);saveT=setTimeout(flushSave,400);}
 function flushSave(){clearTimeout(saveT);if(saveP){const p=saveP;saveP=null;savePin(p);}}
 let knownVendors=[], vendorTyping=false;
-function setVW(p,v,w){ p.vendor=v; p.work=w; p.trade=[v,w].filter(Boolean).join(" "); saveSoon(); clearTimeout(setVW.t); setVW.t=setTimeout(renderWorkBar,600); }
+function setVW(p,v,w){ p.vendor=v; p.work=w; p.trade=[v,w].filter(Boolean).join(" "); saveSoon(); rememberLast(p); clearTimeout(setVW.t); setVW.t=setTimeout(renderWorkBar,600); }
 // 3.81 품질팀 핀은 업체·공종 대신 종류(균열·재료분리)만 고른다. 종류는 공종(work) 자리에 넣는다
 const QKINDS=["균열","재료분리"], isQ=p=>p&&p.team==="품질";
 function renderVendorUI(p){
