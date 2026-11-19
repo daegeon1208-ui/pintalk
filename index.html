@@ -1153,7 +1153,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.05";
+const APP_VER = "4.06";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -4230,7 +4230,12 @@ function tourTick(){
   card.classList.toggle("sm",land);
   const ch=card.offsetHeight;
   if(side){ card.style.top=Math.max(8,Math.min(H-ch-8,(top+bot)/2-ch/2))+"px"; card.style.bottom="auto"; }
-  else if(big){ card.style.top=(top-ch-14>=8?top-ch-14:top+10)+"px"; card.style.bottom="auto"; }   // 큰 영역: 위에 자리가 있으면 영역 위, 없으면 영역 위쪽 안에
+  else if(big){   // 4.06 큰 영역(도면 등): 가리지 않게 영역 밖 빈 곳(아래 → 위)에, 둘 다 없으면 화면 맨 아래에 작게
+    const below=H-bot-8, above=top-8;
+    if(below>=ch+6) card.style.top=Math.min(H-ch-8,bot+(below-ch)/2)+"px";
+    else if(above>=ch+6) card.style.top=Math.max(8,(above-ch)/2)+"px";
+    else { card.classList.add("sm"); card.style.top=(H-card.offsetHeight-8)+"px"; }
+    card.style.bottom="auto"; }
   else if((top+bot)/2>H/2){ card.style.top=Math.max(8,top-ch-14)+"px"; card.style.bottom="auto"; }   // 아래쪽 버튼: 카드는 위에
   else { card.style.top=Math.min(H-ch-8,bot+14)+"px"; card.style.bottom="auto"; }
 }
