@@ -1153,7 +1153,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.07";
+const APP_VER = "4.08";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -1757,10 +1757,10 @@ async function showInfo(d){
     <div class="kv"><b>쪽수</b><span>${d.pages}쪽${canEditD(d)?`<button class="ibtn" id="infoPages">쪽 이름·편집</button>`:""}</span></div>
     <div class="kv"><b>공유</b><span>${shared?"공유 중":"이 휴대폰에만 저장"}</span></div>
     ${d.locked?`<div class="kv"><b>비밀번호</b><span>🔒 걸려 있음${lockMine(d)?`<button class="ibtn" id="infoLock">바꾸기·풀기</button>`:""}</span></div>`:shared&&lockMine(d)?`<div class="kv"><b>비밀번호</b><span>없음<button class="ibtn" id="infoLock">걸기</button></span></div>`:""}
-    <div class="kv"><b>핀</b><span>전체 ${pins.length} · 미조치 ${o} · 완료 ${pins.length-o}${zones?` · 구역 ${zones}`:""}</span></div>
-    <div class="kv"><b>최근 핀 변경</b><span>${last?`${fmtDate(last.updated)} · ${pinLabel(last)}${(last.editor||last.by)?" · "+esc(last.editor||last.by):""}`:"-"}</span></div>
-    <div class="lbl">참가자 ${rows.length}명 <span style="font-weight:500">(핀을 올리거나 조치완료로 바꾼 사람)</span></div>
-    ${rows.length?rows.map(r=>`<div class="who"><i class="pav">${esc((r.n||"?").slice(0,1))}</i>${esc(r.n)}<small>${[r.made?`핀 올림 ${r.made}`:"",r.done?`조치완료 ${r.done}`:""].filter(Boolean).join(" · ")}<br>${r.last?fmtDate(r.last):""}</small></div>`).join(""):`<p style="color:var(--sub)">아직 참가한 사람이 없습니다</p>`}
+    <div class="kv"><b>핀</b><span>전체 ${pins.length} · 미조치 ${o} · 완료 ${pins.filter(isDone).length}${pins.some(isMemo)?` · 기록 ${pins.filter(isMemo).length}`:""}${zones?` · 구역 ${zones}`:""}</span></div>
+    <div class="kv"><b>최근 핀 변경</b><span>${last?`${fmtDate(last.updated)} · ${pinLabel(last)}${d.cloud&&(last.editor||last.by)?" · "+esc(last.editor||last.by):""}`:"-"}</span></div>
+    ${d.cloud?`<div class="lbl">참가자 ${rows.length}명 <span style="font-weight:500">(핀을 올리거나 조치완료로 바꾼 사람)</span></div>`:""}
+    ${!d.cloud?"":rows.length?rows.map(r=>`<div class="who"><i class="pav">${esc((r.n||"?").slice(0,1))}</i>${esc(r.n)}<small>${[r.made?`핀 올림 ${r.made}`:"",r.done?`조치완료 ${r.done}`:""].filter(Boolean).join(" · ")}<br>${r.last?fmtDate(r.last):""}</small></div>`).join(""):`<p style="color:var(--sub)">아직 참가한 사람이 없습니다</p>`}
     <div class="lbl">팀별 핀 (핀 색)</div>
     ${TEAMS.map(([v,n,c])=>{const l=pins.filter(p=>p.team===v), lo=l.filter(isOpen).length; return `<div class="who"><i style="background:${c}"></i>${n}<small>핀 ${l.length}개 · 미조치 ${lo}</small></div>`;}).join("")}
     ${pins.some(p=>!p.team)?`<div class="who"><i style="background:${NO_TEAM}"></i>팀 없음<small>핀 ${pins.filter(p=>!p.team).length}개</small></div>`:""}
