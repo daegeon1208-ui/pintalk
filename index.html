@@ -67,6 +67,7 @@ header{position:relative}
 .pin{position:absolute;width:30px;height:30px;margin:-34px 0 0 -15px}
 .pin::before{content:"";position:absolute;inset:0;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--pc,var(--open));border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)}
 .pin.done::before{opacity:.55}
+.pin.memo::before{background:#fff;border:3px solid var(--pc)}.pin.memo span{color:var(--pc)}   /* 4.03 기록만 핀: 속이 빈 핀 */
 .pin .ck{position:absolute;right:-7px;top:-7px;width:17px;height:17px;border-radius:50%;background:var(--done);color:#fff;border:2px solid #fff;font-size:10px;font-style:normal;font-weight:700;line-height:13px;text-align:center}
 .pin.sel::before{box-shadow:0 0 0 3px #FBBF24,0 1px 3px rgba(0,0,0,.4)}
 .pin span{position:relative;display:block;text-align:center;line-height:28px;color:#fff;font-weight:700;font-size:13px;letter-spacing:-.5px;white-space:nowrap}
@@ -738,6 +739,7 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 #pinSheet .sh .badge::before{content:"";position:absolute;inset:1px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--pc,#8E8E88);z-index:-1}
 #pinSheet .sh .badge{z-index:0;isolation:isolate}
 #pinSheet .sh .badge.done::before{opacity:.6}
+#pinSheet .sh .badge.memo{color:var(--pc)!important}#pinSheet .sh .badge.memo::before{background:#fff;border:3px solid var(--pc)}
 #pinSheet .sh h2{font-size:17.5px;font-weight:800}
 #pinSheet #pStatus{margin:2px 0 6px;padding:0;border-radius:12px;background:none;box-shadow:inset 0 0 0 1.5px #CFD1CC;overflow:hidden}
 #pinSheet #pStatus button{padding:12px;border-radius:0;font-size:15.5px;font-weight:700}
@@ -1150,7 +1152,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.02";
+const APP_VER = "4.03";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -2494,7 +2496,7 @@ function drawPins(){
   const list=visPins().filter(p=>p.page===V.pageNo).sort(pinCmp);
   pinLayer.innerHTML=list.map(p=>{
     const x=V.tx+p.nx*V.pw*V.k, y=V.ty+p.ny*V.ph*V.k;
-    return `<div class="pin${p.status==="done"?" done":""}${V.sel===p.id?" sel":""}${(G&&G.type==="drag"&&G.pin===p)||(V.pending&&V.pending.pin===p)?" drag":""}" style="left:${x}px;top:${y}px;--pc:${p.id==="temp"?"#E31937":colorOf(p)}"><span class="${pinCls(p)}">${mapLabel(p)}</span>${p.status==="done"?'<i class="ck">✓</i>':""}</div>`;
+    return `<div class="pin${p.status==="done"?" done":""}${isMemo(p)?" memo":""}${V.sel===p.id?" sel":""}${(G&&G.type==="drag"&&G.pin===p)||(V.pending&&V.pending.pin===p)?" drag":""}" style="left:${x}px;top:${y}px;--pc:${p.id==="temp"?"#E31937":colorOf(p)}"><span class="${pinCls(p)}">${mapLabel(p)}</span>${p.status==="done"?'<i class="ck">✓</i>':""}</div>`;
   }).join("");
 }
 /* 확대했을 때 보이는 부분만 선명하게 다시 그린다 */
@@ -2911,7 +2913,7 @@ $("#pRec").addEventListener("click",e=>{ const b=e.target.closest("button"), p=s
 function setStatusUI(p){
   setRecUI(p);
   document.querySelectorAll("#pStatus button").forEach(b=>b.classList.toggle("on",b.dataset.v===(p.status||"open")));
-  $("#pBadge").classList.toggle("done",p.status==="done"); $("#pBadge").style.background=p.status==="done"?"":teamColor(p.team); $("#pBadge").style.setProperty("--pc",teamColor(p.team));
+  $("#pBadge").classList.toggle("done",p.status==="done"); $("#pBadge").classList.toggle("memo",isMemo(p)); $("#pBadge").style.background=p.status==="done"?"":teamColor(p.team); $("#pBadge").style.setProperty("--pc",teamColor(p.team));
   $("#pDates").innerHTML=(canEdit(p)?`찍은 날짜 <input type="datetime-local" class="dtin" id="pCreated" value="${dtLocal(p.created)}" max="${dtLocal(Date.now())}">`:`찍은 날짜 ${fmtDate(p.created)}`)+`${p.by?" · "+esc(p.by):""}`+(p.status==="done"&&p.doneAt?`<br>조치완료 ${fmtDate(p.doneAt)}${p.doneBy?" · "+esc(p.doneBy):""}`:"")+(p.editor&&p.editor!==p.by?`<br>마지막 수정 ${esc(p.editor)}`:"");
 }
 /* 사진은 두 묶음: photos(조치 전·하자 사진), donePhotos(조치완료 사진) */
@@ -3277,7 +3279,7 @@ function renderCmList(){
   const all=(V.cm||[]).filter(c=>V.pins.some(p=>p.id===c.pinId&&!p.deleted)).sort((a,b)=>b.created-a.created);
   $("#lTitle").textContent=`댓글 목록 (${all.length})`;
   $("#lItems").innerHTML=all.length?all.map(c=>{ const p=V.pins.find(q=>q.id===c.pinId);
-    return `<div class="li" data-id="${p.id}"><span class="badge${p.status==="done"?" done":""}" style="background:${teamColor(p.team)}">${pinLabel(p)}</span>
+    return `<div class="li" data-id="${p.id}"><span class="badge${p.status==="done"?" done":""}" style="${isMemo(p)?`background:#fff;color:${teamColor(p.team)};box-shadow:inset 0 0 0 2.5px ${teamColor(p.team)}`:`background:${teamColor(p.team)}`}">${pinLabel(p)}</span>
     <div class="t"><div class="t1">${esc(c.by)} <span style="color:var(--sub);font-weight:500;font-size:13px">${fmtDate(c.created)}${c.edited?" · 수정됨":""}</span></div><div class="t2" style="white-space:normal">💬 ${esc(c.text)}</div>
     <div class="t3">${esc(vendorOf(p)||"미분류")} · ${esc(p.text||"(내용 없음)")}</div></div></div>`; }).join("")
     :`<div class="empty" style="padding:30px">아직 댓글이 없어요</div>`;
@@ -3299,7 +3301,7 @@ function renderList(){
   $("#lPages").innerHTML=V.drawing.pages>1&&pc.length?`<b>쪽별</b> `+pc.map(([n,nm,c,oc])=>`<span${n===V.pageNo?' class="cur"':""}>${esc(nm)} <em>${c}</em>${oc&&oc!==c?`<small>(미조치 ${oc})</small>`:""}</span>`).join(""):"";
   const list=all.filter(passFilter).filter(p=>lFilter==="all"||(lFilter==="done"?isDone(p):lFilter==="memo"?isMemo(p):isOpen(p)));
   $("#lItems").innerHTML=list.length?list.map(p=>`<div class="li" data-id="${p.id}">
-    <span class="badge${p.status==="done"?" done":""}" style="background:${teamColor(p.team)}">${pinLabel(p)}</span>
+    <span class="badge${p.status==="done"?" done":""}" style="${isMemo(p)?`background:#fff;color:${teamColor(p.team)};box-shadow:inset 0 0 0 2.5px ${teamColor(p.team)}`:`background:${teamColor(p.team)}`}">${pinLabel(p)}</span>
     <div class="t"><div class="t1">${esc(vendorOf(p)||"미분류")}${workOf(p)?` <span style="color:var(--sub);font-weight:500">· ${esc(workOf(p))}</span>`:""}</div><div class="t2">${esc(p.text||"(내용 없음)")}</div>
     <div class="t3"><b style="color:${teamColor(p.team)}">${teamName(p.team)}</b> · ${isMemo(p)?"<b>기록</b> · ":""}${pgLabel(V.drawing,p.page)?esc(pgLabel(V.drawing,p.page))+" · ":""}${p.shape?kindLabel(p)+" · ":""}${fmtDate(p.created)}${p.by?" · "+esc(p.by):""}${p.photos.length?" · 사진 "+p.photos.length:""}${cmOf(p.id).length?` · <span class="cmc">💬 ${cmOf(p.id).length}</span>`:""}</div></div></div>`).join("")
     :`<div class="empty" style="padding:30px">핀이 없습니다</div>`;
@@ -3420,7 +3422,7 @@ async function openCapture(pts,keep){
       ctx.strokeStyle=`rgba(${col},${closed?.9:p.status==="done"?.5:.95})`; ctx.lineWidth=(closed?5:7)*unit; ctx.stroke(); ctx.setLineDash([]); }
     for(const p of visPins().sort(pinCmp)){ if(!withPins||p.page!==V.pageNo) continue;
       const [x,y]=P([p.nx,p.ny]); if(x<-2*r||y<-2*r||x>cv.width+2*r||y>cv.height+2*r) continue;
-      drawPinMark(ctx,x,y,r,mapLabel(p),colorOf(p),p.status==="done"); }
+      drawPinMark(ctx,x,y,r,mapLabel(p),colorOf(p),p.status==="done",isMemo(p)); }
     CAP.base=cv;
     const now=new Date(); CAP.name=`${V.drawing.name}_캡처_${dayStr(now)}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.png`.replace(/[\\/:*?"<>|]/g,"_");
     const canShare=navigator.canShare&&navigator.canShare({files:[new File([new Blob(["x"])],"a.png",{type:"image/png"})]});
@@ -3497,11 +3499,12 @@ function capPenEvents(view){
     if(!P.size){ hold=false; if(cur){ cur=null; await capMakeFile(); } } };
   setZ();
 }
-function drawPinMark(ctx,x,y,r,no,col,done){   // 앱 화면과 같은 물방울 핀 (끝이 위치), 완료는 흐리게 + ✓
+function drawPinMark(ctx,x,y,r,no,col,done,memo){   // 앱 화면과 같은 물방울 핀 (끝이 위치), 완료는 흐리게 + ✓
   ctx.save(); ctx.translate(x,y-r*1.42); if(done) ctx.globalAlpha*=0.6;
   ctx.beginPath(); ctx.arc(0,0,r,Math.PI*0.75,Math.PI*0.25); ctx.lineTo(0,r*1.42); ctx.closePath();
-  ctx.fillStyle=col; ctx.fill(); ctx.lineWidth=r*0.15; ctx.strokeStyle="#fff"; ctx.stroke();
-  ctx.fillStyle="#fff"; let fz=r*0.95; ctx.font=`bold ${fz}px -apple-system,sans-serif`;
+  if(memo){ ctx.fillStyle="#fff"; ctx.fill(); ctx.lineWidth=r*0.24; ctx.strokeStyle=col; ctx.stroke(); }   // 기록만 핀: 속이 빈 핀
+  else{ ctx.fillStyle=col; ctx.fill(); ctx.lineWidth=r*0.15; ctx.strokeStyle="#fff"; ctx.stroke(); }
+  ctx.fillStyle=memo?col:"#fff"; let fz=r*0.95; ctx.font=`bold ${fz}px -apple-system,sans-serif`;
   const tw=ctx.measureText(String(no)).width; if(tw>r*1.55){ fz*=r*1.55/tw; ctx.font=`bold ${fz}px -apple-system,sans-serif`; }   // 공12 같은 긴 이름은 글자를 줄인다
   ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(String(no),0,r*0.05);
   if(done){ ctx.globalAlpha=1; ctx.beginPath(); ctx.arc(r*0.85,-r*0.85,r*0.5,0,Math.PI*2); ctx.fillStyle="#15803D"; ctx.fill(); ctx.lineWidth=r*0.12; ctx.strokeStyle="#fff"; ctx.stroke();
@@ -3572,7 +3575,7 @@ async function buildCrackXlsx(drawing,pinList,progress,opt){
     const full=imgs[n]; if(!full) continue;
     const W=pxW(ws,0,16), H=pxH(ws,5,7), cOf=colorsOf(pins);
     const cv=fit(full,full.width,full.height,W,H,6,(g,dx,dy,dw,dh)=>{ const r=Math.max(9,Math.min(dw,dh)*0.016);
-      pins.filter(p=>p.page===n).forEach(p=>drawPinMark(g,dx+p.nx*dw,dy+p.ny*dh,r,pinLabel(p),cOf(p),p.status==="done")); });
+      pins.filter(p=>p.page===n).forEach(p=>drawPinMark(g,dx+p.nx*dw,dy+p.ny*dh,r,pinLabel(p),cOf(p),p.status==="done",isMemo(p))); });
     await addImg(ws,cv,{col:0,row:5},{col:16,row:7});
   }
   Object.values(imgs).forEach(c=>{ c.width=c.height=0; });
@@ -3871,8 +3874,8 @@ async function locCrop(full,pin,pins,aspect,PL){ PL=PL||pinLabel;
     ctx.lineCap=ctx.lineJoin="round";
     if(closed){ ctx.fillStyle=`rgba(${col},${me?.22:.1})`; ctx.fill(); } ctx.strokeStyle=`rgba(${col},${me?1:.5})`; ctx.lineWidth=me?5:3; ctx.stroke(); }
   for(const q of pins){ if(q.page!==pin.page||q===pin) continue; const [x,y]=P([q.nx,q.ny]);
-    if(x>-40&&y>-40&&x<ow+40&&y<oh+60){ ctx.globalAlpha=.55; drawPinMark(ctx,x,y,20,PL(q),cOf(q),q.status==="done"); ctx.globalAlpha=1; } }
-  const [x,y]=P([pin.nx,pin.ny]); drawPinMark(ctx,x,y,28,PL(pin),cOf(pin),pin.status==="done");
+    if(x>-40&&y>-40&&x<ow+40&&y<oh+60){ ctx.globalAlpha=.55; drawPinMark(ctx,x,y,20,PL(q),cOf(q),q.status==="done",isMemo(q)); ctx.globalAlpha=1; } }
+  const [x,y]=P([pin.nx,pin.ny]); drawPinMark(ctx,x,y,28,PL(pin),cOf(pin),pin.status==="done",isMemo(pin));
   ctx.strokeStyle="#9CA3AF"; ctx.lineWidth=2; ctx.strokeRect(1,1,ow-2,oh-2);
   const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",0.88));
   return await blob.arrayBuffer();
@@ -3917,12 +3920,13 @@ async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per)
     }
     const {width,height}=pg.getSize(), rot=((pg.getRotation().angle%360)+360)%360;
     const r=Math.max(width,height)*0.0065, fs=r*1.15, col=pc(p), dn=p.status==="done";
-    pg.drawCircle({x:p.px,y:p.py,size:r,color:col,opacity:dn?0.55:1,borderColor:WHITE,borderWidth:r*0.18});
+    const mm=isMemo(p);
+    pg.drawCircle(mm?{x:p.px,y:p.py,size:r,color:WHITE,borderColor:col,borderWidth:r*0.26}:{x:p.px,y:p.py,size:r,color:col,opacity:dn?0.55:1,borderColor:WHITE,borderWidth:r*0.18});
     if(dn){ const a=rot*Math.PI/180, bx=r*0.8, by=r*0.8;   // 완료: 오른쪽 위 초록 점
       pg.drawCircle({x:p.px+bx*Math.cos(a)-by*Math.sin(a),y:p.py+bx*Math.sin(a)+by*Math.cos(a),size:r*0.42,color:GREEN,borderColor:WHITE,borderWidth:r*0.1}); }
     const s=mapLabel(p), fz=Math.min(fs,r*1.6/Math.max(0.01,kor.widthOfTextAtSize(s,1))), tw=kor.widthOfTextAtSize(s,fz), a=rot*Math.PI/180;
     const ox=-tw/2, oy=-fz*0.36;
-    pg.drawText(s,{x:p.px+ox*Math.cos(a)-oy*Math.sin(a),y:p.py+ox*Math.sin(a)+oy*Math.cos(a),size:fz,font:kor,color:WHITE,rotate:degrees(rot)});
+    pg.drawText(s,{x:p.px+ox*Math.cos(a)-oy*Math.sin(a),y:p.py+ox*Math.sin(a)+oy*Math.cos(a),size:fz,font:kor,color:mm?col:WHITE,rotate:degrees(rot)});
   }
 
   // 내부 관리 현황: 전체·팀별·업체별 개수와 조치율, 핀 목록 표
