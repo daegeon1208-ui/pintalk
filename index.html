@@ -1155,7 +1155,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.14";
+const APP_VER = "4.15";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -4258,12 +4258,25 @@ async function tourBack(){
   }finally{ T.busy=false; }
   tourStep(i);
 }
+const TOUR_OVER=["#imgView","#lnEd","#setDlg","#pwDlg","#pvw"];
+function tourCovered(s){
+  if(TOUR_OVER.some(q=>{ const e=$(q); return e&&!e.hidden; })) return true;
+  const t=s.t&&vis(s.t); if(!t) return false;
+  const r=t.getBoundingClientRect(), x=Math.min(innerWidth-2,Math.max(2,r.left+r.width/2)), y=Math.min(innerHeight-2,Math.max(2,r.top+Math.min(r.height/2,40)));
+  const top=document.elementsFromPoint(x,y).find(e=>!e.closest("#tour")&&e!==document.documentElement&&e!==document.body);
+  if(!top) return false;
+  const t2=s.also&&vis(s.also);
+  return !(t.contains(top)||top.contains(t)||(t2&&(t2.contains(top)||top.contains(t2))));
+}
 function tourTick(){
   const s=TOUR[T.i]; if(!s||T.busy) return;
   // PDF 미리보기나, 공유 단계에서 직접 연 공유 창을 보는 동안은 따라하기를 잠시 숨긴다 (닫으면 다시 나옴)
-  const away=!$("#pvw").hidden||(s.t==="#cloudBtn"&&sheetOpen("#cloudSheet"));
+  // 4.15 사진 크게 보기·균열선·팝업처럼 화면을 덮는 창이 열렸거나, 비춰야 할 곳이 다른 창에 가려지면
+  //      따라하기를 잠시 숨기고 화면을 그대로 쓰게 한다 (그 창을 닫으면 다시 나옴)
+  const away0=!$("#pvw").hidden||(s.t==="#cloudBtn"&&sheetOpen("#cloudSheet"));
+  if(!away0&&s.go&&s.go()){ $("#tour").style.visibility=""; tourStep(T.i+1); return; }   // 해야 할 동작을 했으면 먼저 다음 단계로
+  const away=away0||tourCovered(s);
   $("#tour").style.visibility=away?"hidden":""; if(away) return;
-  if(s.go&&s.go()){ tourStep(T.i+1); return; }
   const spot=$("#tour .spot"), card=$("#tour .card"), H=innerHeight, W=innerWidth;
   const t=s.t&&vis(s.t);
   if(!t){ spot.classList.add("none"); spot.style.left=W/2+"px"; spot.style.top=H/2+"px"; spot.querySelector(".ring").hidden=true;
