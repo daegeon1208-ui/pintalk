@@ -1995,7 +1995,7 @@ function pushDirty(id){ const r=pushLock.then(()=>pushDirty_(id)); pushLock=r.ca
 let photoAhead=true;   // 서버가 사진 먼저 저장(savePhotos)을 알면 true (3.79)
 async function pushDirty_(drawingId){
     const dirty=(await pinsOf(drawingId)).filter(p=>p.dirty);
-    if(dirty.length) setSync("wait",`보내는 중 ${dirty.length}`);
+    if(dirty.length) setSync("wait",`핀 ${dirty.length}개 보내는 중`);
     const many=dirty.length>=3; let k=0;   // 여러 개를 올릴 때는 몇 개째인지 보여 준다 (3.78)
     // 3.87 진행률 %: 사진이 많은 핀은 오래 걸리니 핀 1 + 올릴 사진 수만큼 무게를 준다
     const WT=new Map(dirty.map(p=>[p.id,1+[...(p.photos||[]),...(p.donePhotos||[])].filter(x=>!x.id&&x.data).length])), wOf=p=>WT.get(p.id)||1, W=[...WT.values()].reduce((a,b)=>a+b,0)||1; let wd=0;
