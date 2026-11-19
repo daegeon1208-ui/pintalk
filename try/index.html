@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>핀톡 체험판</title>
+<link rel="manifest" href="../manifest-try.webmanifest">
+<link rel="apple-touch-icon" href="../icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="핀톡 체험">
+<style>body{margin:0;background:#EDEDEB;font:15px -apple-system,sans-serif;color:#6B7280;display:grid;place-items:center;height:100vh}</style>
+</head><body>핀톡 체험판을 여는 중…
+<script>
+/* 핀톡 체험판: 진짜 핀톡(../index.html)을 그대로 불러와 체험판 표시(PINTALK_TRY)만 붙여 연다.
+   서버 없이 이 휴대폰에만 저장되고, 진짜 핀톡과 저장 공간을 나눠 쓴다. */
+if("serviceWorker" in navigator) navigator.serviceWorker.register("../sw.js",{scope:"../"}).catch(()=>{});
+fetch("../index.html",{cache:"no-cache"}).then(r=>r.text()).then(h=>{
+  h=h.replace(/<head>/i,'<head><base href="../"><script>window.PINTALK_TRY=1<\/script>')
+     .replace('href="manifest.webmanifest"','href="manifest-try.webmanifest"')
+     .replace(/<title>[^<]*<\/title>/i,'<title>핀톡 체험판</title>');
+  document.open(); document.write(h); document.close();
+}).catch(()=>{ document.body.textContent="인터넷에 연결한 뒤 다시 열어 주세요."; });
+</script></body></html>

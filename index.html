@@ -818,6 +818,9 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
   #pinSheet.full{height:auto!important}
   #pinSheet .grab{display:none}
 }
+/* 3.97 체험판: 서버가 필요한 버튼 숨김 */
+.try #cloudBtn,.try #noteBtn,.try #hTabs,.try #fbOpen,.try #pushBtn,.try #pushNote,.try #pwBox,.try #admBox,.try .srv{display:none!important}
+.try header h1::after{content:"체험판";margin-left:8px;padding:2px 8px;border-radius:9px;background:#E31937;color:#fff;font-size:12px;font-weight:700;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -1057,14 +1060,14 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
     <div class="seg" id="setPh"><button data-v="0">대표 사진만</button><button data-v="1">사진 전부</button></div>
     <div class="setsub">저장 공간</div>
     <button class="sec" id="storeBtn">휴대폰 저장 공간 보기 · 정리</button>
-    <div class="setsub">휴대폰 알림 <small>내 핀 조치 완료·댓글·호출·협업 요청이 오면 휴대폰 알림으로</small></div>
+    <div class="setsub srv">휴대폰 알림 <small>내 핀 조치 완료·댓글·호출·협업 요청이 오면 휴대폰 알림으로</small></div>
     <button class="sec" id="pushBtn">휴대폰 알림 켜기</button>
     <p class="pwoff" id="pushNote"></p>
     <div class="lbl">현장</div>
     <div class="setrow"><span>현장 이름</span><b id="siteTxt" style="text-align:right;max-width:65%;word-break:keep-all"></b></div>
-    <div class="lbl">문의·개선사항</div>
+    <div class="lbl srv">문의·개선사항</div>
     <button class="sec" id="fbOpen">앱 문의·개선사항 보내기</button>
-    <div class="lbl">계정</div>
+    <div class="lbl srv">계정</div>
     <div id="pwBox">
       <p class="pwoff" id="pwOff" hidden>로그인한 뒤에 바꿀 수 있어요.</p>
       <button id="pwOpen" class="sec" style="width:100%">비밀번호 변경</button>
@@ -1127,7 +1130,13 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.96";
+const APP_VER = "3.97";
+/* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
+   저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
+const TRY=!!window.PINTALK_TRY;
+if(TRY){ const P="try:", SP=Storage.prototype, g=SP.getItem, st=SP.setItem, rm=SP.removeItem;
+  SP.getItem=function(k){ return g.call(this,P+k); }; SP.setItem=function(k,v){ return st.call(this,P+k,v); }; SP.removeItem=function(k){ return rm.call(this,P+k); };
+  document.documentElement.classList.add("try"); }
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -1144,7 +1153,7 @@ function loadScript(src){return new Promise((res,rej)=>{const s=document.createE
 
 /* ---------- 저장소 (휴대폰 브라우저 IndexedDB) ---------- */
 const DB=new Promise((res,rej)=>{
-  const r=indexedDB.open("drawing-pins",2);   // 2: 예전 '기록' 저장소가 생긴 판(지금은 안 씀). 버전을 내리면 열리지 않으므로 2로 둔다
+  const r=indexedDB.open(TRY?"pintalk-try":"drawing-pins",2);   // 2: 예전 '기록' 저장소가 생긴 판(지금은 안 씀). 버전을 내리면 열리지 않으므로 2로 둔다
   r.onupgradeneeded=()=>{const d=r.result, has=n=>d.objectStoreNames.contains(n);
     if(!has("drawings")) d.createObjectStore("drawings",{keyPath:"id"});
     if(!has("files")) d.createObjectStore("files",{keyPath:"id"});            // 도면 PDF 원본
@@ -1518,7 +1527,7 @@ async function renderHome(){
 /* 즐겨찾기: 이 휴대폰에만 저장. 즐겨찾기한 도면은 목록 맨 위 */
 function favSet(){ try{ return new Set(JSON.parse(localStorage.getItem("favDrawings")||"[]")); }catch(e){ return new Set(); } }
 function toggleFav(id){ const f=favSet(); if(f.has(id)) f.delete(id); else f.add(id); try{ localStorage.setItem("favDrawings",JSON.stringify([...f])); }catch(e){} return f.has(id); }
-function homeFilter(){ try{ return localStorage.getItem("homeFilter")||"all"; }catch(e){ return "all"; } }
+function homeFilter(){ if(TRY) return "private"; try{ return localStorage.getItem("homeFilter")||"all"; }catch(e){ return "all"; } }
 async function removeLocalDrawing(id){
   for(const p of await pinsOf(id)) await dbDel("pins",p.id);
   await dbDel("files",id); await dbDel("drawings",id);
@@ -4119,6 +4128,7 @@ function tourBlocks(e){
 let tourAfterLogin=false;
 let offMode=false;   // 오프라인으로 들어감(로그인 없이 이 휴대폰의 개인 도면만)
 function showGate(step,msg){
+  if(TRY){ $("#gate").hidden=true; offMode=true; toast("체험판에서는 공유 서버를 쓸 수 없어요. 도면·사진·핀은 이 휴대폰에만 저장돼요",4000); return; }
   $("#gate").hidden=false; $("#gStep1").hidden=step!==1; $("#gStep2").hidden=step!==2; $("#gStep3").hidden=step!==3;
   $("#gOff").classList.toggle("hl",navigator.onLine===false);
   if(step===3){ ["#jName","#jPw","#jPw2"].forEach(x=>$(x).value=""); $("#jName").value=$("#gName").value||""; $("#gMsg3").textContent=msg||""; renderJTeam(); }
@@ -4382,7 +4392,8 @@ async function inviteMenu(d){
 
 /* ---------- 시작 ---------- */
 renderHome(); setSync("",""); renderMode(); renderNoteBadge();
-if(!readInvite()){ if(!cloudOn()) showGate(cloudSet()?2:1); else syncDrawings(); }
+if(TRY){ offMode=true; $("#gate").hidden=true; setSync("",""); renderMode(); renderHome(); }   // 체험판: 로그인 없이 바로 개인 도면
+else if(!readInvite()){ if(!cloudOn()) showGate(cloudSet()?2:1); else syncDrawings(); }
 (async()=>{ let r=null; try{ r=JSON.parse(localStorage.getItem(RESUME_KEY)||"null"); localStorage.removeItem(RESUME_KEY); }catch(e){}
   if(!r||!r.d||Date.now()-r.t>10*60e3||!$("#gate").hidden) return;
   try{ if(!(await dbGet("drawings",r.d))) return; await openDrawing(r.d,r.page); if(r.pin&&V.pins.some(p=>p.id===r.pin)) await openPin(r.pin);
