@@ -1153,7 +1153,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.08";
+const APP_VER = "4.09";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -4244,6 +4244,7 @@ document.addEventListener("click",e=>{ if(e.target.closest("[data-tour]")) start
 function tourBlocks(e){
   if(T.i<0||$("#tour").hidden||$("#tour").style.visibility==="hidden"||T.busy) return;
   const s=TOUR[T.i]; if(!s) return;
+  if(!e.isTrusted) return;   // 4.09 앱이 스스로 누른 것(촬영·앨범 버튼이 파일 선택 창을 여는 클릭 등)은 막지 않는다
   const tg=e.target; if(!(tg instanceof Element)) return;
   if(tg.closest("#tour .card")) return;
   const t=s.t&&vis(s.t); if(t&&t.contains(tg)) return;
