@@ -4218,7 +4218,7 @@ function tourTick(){
   // 알약 버튼 여러 개를 묶은 줄(핀 모양 줄·팀 줄 등)은 줄 전체를 알약 모양으로
   const kids=[...t.querySelectorAll("button")].filter(k=>k.offsetParent!==null), pill=k=>{const r2=k.getBoundingClientRect();return (parseFloat(getComputedStyle(k).borderTopLeftRadius)||0)>=Math.min(r2.width,r2.height)/2-1;};
   const oneLine=kids.length>1&&kids.every(k=>Math.abs(k.getBoundingClientRect().top-kids[0].getBoundingClientRect().top)<6);   // 3.99 두 줄로 넘친 버튼 줄은 알약 모양이 어색하므로 둥근 네모로
-  const pillRow=kids.length>1&&oneLine&&kids.every(pill)&&r.height<H*0.3;
+  const pillRow=kids.length>1&&oneLine&&kids.every(pill)&&r.height<=Math.max(...kids.map(k=>k.getBoundingClientRect().height))+24;   // 4.07 버튼만 한 줄로 든 줄일 때만 (도면 카드처럼 큰 칸 안에 작은 알약 버튼이 있는 경우는 제 모양대로)
   const rad=round?"50%":(tr>=half-1&&kids.length<=1)||pillRow?"999px":Math.max(8,Math.min(tr,18)+Math.max(0,pad))+"px";
   Object.assign(spot.style,{left:left+"px",top:top+"px",width:(right-left)+"px",height:(bot-top)+"px",borderRadius:rad});
   spot.querySelector(".ring").style.borderRadius=round?"50%":rad==="999px"?"999px":(parseFloat(rad)+6)+"px";
