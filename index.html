@@ -1127,7 +1127,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "3.95";
+const APP_VER = "3.96";
 const $=s=>document.querySelector(s);
 /* 쪽 이름(예: 지하 4층). 없으면 여러 쪽일 때 'N쪽' */
 const pgName=(d,n)=>((d&&d.pageNames&&d.pageNames[n-1])||"").trim();
@@ -1161,6 +1161,13 @@ const dbGet=(n,k)=>store(n,"readonly",s=>s.get(k));
 const dbPut=(n,v)=>store(n,"readwrite",s=>s.put(v));
 const dbDel=(n,k)=>store(n,"readwrite",s=>s.delete(k));
 const dbAll=n=>store(n,"readonly",s=>s.getAll());
+/* 3.96 핀 목록만 필요할 때: 사진 데이터는 빼고 한 개씩 읽는다.
+   예전에는 도면 목록·핀 창을 열 때마다 모든 도면의 사진(수백 MB)까지 한꺼번에 읽어 아이폰이 앱을 강제로 닫았다 */
+const liteOf=p=>Object.assign({},p,{photos:(p.photos||[]).map(x=>({k:x.k,id:x.id,rep:x.rep})),donePhotos:(p.donePhotos||[]).map(x=>({k:x.k,id:x.id,rep:x.rep}))});
+async function pinsLite(){ const d=await DB;
+  return new Promise((res,rej)=>{ const out=[], t=d.transaction("pins","readonly"), r=t.objectStore("pins").openCursor();
+    r.onsuccess=()=>{ const c=r.result; if(!c) return; out.push(liteOf(c.value)); c.continue(); };
+    t.oncomplete=()=>res(out); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error); }); }
 const pinsOf=id=>store("pins","readonly",s=>s.index("drawing").getAll(id)).then(l=>renumber(l||[]));
 /* 3.76 핀 번호 = 도면·팀마다 찍은 날짜(created) 순서 (같으면 id 순). 날짜를 고치거나 핀을 지우면 번호가 다시 매겨진다 */
 function renumber(list){ const g={};
@@ -1483,7 +1490,7 @@ function centerOnPin(p){
 const ftIcon=()=>"";   // PDF·DWG 구분 표시는 쓰지 않는다(3.19, 사용자 요청)
 let remoteOnly=[];   // 공유 서버에는 있지만 이 휴대폰에는 아직 없는 도면
 async function renderHome(){
-  const [ds,ps]=await Promise.all([dbAll("drawings"),dbAll("pins")]);
+  const [ds,ps]=await Promise.all([dbAll("drawings"),pinsLite()]);
   ds.sort((a,b)=>(b.opened||b.created)-(a.opened||a.created));
   const box=$("#dlist");
   const rem=remoteOnly.filter(r=>!ds.some(d=>d.id===r.id));
@@ -2819,7 +2826,7 @@ async function openPin(id){
   $("#pWork").readOnly=$("#pVendorIn").readOnly=$("#pText").readOnly=!ed; $("#moveBtn").hidden=$("#delPin").hidden=!ed; $("#imgDel").hidden=!ed;
   $("#pLock").hidden=ed; $("#pLock").textContent=`${p.by}님이 만든 핀입니다. 조치완료만 바꿀 수 있고, 내용은 만든 사람과 관리자만 고칠 수 있습니다.`;
   setStatusUI(p); setTeamUI(p);
-  const allP=await dbAll("pins");
+  const allP=await pinsLite();
   knownVendors=[...new Set(allP.map(vendorOf).filter(Boolean))].filter(v=>!VENDORS.some(x=>x[0]===v));
   const works=[...new Set(VENDORS.map(x=>x[1]).concat(allP.map(workOf)).filter(Boolean))];
   $("#workList").innerHTML=works.map(t=>`<option value="${esc(t)}">`).join("");
