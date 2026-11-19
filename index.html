@@ -1155,7 +1155,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.13";
+const APP_VER = "4.14";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -3710,9 +3710,45 @@ let expUrl=null, expFile=null;
 /* 내보내기: 부분 캡처(그림) 또는 핀 표시 도면 + 사진대지(PDF) */
 $("#expBtn").addEventListener("click",async()=>{
   if(V.mode==="capture"){ setMode("view"); return; }
-  const v=await chooseAction("내보내기",[["cap","부분 캡처","끌어서 고른 부분을 그림으로","crop"],["pdf","PDF 만들기","핀 표시 도면 + 사진대지","pdf"]]);
-  if(v==="cap") setMode("capture"); else if(v==="pdf") showExport(V.drawing,V.pins);
+  const v=await chooseAction("내보내기",[["cap","부분 캡처","끌어서 고른 부분을 그림으로","crop"],["pdf","PDF 만들기","핀 표시 도면 + 사진대지 (양식)","pdf"],["plain","도면 PDF","양식 없이 도면 그대로 · 핀 넣을지 고르기","doc"]]);
+  if(v==="cap") setMode("capture"); else if(v==="pdf") showExport(V.drawing,V.pins); else if(v==="plain") showPlainExport(V.drawing,visPins());
 });
+/* 4.14 양식 없이 도면 PDF만: 지금 도면에 보이는 핀을 넣거나, 핀 없이 원본 그대로 */
+async function showPlainExport(drawing,shown){
+  const body=$("#expBody"); openSheet("#expSheet");
+  const pins=shown.filter(p=>p.id!=="temp"&&!p.deleted);
+  let withPins=!!pins.length; try{ if(localStorage.getItem("plainPins")==="0") withPins=false; }catch(e){}
+  const choose=()=>new Promise(res=>{
+    body.innerHTML=`<div class="lbl">도면 위 핀</div>
+      <div class="seg" id="plPins"><button data-v="1" class="${withPins?"on":""}" ${pins.length?"":"disabled"}>핀 넣기</button><button data-v="0" class="${withPins?"":"on"}">핀 빼기 (원본 그대로)</button></div>
+      <p style="font-size:13px;color:var(--sub);margin-top:6px">${withPins?`지금 도면에 보이는 핀 ${pins.length}개를 도면 위에 그려 넣어요. 팀·업체·공종 버튼으로 고른 핀만 들어가요. 사진대지·표는 붙이지 않아요.`:"핀 없이 불러온 도면 그대로 내보내요."}</p>
+      <p>${esc(drawing.name)} · ${drawing.pages}쪽</p><button id="expPv" class="sec">미리보기</button><button id="expGo">PDF 만들기</button>`;
+    $("#plPins").onclick=e=>{ const b=e.target.closest("button"); if(!b||b.disabled) return; withPins=b.dataset.v==="1"; try{localStorage.setItem("plainPins",withPins?"1":"0");}catch(_){} res("re"); };
+    $("#expPv").onclick=()=>res("pv"); $("#expGo").onclick=()=>res("go"); });
+  try{
+    let bytes=null;
+    for(;;){
+      const act=await choose(); if($("#expSheet").hidden) return; if(act==="re"){ bytes=null; continue; }
+      if(!bytes||bytes.wp!==withPins){ body.innerHTML=`<p>도면 PDF를 만드는 중…</p>`;
+        if(withPins) bytes=await buildExport(drawing,pins,t=>{ body.innerHTML=`<p>${esc(t)}</p>`; },"",false,"plain");
+        else { const f=await dbGet("files",drawing.id); if(!f) throw new Error("도면 파일이 없습니다"); bytes=new Uint8Array(f.data.slice(0)); }
+        bytes.wp=withPins; }
+      if(act==="go") break;
+      if(await showPreview(bytes)) break;
+      if($("#expSheet").hidden) return;
+    }
+    let name=""; const MT="application/pdf";
+    const makeFile=()=>{ const base=($("#expName").value.trim()||drawing.name).replace(/\.pdf$/i,"");
+      name=(base+".pdf").replace(/[\\/:*?"<>|]/g,"_"); expFile=new File([bytes],name,{type:MT});
+      if(expUrl) URL.revokeObjectURL(expUrl); expUrl=URL.createObjectURL(expFile); const el=$("#expOpen"); if(el){ el.href=expUrl; el.download=name; } };
+    const canShare=navigator.canShare&&navigator.canShare({files:[new File([bytes],"a.pdf",{type:MT})]});
+    body.innerHTML=`<p>${withPins?`핀 ${pins.length}개를 넣은 도면`:"핀 없는 원본 도면"} · ${drawing.pages}쪽</p>
+      <div class="lbl">파일 이름</div><input class="inp" id="expName" autocomplete="off" value="${esc(withPins?`${drawing.name}_핀표시_${dayStr(Date.now())}`:drawing.name)}">`
+      +(canShare?`<button id="expShare">보내기 (메일·파일에 저장)</button>`:"")+`<a id="expOpen" class="${canShare?"sec":""}" target="_blank">PDF 열기·저장</a>`;
+    makeFile(); $("#expName").addEventListener("input",makeFile);
+    const sb=$("#expShare"); if(sb) sb.addEventListener("click",async()=>{makeFile();try{await navigator.share({files:[expFile],title:name});}catch(e){}});
+  }catch(err){console.error(err);body.innerHTML=`<p>파일을 만들지 못했습니다: ${esc(err.message)}</p>`;}
+}
 /* 핀 표시 도면 + 사진대지 PDF를 만들어 보내기·저장 창을 띄운다 (도면 화면 내보내기, 목록 ⋯ 공유하기 공용) */
 /* 사진대지 양식: 팀마다 쓰는 서식 */
 const TMPLS=[["internal","내부 관리 현황","사진대지"],["vendor","하자조치요청서","조치요청서"],["crack","균열관리사진대지","균열관리사진대지"]];
@@ -3929,7 +3965,7 @@ async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per)
   const siteHead=pg=>{ if(!SITE) return; const st=wrap(SITE,8.5,W-2*M)[0], sw=kor.widthOfTextAtSize(st,8.5); pg.drawText(st,{x:(W-sw)/2,y:H-M+8,size:8.5,font:kor,color:SUB}); };   // 맨 위 현장 이름
   const pins=[...pinList].sort(VEN?(a,b)=>tradeOf(a).localeCompare(tradeOf(b),"ko")||pinCmp(a,b):pinCmp);
   const cOf=colorsOf(pins), pc=p=>{const [r,g,b]=hexRgb(cOf(p));return rgb(r/255,g/255,b/255);};
-  for(const p of pins){ const all=[...p.photos,...(p.donePhotos||[])]; if(all.some(x=>!x.data)) progress&&progress(`${PL(p)} 핀 사진 받는 중…`); for(const x of all) await ensurePhoto(p,x); }
+  if(tmpl!=="plain") for(const p of pins){ const all=[...p.photos,...(p.donePhotos||[])]; if(all.some(x=>!x.data)) progress&&progress(`${PL(p)} 핀 사진 받는 중…`); for(const x of all) await ensurePhoto(p,x); }
 
   // PDF 좌표가 없는 핀(테스트 도면 등)은 화면 비율(nx,ny)로 계산
   for(const p of pins){ if(Number.isFinite(p.px)&&Number.isFinite(p.py)) continue; const pg=doc.getPage(p.page-1); if(!pg) continue;
@@ -3960,6 +3996,7 @@ async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per)
     pg.drawText(s,{x:p.px+ox*Math.cos(a)-oy*Math.sin(a),y:p.py+ox*Math.sin(a)+oy*Math.cos(a),size:fz,font:kor,color:mm?col:WHITE,rotate:degrees(rot)});
   }
 
+  if(tmpl==="plain"){ progress&&progress("PDF 파일을 저장하는 중…"); return await doc.save(); }   // 4.14 도면 PDF만 (양식·사진대지 없음)
   // 내부 관리 현황: 전체·팀별·업체별 개수와 조치율, 핀 목록 표
   async function summaryPages(){
     progress&&progress("관리 현황 표 만드는 중…");
