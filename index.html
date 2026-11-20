@@ -878,6 +878,14 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 #lBar .lbbtn{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 #lBar .lbbtn button{border:1px solid var(--line);border-radius:12px;background:var(--soft,#F3F4F2);font-weight:700;font-size:14px;padding:11px 0;color:var(--ink,#1E2226)}
 #lBar .lbbtn button.del{color:#E31937}
+#setDlg .vorph{display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+#setDlg .vorph b{font-size:15px}#setDlg .vorph small{color:var(--sub);margin-right:auto}
+#setDlg .vorph button{border:1px solid var(--line);background:var(--soft,#F3F4F2);border-radius:10px;padding:6px 9px;font-weight:700;font-size:13px;color:var(--ink,#1E2226)}
+#lBar .lbv{display:flex;gap:6px;overflow-x:auto;margin:0 -16px 8px;padding:0 16px;scrollbar-width:none}
+#lBar .lbv::-webkit-scrollbar{display:none}
+#lBar .lbv button{flex:none;border:1px solid var(--line);background:var(--card,#fff);border-radius:999px;padding:6px 11px;font-weight:700;font-size:13px;color:var(--ink,#1E2226)}
+#lBar .lbv button.on{background:#1E2226;color:#fff;border-color:#1E2226}
+#lBar .lbv button em{font-style:normal;font-weight:500;opacity:.7;margin-left:3px}
 #lBar .lbbtn button:disabled{opacity:.4}
 .bkch{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
 .bkch button{border:1px solid var(--line);border-radius:999px;background:var(--soft,#F3F4F2);padding:8px 12px;font-weight:700;font-size:14px}
@@ -1031,6 +1039,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
     <div id="lItems" style="margin-top:6px"></div>
   </div>
   <div id="lBar" hidden><div class="lbtop"><b id="lCnt">0개 선택</b><button id="lAll">전체 선택</button></div>
+    <div class="lbv" id="lVend"></div>
     <div class="lbbtn"><button data-a="date">날짜</button><button data-a="team">팀</button><button data-a="vw">업체·공종</button><button data-a="exp">사진대지</button><button data-a="del" class="del">삭제</button></div></div>
 </div>
 
@@ -1201,7 +1210,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.22";
+const APP_VER = "4.23";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -1475,15 +1484,28 @@ function vendorEditor(d,after){
   let rows=dVendors(d).map(v=>({n:v[0],w:v[1],t:vTeams(v)?vTeams(v).filter(x=>ALL.includes(x)):[...ALL]})), ask=null, tab=ALL[0];
   try{ const x=localStorage.getItem("vendTab"); if(x==="*"||ALL.includes(x)) tab=x; }catch(e){}
   const inTab=r=>tab==="*"||r.t.includes(tab);
+  // 4.23 핀에만 적힌 업체 이름(목록에 없는 것): 목록에 넣거나, 공종으로 옮기거나, 미분류로
+  const live=V.drawing&&V.drawing.id===d.id; let dp=live?V.pins.filter(p=>p.id!=="temp"&&!p.deleted):[];
+  if(!live) pinsOf(d.id).then(l=>{ dp=l.filter(p=>!p.deleted); if(!$("#setDlg").hidden&&$("#vAdd")) draw(); });
+  const orphans=()=>{ const reg=new Set(rows.map(r=>r.n.trim())), m=new Map();
+    dp.filter(p=>!isQ(p)&&(tab==="*"||(p.team||"")===tab)).forEach(p=>{ const v=vendorOf(p); if(v&&!reg.has(v)) m.set(v,(m.get(v)||0)+1); }); return [...m]; };
   const draw=()=>{ $("#sdBody").innerHTML=`<p class="sdnote">「${esc(d.name)}」 핀 창의 업체 버튼에 나오는 목록이에요. 이 도면에만 적용되고, 팀마다 따로 등록해서 그 팀 핀에는 그 팀 업체만 나와요. 공종은 업체를 고를 때 자동으로 채워져요.${cloudOn()&&d.cloud?" 이 도면을 함께 쓰는 사람 모두에게 같이 적용돼요.":""}</p>
     <div class="seg vtab" id="vTab">${VT.map(([k,nm])=>`<button data-v="${k}" class="${tab===k?"on":""}">${nm.replace("팀","")}</button>`).join("")}<button data-v="*" class="${tab==="*"?"on":""}">전체</button></div>
     ${rows.map((r,i)=>!inTab(r)?"":`<div class="vrow"><input class="inp" data-i="${i}" data-k="n" placeholder="업체 이름" value="${esc(r.n)}"><input class="inp" data-i="${i}" data-k="w" placeholder="공종" value="${esc(r.w)}" style="max-width:34%"><button data-up="${i}" aria-label="위로">↑</button><button data-rm="${i}" aria-label="삭제">✕</button></div>
       <div class="vtm">${VT.map(([k,nm,c])=>`<button data-tg="${i}" data-t="${k}" class="${r.t.includes(k)?"on":""}" style="--c:${c}">${nm.replace("팀","")}</button>`).join("")}</div>
       ${ask&&ask.i===i?`<div class="vask"><b>「${esc(ask.name)}」로 된 ${ask.team?teamName(ask.team)+" ":""}핀이 ${ask.n}개 있어요.</b><br>${ask.team&&r.t.length>1?`${teamName(ask.team)} 목록에서만 빠지고 다른 팀에는 남아요. `:""}삭제해도 그 핀들의 업체 이름은 그대로 남아요. 삭제할까요?<div><button class="sec" data-ask="no">취소</button><button data-ask="yes">삭제</button></div></div>`:""}`).join("")||`<p class="sdnote">${tab==="*"?"":teamName(tab)+"에 "}등록한 업체가 없어요.</p>`}
+    ${(()=>{ const o=orphans(); return o.length?`<div class="lbl">핀에만 적힌 업체 <small style="font-weight:500;color:var(--sub)">· 목록에 없어서 여기서 고쳐요</small></div>`+o.map(([n,c])=>`<div class="vorph"><b>${esc(n)}</b><small>핀 ${c}개</small><button data-oa="add" data-on="${esc(n)}">목록에 넣기</button>${live?`<button data-oa="work" data-on="${esc(n)}">공종으로</button><button data-oa="none" data-on="${esc(n)}">미분류로</button>`:""}</div>`).join("")+(live?"":`<p class="sdnote">공종으로 옮기기·미분류로 바꾸기는 도면을 열고 핀 창의 ⚙ 목록 편집에서 할 수 있어요.</p>`):""; })()}
     <button class="pwbtn sec2" id="vAdd">+ ${tab==="*"?"":teamName(tab)+" "}업체 추가</button><button class="pwbtn" id="vSave">저장</button>`;
     $("#sdBody").oninput=e=>{ const t=e.target; if(t.dataset.i!==undefined) rows[+t.dataset.i][t.dataset.k]=t.value; };
     const drop=i=>{ const r=rows[i]; if(tab!=="*"&&r.t.length>1){ r.t=r.t.filter(x=>x!==tab); } else rows.splice(i,1); };   // 팀 탭에서는 그 팀에서만 뺀다
     $("#sdBody").onclick=async e=>{ const t=e.target.closest("button")||e.target;
+      if(t.dataset.oa){ const n=t.dataset.on, a=t.dataset.oa;
+        if(a==="add"){ rows.push({n,w:"",t:tab==="*"?[...ALL]:[tab]}); draw(); toast(`「${n}」을(를) 목록에 넣었어요. 저장을 눌러야 적용돼요`,2500); return; }
+        const ps=dp.filter(p=>vendorOf(p)===n&&!isQ(p)&&(tab==="*"||(p.team||"")===tab)), ok=ps.filter(canEdit);
+        if(!ok.length){ toast("다른 사람이 만든 핀이라 바꿀 수 없어요. 만든 사람이나 관리자가 바꿀 수 있어요",3500); return; }
+        if(!confirm(a==="work"?`「${n}」이(가) 업체 칸에 적힌 핀 ${ok.length}개를 업체는 미분류로, 「${n}」은(는) 공종으로 옮길까요? (공종이 이미 있으면 공종은 그대로)`:`「${n}」이(가) 적힌 핀 ${ok.length}개의 업체를 미분류로 바꿀까요?`)) return;
+        for(const p of ok){ const w=workOf(p); p.vendor=""; p.work=a==="work"&&!w?n:w; p.trade=p.work; await savePin(p); }
+        if(typeof renderWorkBar==="function") renderWorkBar(); drawPins(); if(after) after(); toast(`핀 ${ok.length}개를 바꿨어요${ok.length<ps.length?` · 다른 사람 핀 ${ps.length-ok.length}개는 그대로`:""}`,3000); draw(); return; }
       if(t.dataset.v&&t.closest("#vTab")){ tab=t.dataset.v; ask=null; try{localStorage.setItem("vendTab",tab);}catch(_){} draw(); return; }
       if(t.dataset.tg!==undefined){ const r=rows[+t.dataset.tg], k=t.dataset.t; if(r.t.includes(k)){ if(r.t.length>1) r.t=r.t.filter(x=>x!==k); else toast("팀을 하나는 골라 주세요",1800); } else r.t=ALL.filter(x=>r.t.includes(x)||x===k); draw(); return; }
       if(t.dataset.rm!==undefined){ const i=+t.dataset.rm, name=rows[i].n.trim(), team=tab==="*"?"":tab;   // 그 업체로 된 핀이 있으면 한 번 묻는다
@@ -3129,7 +3151,7 @@ function renderVendorUI(p){
   const q=isQ(p); $("#pKindRow").hidden=!q; $("#pVendRow").hidden=$("#pWorkRow").hidden=q;
   if(q){ const w=workOf(p), ed=canEdit(p); $("#pKind").innerHTML=QKINDS.map(n=>`<button class="vchip${w===n?" on":""}" data-qk="${n}" ${ed?"":"disabled"}>${n}</button>`).join(""); }
   renderCrackUI(p);
-  const reg=vendorsFor(p.team).map(x=>x[0]), used=[...new Set((knownVendors||[]).filter(q=>(q.team||"")===(p.team||"")).map(vendorOf).filter(Boolean))].filter(x=>!reg.includes(x));
+  const reg=vendorsFor(p.team).map(x=>x[0]), used=[...new Set(V.pins.filter(q=>q.id!=="temp"&&!q.deleted&&(q.team||"")===(p.team||"")).map(vendorOf).filter(Boolean))].filter(x=>!reg.includes(x));
   const [v,w]=splitTrade(p), ed=canEdit(p), names=reg.concat(used), custom=v&&!names.includes(v);
   const list=custom?names.concat([v]):names;
   $("#pVendor").innerHTML=`<button class="vchip${!v&&!vendorTyping?" on":""}" data-vn="__none" ${ed?"":"disabled"}>미분류</button>`+list.map(n=>`<button class="vchip${n===v&&!vendorTyping?" on":""}" data-vn="${esc(n)}" ${ed?"":"disabled"}>${esc(n)}</button>`).join("")
@@ -3461,6 +3483,11 @@ function renderList(){
     const ok=list.filter(canEdit);
     $("#lCnt").textContent=`${lSel.size}개 선택`+(ok.length<list.length?` · 다른 사람 핀 ${list.length-ok.length}개는 못 고쳐요`:"");
     $("#lAll").textContent=ok.length&&lSel.size===ok.length?"모두 풀기":"전체 선택";
+    // 4.23 업체별로 고르기: 누르면 그 업체 핀을 모두 고르고, 다시 누르면 풀기
+    const vm=new Map(); ok.forEach(p=>{ const v=isQ(p)?"":vendorOf(p); if(!vm.has(v)) vm.set(v,[]); vm.get(v).push(p.id); });
+    const vs=[...vm].sort((a,b)=>a[0]===""?1:b[0]===""?-1:a[0].localeCompare(b[0],"ko"));
+    $("#lVend").hidden=vs.length<2&&!(vs[0]&&vs[0][0]);
+    $("#lVend").innerHTML=vs.map(([v,ids])=>`<button data-lv="${esc(v)}" class="${ids.every(i=>lSel.has(i))?"on":""}">${esc(v||"미분류")}<em>${ids.length}</em></button>`).join("");
     document.querySelectorAll("#lBar .lbbtn button").forEach(b=>b.disabled=!lSel.size); }
 }
 $("#listBtn").addEventListener("click",()=>{lSel=null;lQ="";$("#lQ").value="";renderList();openSheet("#listSheet");});
@@ -3471,6 +3498,9 @@ $("#lFilter").addEventListener("click",e=>{const b=e.target.closest("button");if
 $("#lQ").addEventListener("input",e=>{ lQ=e.target.value; renderList(); });
 /* 3.98 핀 목록에서 여러 개 골라 한꺼번에: 찍은 날짜 · 팀 · 업체·공종 · 삭제 */
 $("#lSelBtn").addEventListener("click",()=>{ lSel=lSel?null:new Set(); renderList(); });
+$("#lVend").addEventListener("click",e=>{ const b=e.target.closest("[data-lv]"); if(!b||!lSel) return;
+  const ids=[...$("#lItems").querySelectorAll(".li")].map(el=>V.pins.find(q=>q.id===el.dataset.id)).filter(p=>p&&canEdit(p)&&(isQ(p)?"":vendorOf(p))===b.dataset.lv).map(p=>p.id);
+  if(ids.every(i=>lSel.has(i))) ids.forEach(i=>lSel.delete(i)); else ids.forEach(i=>lSel.add(i)); renderList(); });
 $("#lAll").addEventListener("click",()=>{ if(!lSel) return;
   const ok=[...$("#lItems").querySelectorAll(".li")].map(el=>V.pins.find(q=>q.id===el.dataset.id)).filter(p=>p&&canEdit(p));
   if(ok.length&&lSel.size===ok.length) lSel.clear(); else ok.forEach(p=>lSel.add(p.id)); renderList(); });
