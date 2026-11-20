@@ -767,6 +767,14 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 #pinSheet .prow #pText{min-height:76px}
 #pinSheet .prow #pDoneText{min-height:60px}
 #listSheet .lq{margin:0 0 8px}
+#sdBody .vtab{margin:0 0 10px}
+#setDlg .vtm{display:flex;gap:4px;flex-wrap:wrap;margin:-2px 0 10px 2px}
+#setDlg .vtm button{padding:4px 10px;border-radius:999px;font-size:12.5px;font-weight:700;background:var(--chip);color:var(--sub);border:1.5px solid transparent;width:auto;margin:0}
+#setDlg .vtm button.on{background:#fff;color:var(--c);border-color:var(--c)}
+#sdBody .vask{margin:-2px 0 10px;padding:10px 12px;border-radius:12px;background:#FCE4E7;font-size:14px;line-height:1.5}
+#sdBody .vask div{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+#sdBody .vask button{width:auto;margin:0;padding:8px 16px;border-radius:999px;font-weight:700}
+#sdBody .vask button[data-ask="yes"]{background:#E31937;color:#fff}
 #expBody .xpk{width:100%;margin:2px 0 6px;font-size:14px}
 #expBody .xpl{border:1px solid var(--line);border-radius:14px;padding:6px 10px;max-height:46vh;overflow:auto;background:var(--card)}
 #expBody .xpa{display:flex;gap:8px;justify-content:flex-end;padding:4px 0 6px}
@@ -788,7 +796,10 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 .crkg label{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:#646862;min-width:0}
 .crkg label small{font-weight:500}
 .crkg label.w2{grid-column:1/-1}
-.crkg .inp{margin:0;padding:9px 10px;font-size:15px;min-width:0;width:100%}
+.crkg .inp{margin:0;padding:0 10px;font-size:15px;min-width:0;width:100%;max-width:100%;height:42px;box-sizing:border-box}
+.crkg label>b{font:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:16px;height:16px}
+.crkg input[type=date]{-webkit-appearance:none;appearance:none;display:block;text-align:left;line-height:40px;background:var(--card,#fff)}
+.crkg input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
 #pinSheet #pCmBox{padding-top:4px}
 
 /* ===== 3.64 버튼 뉴모피즘 (시안 C): 왼쪽 위 밝은 그림자 + 오른쪽 아래 어두운 그림자 ===== */
@@ -1190,7 +1201,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.20";
+const APP_VER = "4.21";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -1238,9 +1249,10 @@ async function pinsLite(){ const d=await DB;
     r.onsuccess=()=>{ const c=r.result; if(!c) return; out.push(liteOf(c.value)); c.continue(); };
     t.oncomplete=()=>res(out); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error); }); }
 const pinsOf=id=>store("pins","readonly",s=>s.index("drawing").getAll(id)).then(l=>renumber(l||[]));
-/* 3.76 핀 번호 = 도면·팀마다 찍은 날짜(created) 순서 (같으면 id 순). 날짜를 고치거나 핀을 지우면 번호가 다시 매겨진다 */
+/* 3.76 핀 번호 = 도면·팀마다 찍은 날짜(created) 순서 (같으면 id 순). 날짜를 고치거나 핀을 지우면 번호가 다시 매겨진다
+   4.21 조치 전·후 핀과 기록(메모) 핀은 번호를 따로 매긴다 (서버 rankNo_도 같은 규칙) */
 function renumber(list){ const g={};
-  list.forEach(p=>{ if(p.deleted||p.id==="temp") return; const k=(p.drawingId||"")+"|"+(p.team||""); (g[k]=g[k]||[]).push(p); });
+  list.forEach(p=>{ if(p.deleted||p.id==="temp") return; const k=(p.drawingId||"")+"|"+(p.team||"")+"|"+(p.rec==="memo"?"m":""); (g[k]=g[k]||[]).push(p); });
   Object.values(g).forEach(a=>{ a.sort((x,y)=>(x.created||0)-(y.created||0)||String(x.id).localeCompare(String(y.id))); a.forEach((p,i)=>{ p.no=i+1; }); });
   return list; }
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}catch(e){}
@@ -1456,19 +1468,34 @@ $("#siteBtn").addEventListener("click",()=>{
     try{ const j=await api({action:"saveSettings",settings:{site:$("#sdSite").value}}); applySettings(j.settings); renderPrefs(); sdClose(); toast("현장 이름을 바꿨어요",2500); }
     catch(e){ toast(/알 수 없는 요청/.test(e.message)?"서버가 아직 예전 코드예요. 몇 분 뒤에 다시 해 주세요.":"저장하지 못했습니다: "+e.message,4000); b.disabled=false; } };
 });
-/* 관리자: 현장 업체 목록 (업체 이름 + 기본 공종) */
+/* 관리자: 현장 업체 목록 (업체 이름 + 기본 공종). 4.21 팀별로 나눠 등록·삭제 (품질팀은 업체 대신 종류를 써서 뺌) */
 $("#vendBtn").addEventListener("click",()=>{
-  let rows=VENDORS.map(v=>[v[0],v[1]]);
-  const draw=()=>{ $("#sdBody").innerHTML=`<p class="sdnote">핀 창의 업체 버튼에 나오는 목록이에요. 공종은 업체를 고를 때 자동으로 채워져요. 모든 사람에게 같이 적용돼요.</p>
-    ${rows.map((r,i)=>`<div class="vrow"><input class="inp" data-i="${i}" data-k="0" placeholder="업체 이름" value="${esc(r[0])}"><input class="inp" data-i="${i}" data-k="1" placeholder="공종" value="${esc(r[1])}" style="max-width:34%"><button data-up="${i}" aria-label="위로">↑</button><button data-rm="${i}" aria-label="빼기">✕</button></div>`).join("")}
-    <button class="pwbtn sec2" id="vAdd">+ 업체 추가</button><button class="pwbtn" id="vSave">저장</button>`;
-    $("#sdBody").oninput=e=>{ const t=e.target; if(t.dataset.i!==undefined) rows[+t.dataset.i][+t.dataset.k]=t.value; };
-    $("#sdBody").onclick=async e=>{ const t=e.target;
-      if(t.dataset.rm!==undefined){ rows.splice(+t.dataset.rm,1); draw(); }
-      else if(t.dataset.up!==undefined){ const i=+t.dataset.up; if(i>0){ [rows[i-1],rows[i]]=[rows[i],rows[i-1]]; draw(); } }
-      else if(t.id==="vAdd"){ rows.push(["",""]); draw(); const ins=$("#sdBody").querySelectorAll('input[data-k="0"]'); ins[ins.length-1].focus(); }
+  const VT=TEAMS.filter(t=>t[0]!=="품질"), ALL=VT.map(t=>t[0]);
+  let rows=VENDORS.map(v=>({n:v[0],w:v[1],t:vTeams(v)?vTeams(v).filter(x=>ALL.includes(x)):[...ALL]})), ask=null, tab=ALL[0];
+  try{ const x=localStorage.getItem("vendTab"); if(x==="*"||ALL.includes(x)) tab=x; }catch(e){}
+  const inTab=r=>tab==="*"||r.t.includes(tab);
+  const draw=()=>{ $("#sdBody").innerHTML=`<p class="sdnote">핀 창의 업체 버튼에 나오는 목록이에요. 팀마다 따로 등록하고, 그 팀 핀에는 그 팀 업체만 나와요. 공종은 업체를 고를 때 자동으로 채워져요. 모든 사람에게 같이 적용돼요.</p>
+    <div class="seg vtab" id="vTab">${VT.map(([k,nm])=>`<button data-v="${k}" class="${tab===k?"on":""}">${nm.replace("팀","")}</button>`).join("")}<button data-v="*" class="${tab==="*"?"on":""}">전체</button></div>
+    ${rows.map((r,i)=>!inTab(r)?"":`<div class="vrow"><input class="inp" data-i="${i}" data-k="n" placeholder="업체 이름" value="${esc(r.n)}"><input class="inp" data-i="${i}" data-k="w" placeholder="공종" value="${esc(r.w)}" style="max-width:34%"><button data-up="${i}" aria-label="위로">↑</button><button data-rm="${i}" aria-label="삭제">✕</button></div>
+      <div class="vtm">${VT.map(([k,nm,c])=>`<button data-tg="${i}" data-t="${k}" class="${r.t.includes(k)?"on":""}" style="--c:${c}">${nm.replace("팀","")}</button>`).join("")}</div>
+      ${ask&&ask.i===i?`<div class="vask"><b>「${esc(ask.name)}」로 된 ${ask.team?teamName(ask.team)+" ":""}핀이 ${ask.n}개 있어요.</b><br>${ask.team&&r.t.length>1?`${teamName(ask.team)} 목록에서만 빠지고 다른 팀에는 남아요. `:""}삭제해도 그 핀들의 업체 이름은 그대로 남아요. 삭제할까요?<div><button class="sec" data-ask="no">취소</button><button data-ask="yes">삭제</button></div></div>`:""}`).join("")||`<p class="sdnote">${tab==="*"?"":teamName(tab)+"에 "}등록한 업체가 없어요.</p>`}
+    <button class="pwbtn sec2" id="vAdd">+ ${tab==="*"?"":teamName(tab)+" "}업체 추가</button><button class="pwbtn" id="vSave">저장</button>`;
+    $("#sdBody").oninput=e=>{ const t=e.target; if(t.dataset.i!==undefined) rows[+t.dataset.i][t.dataset.k]=t.value; };
+    const drop=i=>{ const r=rows[i]; if(tab!=="*"&&r.t.length>1){ r.t=r.t.filter(x=>x!==tab); } else rows.splice(i,1); };   // 팀 탭에서는 그 팀에서만 뺀다
+    $("#sdBody").onclick=async e=>{ const t=e.target.closest("button")||e.target;
+      if(t.dataset.v&&t.closest("#vTab")){ tab=t.dataset.v; ask=null; try{localStorage.setItem("vendTab",tab);}catch(_){} draw(); return; }
+      if(t.dataset.tg!==undefined){ const r=rows[+t.dataset.tg], k=t.dataset.t; if(r.t.includes(k)){ if(r.t.length>1) r.t=r.t.filter(x=>x!==k); else toast("팀을 하나는 골라 주세요",1800); } else r.t=ALL.filter(x=>r.t.includes(x)||x===k); draw(); return; }
+      if(t.dataset.rm!==undefined){ const i=+t.dataset.rm, name=rows[i].n.trim(), team=tab==="*"?"":tab;   // 그 업체로 된 핀이 있으면 한 번 묻는다
+        const n=name?(await dbAll("pins")).filter(p=>!p.deleted&&vendorOf(p)===name&&(!team||(p.team||"")===team)).length:0;
+        if(n){ ask={i,name,n,team}; draw(); return; } ask=null; drop(i); draw(); }
+      else if(t.dataset.ask){ if(t.dataset.ask==="yes"&&ask){ drop(ask.i); toast(`「${ask.name}」을(를) 삭제했어요. 저장을 눌러야 적용돼요`,2600); } ask=null; draw(); }
+      else if(t.dataset.up!==undefined){ const i=+t.dataset.up; let j=i-1; while(j>=0&&!inTab(rows[j])) j--; if(j>=0){ [rows[j],rows[i]]=[rows[i],rows[j]]; draw(); } }
+      else if(t.id==="vAdd"){ rows.push({n:"",w:"",t:tab==="*"?[...ALL]:[tab]}); draw(); const ins=$("#sdBody").querySelectorAll('input[data-k="n"]'); ins[ins.length-1].focus(); }
       else if(t.id==="vSave"){ t.disabled=true;
-        try{ const j=await api({action:"saveSettings",settings:{vendors:rows.map(r=>[r[0].trim(),r[1].trim()]).filter(r=>r[0])}}); applySettings(j.settings); sdClose(); toast("업체 목록을 저장했어요",2500); }
+        // 같은 이름은 한 줄로 합침 (팀 목록 합치기)
+        const out=[]; rows.forEach(r=>{ const n=r.n.trim(); if(!n) return; const o=out.find(x=>x[0]===n); if(o){ o[2]=ALL.filter(k=>o[2].includes(k)||r.t.includes(k)); if(!o[1]) o[1]=r.w.trim(); } else out.push([n,r.w.trim(),[...r.t]]); });
+        out.forEach(o=>{ if(ALL.every(k=>o[2].includes(k))) o[2]=[]; });   // 모든 팀이면 공통
+        try{ const j=await api({action:"saveSettings",settings:{vendors:out}}); applySettings(j.settings); sdClose(); toast("업체 목록을 저장했어요",2500); }
         catch(err){ toast(/알 수 없는 요청/.test(err.message)?"서버가 아직 예전 코드예요. 몇 분 뒤에 다시 해 주세요.":"저장하지 못했습니다: "+err.message,4000); t.disabled=false; } } };
   };
   sdOpen("현장 업체 목록",""); draw();
@@ -2443,6 +2470,9 @@ const saveTeamFilter=()=>{ try{localStorage.setItem("teamFilter",JSON.stringify(
 /* 공용 설정(관리자가 서버에 저장): 현장 이름·현장 업체 목록. 받아 둔 값을 휴대폰에도 넣어 둔다 */
 let SITE="온천제2공영아파트일원 가로주택정비사업";
 let VENDORS=[["세모건설","토목"],["동우건설","골조"],["수우전기","전기"],["정진설비","설비"],["HK안전시스템","안전시설물"],["청오건설","방수"]];
+// 4.21 업체는 팀별로: [이름, 기본 공종, 팀 목록]. 팀 목록이 없거나 비면 모든 팀 공통
+const vTeams=v=>Array.isArray(v[2])&&v[2].length?v[2]:null;
+const vendorsFor=team=>VENDORS.filter(v=>!vTeams(v)||vTeams(v).includes(team||""));
 try{ const o=JSON.parse(localStorage.getItem("pinsSettings")||"null"); if(o){ if(typeof o.site==="string") SITE=o.site; if(Array.isArray(o.vendors)) VENDORS=o.vendors; } }catch(e){}
 let PUSH=null, PUSH_READY=false;   // 3.95 휴대폰 알림 설정(공개값)과 서버 준비 여부
 try{ const o=JSON.parse(localStorage.getItem("pinsSettings")||"null"); if(o){ PUSH=o.push||null; PUSH_READY=!!o.pushReady; } }catch(e){}
@@ -2966,7 +2996,7 @@ async function openPin(id){
   $("#pLock").hidden=ed; $("#pLock").textContent=`${p.by}님이 만든 핀입니다. 조치완료만 바꿀 수 있고, 내용은 만든 사람과 관리자만 고칠 수 있습니다.`;
   setStatusUI(p); setTeamUI(p);
   const allP=await pinsLite();
-  knownVendors=[...new Set(allP.map(vendorOf).filter(Boolean))].filter(v=>!VENDORS.some(x=>x[0]===v));
+  knownVendors=allP;   // 4.21 이 도면 핀들 (같은 팀 핀에 쓴 업체를 버튼으로 보여 줌)
   const works=[...new Set(VENDORS.map(x=>x[1]).concat(allP.map(workOf)).filter(Boolean))];
   $("#workList").innerHTML=works.map(t=>`<option value="${esc(t)}">`).join("");
   vendorTyping=false; renderVendorUI(p);
@@ -2997,7 +3027,7 @@ $("#pDates").addEventListener("change",e=>{ if(e.target.id!=="pCreated") return;
   $("#pBadge").textContent=mapLabel(p); $("#pTitle").textContent=pinTitle(p);
   savePin(p); drawPins(); renderTeamBar(); if(!$("#listSheet").hidden) renderList();
   toast(before!==pinLabel(p)?`찍은 날짜를 고쳐 ${before} → ${pinLabel(p)}(으)로 바뀌었습니다`:"찍은 날짜를 고쳤습니다"); });
-function pinTitle(p){ return `${p.team?teamName(p.team)+" ":""}${p.no}번 ${kindLabel(p)}`+(pgLabel(V.drawing,p.page)?` · ${pgLabel(V.drawing,p.page)}`:""); }
+function pinTitle(p){ return `${p.team?teamName(p.team)+" ":""}${isMemo(p)?"기록 ":""}${p.no}번 ${kindLabel(p)}`+(pgLabel(V.drawing,p.page)?` · ${pgLabel(V.drawing,p.page)}`:""); }
 /* 4.01 기록 방식: fix = 조치 전·후 관리(미조치/조치완료), memo = 기록만(메모·사진, 조치 개수에 안 셈) */
 const isMemo=p=>p&&p.rec==="memo";
 const isOpen=p=>p.status!=="done"&&!isMemo(p);
@@ -3009,6 +3039,8 @@ function setRecUI(p){ const m=isMemo(p), ed=canEdit(p);
 $("#pRec").addEventListener("click",e=>{ const b=e.target.closest("button"), p=selPin(); if(!b||!p||!canEdit(p)) return;
   const v=b.dataset.v==="memo"?"memo":""; if((p.rec||"")===v) return;
   p.rec=v||undefined; if(v){ p.status="open"; p.doneAt=null; p.doneBy=""; }
+  const before=pinLabel(p); renumber(V.pins); $("#pBadge").textContent=mapLabel(p); $("#pTitle").textContent=pinTitle(p);   // 4.21 기록 핀은 번호를 따로
+  if(before!==pinLabel(p)) toast(`${v?"기록 핀":"조치 전·후 핀"} 번호로 바뀌었어요: ${pinLabel(p)}`);
   savePin(p); rememberLast(p); setStatusUI(p); renderPhotos(p); drawPins(); renderTeamBar&&renderTeamBar(); if(!$("#listSheet").hidden) renderList(); });
 function setStatusUI(p){
   setRecUI(p);
@@ -3088,7 +3120,8 @@ function renderVendorUI(p){
   const q=isQ(p); $("#pKindRow").hidden=!q; $("#pVendRow").hidden=$("#pWorkRow").hidden=q;
   if(q){ const w=workOf(p), ed=canEdit(p); $("#pKind").innerHTML=QKINDS.map(n=>`<button class="vchip${w===n?" on":""}" data-qk="${n}" ${ed?"":"disabled"}>${n}</button>`).join(""); }
   renderCrackUI(p);
-  const [v,w]=splitTrade(p), ed=canEdit(p), names=VENDORS.map(x=>x[0]).concat(knownVendors), custom=v&&!names.includes(v);
+  const reg=vendorsFor(p.team).map(x=>x[0]), used=[...new Set((knownVendors||[]).filter(q=>(q.team||"")===(p.team||"")).map(vendorOf).filter(Boolean))].filter(x=>!reg.includes(x));
+  const [v,w]=splitTrade(p), ed=canEdit(p), names=reg.concat(used), custom=v&&!names.includes(v);
   const list=custom?names.concat([v]):names;
   $("#pVendor").innerHTML=`<button class="vchip${!v&&!vendorTyping?" on":""}" data-vn="__none" ${ed?"":"disabled"}>미분류</button>`+list.map(n=>`<button class="vchip${n===v&&!vendorTyping?" on":""}" data-vn="${esc(n)}" ${ed?"":"disabled"}>${esc(n)}</button>`).join("")
     +(ed?`<button class="vchip add${vendorTyping?" on":""}" data-vn="__input">+ 직접 입력</button>`:"");
@@ -3115,15 +3148,15 @@ function renderCrackUI(p){
   const show=isQ(p)&&workOf(p)==="균열"; $("#pCrackRow").hidden=!show; if(!show) return;
   const c=p.crack||{}, ed=canEdit(p)?"":"disabled", v=k=>esc(c[k]==null?"":String(c[k]));
   $("#pCrack").innerHTML=`<div class="crkg">
-      <label>균열폭 <small>mm</small><input class="inp" data-ck="w" type="number" inputmode="decimal" step="0.05" min="0" value="${v("w")}" placeholder="0.1" ${ed}></label>
-      <label>길이 <small>m</small><input class="inp" data-ck="len" type="number" inputmode="decimal" step="0.05" min="0" value="${v("len")}" placeholder="2.4" ${ed}></label>
-      <label>타설일<input class="inp" data-ck="pour" type="date" value="${v("pour")}" ${ed}></label>
-      <label>타설 온도 <small>℃</small><input class="inp" data-ck="temp" type="number" inputmode="decimal" step="0.1" value="${v("temp")}" placeholder="30.2" ${ed}></label></div>
+      <label><b>균열폭 <small>mm</small></b><input class="inp" data-ck="w" type="number" inputmode="decimal" step="0.05" min="0" value="${v("w")}" placeholder="0.1" ${ed}></label>
+      <label><b>길이 <small>m</small></b><input class="inp" data-ck="len" type="number" inputmode="decimal" step="0.05" min="0" value="${v("len")}" placeholder="2.4" ${ed}></label>
+      <label><b>타설일</b><input class="inp" data-ck="pour" type="date" value="${v("pour")}" ${ed}></label>
+      <label><b>타설 온도 <small>℃</small></b><input class="inp" data-ck="temp" type="number" inputmode="decimal" step="0.1" value="${v("temp")}" placeholder="30.2" ${ed}></label></div>
     <div class="vchips" style="margin:8px 0 2px">${CRK_TYPES.map(t=>`<button class="vchip${(c.type||"일반")===t?" on":""}" data-ct="${t}" ${ed}>${t}균열</button>`).join("")}</div>
     <div class="crkg">
-      <label>원인<input class="inp" data-ck="cause" list="crkCause" value="${v("cause")}" placeholder="건조수축균열" autocomplete="off" ${ed}></label>
-      <label>관리 방법<input class="inp" data-ck="method" value="${v("method")}" placeholder="크랙게이지" autocomplete="off" ${ed}></label>
-      <label class="w2">보수 방법 <small>조치완료 때</small><input class="inp" data-ck="fix" value="${v("fix")}" placeholder="예: 표면처리, 주입" autocomplete="off" ${ed}></label></div>`;
+      <label><b>원인</b><input class="inp" data-ck="cause" list="crkCause" value="${v("cause")}" placeholder="건조수축균열" autocomplete="off" ${ed}></label>
+      <label><b>관리 방법</b><input class="inp" data-ck="method" value="${v("method")}" placeholder="크랙게이지" autocomplete="off" ${ed}></label>
+      <label class="w2"><b>보수 방법 <small>조치완료 때</small></b><input class="inp" data-ck="fix" value="${v("fix")}" placeholder="예: 표면처리, 주입" autocomplete="off" ${ed}></label></div>`;
 }
 $("#pCrack").addEventListener("input",e=>{ const i=e.target.closest("[data-ck]"), p=selPin(); if(!i||!p||!canEdit(p)) return;
   const k=i.dataset.ck; p.crack={...(p.crack||{})}; const val=i.value.trim();
@@ -3463,7 +3496,7 @@ $("#lBar").addEventListener("click",async e=>{
   if(a==="vw"){
     const same=f=>ps.every(p=>f(p)===f(ps[0]))?f(ps[0]):"";
     sdOpen("업체·공종 바꾸기",`<p class="sdnote">고른 핀 ${n}개에 같은 업체·공종을 넣어요. 칸을 비워 두면 그 항목은 그대로 둬요.</p>
-      <div class="bkch">${VENDORS.map(([v,w])=>`<button data-v="${esc(v)}" data-w="${esc(w)}">${esc(v)}</button>`).join("")}</div>
+      <div class="bkch">${(()=>{ const ts=[...new Set(ps.map(p=>p.team||""))]; return VENDORS.filter(v=>!vTeams(v)||ts.some(t=>vTeams(v).includes(t))); })().map(([v,w])=>`<button data-v="${esc(v)}" data-w="${esc(w)}">${esc(v)}</button>`).join("")}</div>
       <div class="lbl">업체</div><input class="inp" id="bkV" value="${esc(same(vendorOf))}" placeholder="비워 두면 그대로">
       <div class="lbl">공종</div><input class="inp" id="bkW" value="${esc(same(workOf))}" placeholder="비워 두면 그대로">
       <button class="pwbtn" id="bkGo">핀 ${n}개 바꾸기</button>`);
