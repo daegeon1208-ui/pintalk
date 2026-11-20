@@ -643,13 +643,15 @@ header #backBtn{color:#fff!important;background:none!important}
 #jTeam{margin:2px 0 4px}
 /* 연결 상태: 글자 대신 동그라미 (초록 = 연결 확인, 노랑 = 연결 중·보내는 중, 빨강 = 연결 안 됨) */
 header .cloud.dot{padding-left:12px;padding-right:12px}
-header .cloud.dot span{display:none}
+header .cloud.dot span{display:inline;font-size:12px;font-weight:700;color:#fff;opacity:.92;margin-left:5px;white-space:nowrap}
 header .cloud.dot i{width:13px;height:13px;box-shadow:none}
 header .hbtn.cloud.dot{background:none!important;padding-left:8px;padding-right:8px}
 #home header h1{flex:none}
 #home header #cloudBtn{margin-right:auto;margin-left:-2px}   /* 3.62: 연결 점은 핀톡 글자 바로 옆(왼쪽) */   /* 3.60: 연결 점만 (테두리 독 없음) */
 header .cloud[data-state="err"]:not(.dot) i{background:#E31937}
-.sync{display:inline-grid;place-items:center;width:28px;height:28px;flex:none;cursor:pointer}
+.sync{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 4px;flex:none;cursor:pointer}
+.sync b{font-size:12px;font-weight:700;color:#fff;opacity:.92;white-space:nowrap}
+.sync i{flex:none}
 .sync i{width:12px;height:12px;border-radius:50%;background:#9CA3AF;box-shadow:0 0 0 2px rgba(255,255,255,.3)}
 .sync[data-state="on"] i{background:#4ADE80}.sync[data-state="wait"] i{background:#FBBF24}.sync[data-state="err"] i{background:#E31937}
 /* 핀 개수 독 */
@@ -954,7 +956,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 <section id="viewer" class="screen" data-lb="C1 도면 화면" hidden>
   <header>
     <button class="hbtn" id="backBtn">‹ 목록</button>
-    <h1 id="vTitle" title="눌러서 도면 정보"></h1><span class="sync" id="syncTxt" role="status" hidden><i></i></span>
+    <h1 id="vTitle" title="눌러서 도면 정보"></h1><span class="sync" id="syncTxt" role="status" hidden><i></i><b id="syncLab"></b></span>
   </header>
   <div class="pgbar" id="pager" hidden><button id="prevPg" aria-label="이전 쪽">‹</button><button class="pgmid" id="pgMid"><b id="pgTxt"></b><small id="pgNum"></small></button><button id="nextPg" aria-label="다음 쪽">›</button></div>
   <div id="fPanel">
@@ -1210,7 +1212,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.25";
+const APP_VER = "4.26";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -2074,10 +2076,12 @@ function canEdit(p){
 }
 function bufToB64(buf){const a=new Uint8Array(buf);let s="";for(let i=0;i<a.length;i+=32768)s+=String.fromCharCode.apply(null,a.subarray(i,i+32768));return btoa(s);}
 function b64ToBuf(b){const s=atob(b),a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a.buffer;}
+/* 4.26 연결 점 옆 글자: 연결완료 · 연결중 · 보내는 중 · 연결실패 · 오프라인 */
+const syncLab=(st,t)=>st==="on"?"연결완료":st==="err"?(/오프라인/.test(t||"")?"오프라인":"연결실패"):st==="wait"?(/보내|올리/.test(t||"")?("보내는 중"+((/\d+%/.exec(t||"")||[""])[0]?" "+/\d+%/.exec(t)[0]:"")):"연결중"):"";
 function setSync(state,txt){
   const on=cloudOn(), b=$("#cloudBtn"); b.dataset.state=on?state:offMode?"err":""; b.classList.toggle("dot",on); b.title=on?txt:"";
-  $("#cloudTxt").textContent=on?txt:offMode?"오프라인":cloudSet()?"로그인":"공유";
-  const v=$("#syncTxt"); v.hidden=!on; v.dataset.state=state; v.title=txt; v.setAttribute("aria-label",txt);
+  $("#cloudTxt").textContent=on?(syncLab(state,txt)||"연결"):offMode?"오프라인":cloudSet()?"로그인":"공유";
+  const v=$("#syncTxt"); v.hidden=!on; v.dataset.state=state; v.title=txt; v.setAttribute("aria-label",txt); $("#syncLab").textContent=syncLab(state,txt);
 }
 $("#syncTxt").addEventListener("click",()=>{ const t=$("#syncTxt").title; if(t) toast(t,2500); });
 /* 핀을 고치면 휴대폰에 먼저 저장하고, 공유 중이면 곧 공유 서버로 보낸다 */
