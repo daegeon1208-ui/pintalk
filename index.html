@@ -1131,7 +1131,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
     <div class="lbl">내 설정 <small style="font-weight:500;color:var(--sub)">· 이 휴대폰에만 적용</small></div>
     <div class="setsub">내 기본 팀 <small>새 핀을 찍을 때 먼저 골라져요</small></div>
     <div class="vchips" id="setTeam"></div>
-    <div class="setsub">사진 화질 <small>사진 한 장 기준 저 약 0.2MB · 보통 약 0.6MB · 고 약 2MB</small></div>
+    <div class="setsub">사진 보기 화질 <small>공유 서버에서 사진을 받아 볼 때 · 저 약 0.2MB · 보통 약 0.6MB · 고 약 2MB. 올릴 때와 사진대지는 늘 고화질</small></div>
     <div class="seg" id="setPhoto"><button data-v="low">저화질</button><button data-v="normal">보통</button><button data-v="high">고화질</button></div>
     <button class="sec" id="qCmpBtn" style="margin-top:8px">사진 화질 비교하기 (예시 사진)</button>
     <div class="setsub">내보내기 기본 양식 <small>한 팀만 보고 있으면 그 팀 양식(공사 하자조치요청서 · 품질 균열관리)</small></div>
@@ -1210,7 +1210,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.24";
+const APP_VER = "4.25";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -1856,7 +1856,7 @@ async function copyDrawing(d){
 async function copyPins(fromId,toId){
   let miss=0; const now=Date.now();
   for(const p of (await pinsOf(fromId)).filter(q=>!q.deleted)){
-    const cp=async l=>{ const out=[]; for(const x of l||[]){ await ensurePhoto(p,x); if(x.data) out.push({k:uid(),type:x.type||"image/jpeg",data:x.data.slice(0),w:x.w,h:x.h,rep:x.rep||undefined}); else miss++; } return out; };
+    const cp=async l=>{ const out=[]; for(const x of l||[]){ await ensurePhoto(p,x,true); if(x.data) out.push({k:uid(),type:x.type||"image/jpeg",data:x.data.slice(0),w:x.w,h:x.h,rep:x.rep||undefined}); else miss++; } return out; };
     const np={...JSON.parse(JSON.stringify({...p,photos:[],donePhotos:[]})),id:uid(),drawingId:toId,photos:await cp(p.photos),donePhotos:await cp(p.donePhotos),
       dirty:false,serverUpdated:null,by:p.by,created:p.created,updated:now};
     await dbPut("pins",np);
@@ -2244,11 +2244,14 @@ setInterval(()=>{ if(document.visibilityState==="visible"&&!$("#viewer").hidden)
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState!=="visible") return; if($("#viewer").hidden) syncDrawings(); else syncPins(); });
 window.addEventListener("online",()=>{ if($("#viewer").hidden) syncDrawings(); else syncPins(); });
 /* 사진은 필요할 때 공유 서버에서 받아 휴대폰에 보관 */
-async function ensurePhoto(p,x){
-  if(x.data||!x.id||!cloudOn()) return !!x.data;
-  try{ const j=await api({action:"photo",id:x.id}); x.data=b64ToBuf(j.data); x.type="image/jpeg";
-    const cur=await dbGet("pins",p.id); if(cur){ const c=[...cur.photos,...(cur.donePhotos||[])].find(y=>y.id===x.id); if(c){c.data=x.data;c.type=x.type;} await dbPut("pins",cur); }
-    return true; }catch(e){ return false; }
+/* 4.25 볼 때는 설정 화질(저 1024·보통 1600·고 2560px)로 줄여 받고(x.sz), 사진대지·복사(full)는 원래 크기로 다시 받는다 */
+async function ensurePhoto(p,x,full){
+  if(x.data&&(!full||!x.sz)) return true;
+  if(!x.id||!cloudOn()) return !!x.data;
+  const size=full?0:(QSET[myPref("photoQ","normal")]||QSET.normal)[0];
+  try{ const j=await api({action:"photo",id:x.id,size}); x.data=b64ToBuf(j.data); x.type="image/jpeg"; x.sz=+j.sz||0;
+    const cur=await dbGet("pins",p.id); if(cur){ const c=[...cur.photos,...(cur.donePhotos||[])].find(y=>y.id===x.id); if(c){c.data=x.data;c.type=x.type;c.sz=x.sz||undefined;} await dbPut("pins",cur); }
+    return true; }catch(e){ return !!x.data; }
 }
 /* 연결 설정 창 */
 function openCloudSheet(){
@@ -3425,8 +3428,9 @@ $("#imgDel").addEventListener("click",async()=>{
 });
 function loadImage(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();
   im.onload=()=>{URL.revokeObjectURL(u);res(im);}; im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("사진을 읽을 수 없습니다"));}; im.src=u;});}
-async function shrinkPhoto(file){   // 설정 화질대로 JPEG로 줄여 저장 (저 1024·보통 1600·고 2560px)
-  const pq=myPref("photoQ","normal"), Q={low:[1024,0.7],normal:[1600,0.82],high:[2560,0.9]}[pq]||[1600,0.82];   // 설정 › 사진 화질 (긴 변, 압축)
+const UP_Q=[2560,0.9];
+async function shrinkPhoto(file){   // 고화질(긴 변 2560px)로 줄여 저장·업로드
+  const Q=UP_Q;   // 4.25 올릴 때는 늘 고화질. 설정 › 사진 화질은 공유 서버에서 받아 볼 때의 화질
   const im=await loadImage(file), max=Q[0], s=Math.min(1,max/Math.max(im.naturalWidth,im.naturalHeight));
   const c=document.createElement("canvas"); c.width=Math.round(im.naturalWidth*s); c.height=Math.round(im.naturalHeight*s);
   c.getContext("2d").drawImage(im,0,0,c.width,c.height);
@@ -3806,7 +3810,7 @@ async function buildCrackXlsx(drawing,pinList,progress,opt){
         const W=pxW(ws,2+4*j,6+4*j), H=pxH(ws,7,13);
         const lab=c=>{ c.save(); const fz=Math.max(14,c.canvas.width*0.06); c.font=`bold ${fz}px sans-serif`; c.fillStyle="rgba(0,0,0,.6)"; const t=mapLabel(p)+(tag?" "+tag:""), tw=c.measureText(t).width; c.fillRect(8,8,tw+fz*0.8,fz*1.4); c.fillStyle="#fff"; c.textBaseline="middle"; c.fillText(t,8+fz*0.4,8+fz*0.7); c.restore(); };
         let cv=null;
-        if(ph&&(ph.data||await ensurePhoto(p,ph))&&ph.data){
+        if(ph&&(await ensurePhoto(p,ph,true))&&ph.data){
           const im=await createImageBitmap(new Blob([ph.data],{type:ph.type||"image/jpeg"}));
           cv=fit(im,im.width,im.height,W,H,3,(g,dx,dy,dw,dh)=>{ const lw=Math.max(3,Math.max(dw,dh)*0.012); (ph.lines||[]).forEach(l=>crkStroke(g,dx+l[0]*dw,dy+l[1]*dh,dx+l[2]*dw,dy+l[3]*dh,lw,(p.crack||{}).type)); },true); lab(cv.getContext("2d"));
           im.close&&im.close();
@@ -4168,8 +4172,8 @@ async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per)
   const pins=[...pinList].sort(VEN?(a,b)=>tradeOf(a).localeCompare(tradeOf(b),"ko")||pinCmp(a,b):pinCmp);
   const cOf=colorsOf(pins), pc=p=>{const [r,g,b]=hexRgb(cOf(p));return rgb(r/255,g/255,b/255);};
   if(tmpl!=="plain"){   // 4.24 받을 사진이 있는 핀을 4개씩 동시에 받는다 (한 핀 안의 사진은 차례로)
-    const need=pins.filter(p=>[...p.photos,...(p.donePhotos||[])].some(x=>!x.data&&x.id)); let ni=0, nd=0;
-    const w=async()=>{ while(ni<need.length){ const p=need[ni++]; for(const x of [...p.photos,...(p.donePhotos||[])]) await ensurePhoto(p,x); nd++; progress&&progress(`사진 받는 중… (${nd}/${need.length}개 핀)`); } };
+    const need=pins.filter(p=>[...p.photos,...(p.donePhotos||[])].some(x=>(!x.data||x.sz)&&x.id)); let ni=0, nd=0;
+    const w=async()=>{ while(ni<need.length){ const p=need[ni++]; for(const x of [...p.photos,...(p.donePhotos||[])]) await ensurePhoto(p,x,true); nd++; progress&&progress(`사진 받는 중… (${nd}/${need.length}개 핀)`); } };
     if(need.length){ progress&&progress(`사진 받는 중… (0/${need.length}개 핀)`); await Promise.all([w(),w(),w(),w()]); }
   }
 
