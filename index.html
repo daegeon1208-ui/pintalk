@@ -1217,7 +1217,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.30";
+const APP_VER = "4.31";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -4382,7 +4382,7 @@ async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per)
 /* ---------- 따라하기: 연습 도면에서 실제 버튼을 눌러 보며 배우기 ---------- */
 const TOUR_ID="sample";
 async function ensureSample(){
-  const SV=5, old=await dbGet("drawings",TOUR_ID);   // SV: 견본 도면 판 (5 = 4.30 1층 평면도: 공동현관 출입문, 계단실 양개문)
+  const SV=6, old=await dbGet("drawings",TOUR_ID);   // SV: 견본 도면 판 (6 = 4.31 1층 평면도: 공동현관·계단실 양개문, 세대 현관 위치 조정)
   if(old&&old.sampleVer===SV&&await dbGet("files",TOUR_ID)) return;
   const buf=await (await fetch("sample.pdf")).arrayBuffer(), now=Date.now();
   await dbPut("files",{id:TOUR_ID,data:buf});
