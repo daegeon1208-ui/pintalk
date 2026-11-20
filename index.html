@@ -828,6 +828,11 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 .tmgrid.liq>i.lq{z-index:1}
 .tmgrid.liq>button.on{z-index:2}
 
+/* ===== 4.20 구간 버튼: 고른 칸이 작게 시작해 톡 튀어나온다 (시안 2안) ===== */
+.seg:not(.team)>button,.hfilter>button,.tmgrid>button{transition:background-color .15s,color .15s,box-shadow .15s}
+.seg:not(.team)>button.pop,.hfilter>button.pop,.tmgrid>button.pop{animation:segPop .5s cubic-bezier(.3,1.9,.45,1)}
+@keyframes segPop{0%{transform:scale(.72)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){.seg>button.pop,.hfilter>button.pop,.tmgrid>button.pop{animation:none}}
 /* 3.91 도면 목록(B1)은 3.68 디자인으로 되돌림 (뉴모피즘 화면 빼고 버튼만 볼록). 받기 단추·눌림 탄력은 납작한 모양으로 유지 */
 #home .dcard .more.lk,#home .dcard .more.lk:active{opacity:.35;transform:none}
 #home header .hlogo{box-shadow:none!important}   /* 3.72 로고 그림자 없음 (사용자 요청) 유지 */
@@ -1185,7 +1190,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.19";
+const APP_VER = "4.20";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -4831,10 +4836,18 @@ if("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("messa
     setTimeout(async()=>{ try{ await syncDrawings(); }catch(e){} pushGo(go,pin); },700); } }
 setTimeout(()=>{ renderPush(); pushRefresh().catch(e=>console.log("push",e)); },2500);
 
+// 4.20 구간 버튼 톡 튀어나옴: 누른 칸이 (다시 그려졌더라도 같은 자리의 칸이) 고른 칸이 되면 한 번 튀게 한다
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest(".seg:not(.team)>button,.hfilter>button,.tmgrid>button"); if(!b) return;
+  const seg=b.parentElement, id=seg.id, kids=el=>[...el.children].filter(x=>x.tagName==="BUTTON"), idx=kids(seg).indexOf(b);
+  requestAnimationFrame(()=>{ let s2=seg.isConnected?seg:(id&&document.getElementById(id)); if(!s2) return; const t=kids(s2)[idx];
+    if(!t||!t.classList.contains("on")) return; t.classList.remove("pop"); void t.offsetWidth; t.classList.add("pop");
+    t.addEventListener("animationend",()=>t.classList.remove("pop"),{once:true}); });
+},true);
 // 3.66 구간 버튼 물방울 이동 → 3.72 스프링으로 다시 만듦
 // 고른 칸 모양을 SVG로 그린다. 앞쪽 끝은 센 스프링으로 먼저 튀어 나가고, 뒤쪽 끝은 약한 스프링으로 늦게 따라온다.
 // 늘어난 만큼 가운데가 잘록해지고(물방울 목), 도착하면 출렁인다.
-(()=>{
+(()=>{ return;   // 4.20 물방울 이동은 쓰지 않음 (사용자 선택: 2안 톡 튀어나옴, 아래 popSeg)
   const SEL=".seg:not(.team),.hfilter,.tmgrid";
   const MEM=new Map();   // id 있는 칸은 다시 그려져도 이전 자리를 기억 (내보내기 창)
   const RM=matchMedia("(prefers-reduced-motion:reduce)");
