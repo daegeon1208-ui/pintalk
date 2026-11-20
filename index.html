@@ -1217,7 +1217,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.34";
+const APP_VER = "4.35";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -4383,11 +4383,40 @@ async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per)
 const TOUR_ID="sample";
 async function ensureSample(){
   const SV=9, old=await dbGet("drawings",TOUR_ID);   // SV: 견본 도면 판 (9 = 4.34 1층 평면도: EPS·TPS, 소화전, 우편함, 발코니 세탁 공간 추가)
-  if(old&&old.sampleVer===SV&&await dbGet("files",TOUR_ID)) return;
+  if(old&&old.sampleVer===SV&&await dbGet("files",TOUR_ID)){ await seedTry(); return; }
   const buf=await (await fetch("sample.pdf")).arrayBuffer(), now=Date.now();
   await dbPut("files",{id:TOUR_ID,data:buf});
   if(old) for(const p of await dbAll("pins")) if(p.drawingId===TOUR_ID&&p.page>1) await dbDel("pins",p.id);   // 쪽이 1쪽으로 줄어 2쪽 핀은 지운다
   await dbPut("drawings",{...(old||{}),id:TOUR_ID,name:"견본 도면 (연습용)",pages:1,pageNames:["A-101 1층 평면도"],created:old?old.created:now,opened:old?old.opened:now+1e9,by:"",kind:"pdf",sample:true,sampleVer:SV,ver:String(now)});   // 맨 위에 오게
+  await seedTry();
+}
+/* 4.35 체험판: 견본 도면에 팀별 예시 핀(조치 전·후 사진, 기록 핀)을 넣어 둔다. 도면을 새로 만들 때마다 한 번 (d.seed) */
+const SEED_PINS=[
+  // [사진, nx, ny, 팀, 업체, 공종, 기록핀, 내용, 등록자, 등록 시각, 조치 후 사진, 조치 시각, 조치자, 조치 후 코멘트]
+  ["p01",.1831,.638,"공사","네모창호","창호",0,"101호 거실 창호 오른쪽 틀과 벽 사이 실링 누락. 비 오면 물 샐 수 있음, 실링 보완 요청","김ㅇㅇ","2026-11-17T09:12","p01a","2026-11-19T15:40","네모창호 이ㅇㅇ","틀 둘레 실링 다시 시공"],
+  ["p02",.6361,.638,"공사","네모창호","창호",0,"102호 침실2 방충망 찢어짐. 교체 요청","김ㅇㅇ","2026-11-16T10:05","p02a","2026-11-18T16:22","네모창호 이ㅇㅇ","방충망 새것으로 교체"],
+  ["p03",.3639,.4057,"공사","동글골조","골조",0,"엘리베이터 홀 바닥 레벨 불량. 수평자 끝 틈 약 8mm, 면 고르기 필요","박ㅇㅇ","2026-11-18T08:47"],
+  ["p04",.2759,.3822,"공사","세모방수","방수",0,"101호 욕실1 방수턱 높이 90mm로 부족 (기준 200mm). 방수턱 다시 시공 요청","김ㅇㅇ","2026-11-15T13:30","p04a","2026-11-17T11:02","세모방수 정ㅇㅇ","방수턱 200mm로 다시 시공, 담수 시험 예정"],
+  ["p12",.4637,.6616,"공사","동글골조","골조",0,"102호 드레스룸 벽 수직도 불량. 위아래 12mm 차이, 보수 방법 협의","박ㅇㅇ","2026-11-19T16:05"],
+  ["p05",.157,.5505,"품질","동글골조","골조",0,"101호 거실 벽 균열 폭 0.3mm. 균열 보수 후 경과 관찰","최ㅇㅇ","2026-11-18T14:15"],
+  ["p06",.6314,.6801,"품질","세모방수","방수",0,"102호 발코니 배수구 주변 방수층 들뜸. 들뜬 부분 걷어내고 재시공","최ㅇㅇ","2026-11-14T10:40","p06a","2026-11-16T09:55","세모방수 정ㅇㅇ","들뜬 부분 걷어내고 우레탄 방수 재시공"],
+  ["p07",.3567,.5539,"품질","동글골조","골조",1,"계단 단높이 실측 175mm, 단너비 250mm. 도면과 같음 (기록)","최ㅇㅇ","2026-11-19T11:20"],
+  ["p08",.3995,.4899,"안전","동글골조","골조",0,"계단실 안전난간 미설치. 설치 전까지 출입 통제","한ㅇㅇ","2026-11-19T08:30"],
+  ["p09",.547,.5976,"안전","네모창호","창호",0,"102호 거실 앞 창호 자재 통로에 쌓아 둠. 통로 확보 요청","한ㅇㅇ","2026-11-17T07:55","p09a","2026-11-17T17:10","네모창호 이ㅇㅇ","자재를 102호 침실3으로 옮겨 통로 확보"],
+  ["p10",.2045,.3114,"설비","","",1,"전달: 101호 주방 싱크대 급수 위치 200mm 오른쪽으로 옮겨 달라는 요청 받음","윤ㅇㅇ","2026-11-18T10:10"],
+  ["p11",.3424,.4327,"전기","","",1,"EPS 점검구 600×600 설치 확인 (기록)","장ㅇㅇ","2026-11-19T13:45"]];
+async function seedTry(){
+  if(!TRY) return; const d=await dbGet("drawings",TOUR_ID); if(!d||d.seed) return;
+  const ph=async(n,at)=>{ const b=await (await fetch("try/ex/"+n+".jpg")).arrayBuffer(); return {k:uid(),at,type:"image/jpeg",data:b,w:1024,h:768}; };
+  const cnt={};
+  for(const [n,nx,ny,team,v,w,memo,text,by,t0,an,t1,dby,dt] of SEED_PINS){
+    const key=team+(memo?"m":""), no=cnt[key]=(cnt[key]||0)+1, c=Date.parse(t0+":00+09:00"), dn=!!an;
+    const pin={id:"seed-"+n,drawingId:TOUR_ID,page:1,nx,ny,no,status:dn?"done":"open",team,vendor:v,work:w,trade:v?v+" "+w:"",text,photos:[await ph(n,c)],donePhotos:[],by,created:c,updated:c};
+    if(memo) pin.rec="memo";
+    if(dn){ const c1=Date.parse(t1+":00+09:00"); pin.donePhotos=[await ph(an,c1)]; pin.doneBy=dby; pin.doneAt=c1; pin.doneText=dt||""; pin.updated=c1; }
+    await dbPut("pins",pin);
+  }
+  d.seed=1; await dbPut("drawings",d);
 }
 const T={i:-1,flag:false,timer:null,busy:false,pinId:null};
 const vis=sel=>{const e=typeof sel==="function"?sel():$(sel); return e&&!e.hidden&&e.getClientRects().length?e:null;};   // fixed(아래 창)도 보이면 잡는다
@@ -4831,7 +4860,7 @@ async function inviteMenu(d){
 
 /* ---------- 시작 ---------- */
 renderHome(); setSync("",""); renderMode(); renderNoteBadge();
-if(TRY){ offMode=true; $("#gate").hidden=true; setSync("",""); renderMode(); renderHome(); }   // 체험판: 로그인 없이 바로 개인 도면
+if(TRY){ offMode=true; $("#gate").hidden=true; setSync("",""); renderMode(); renderHome(); ensureSample().then(renderHome).catch(e=>console.error(e)); }   // 4.35 체험판: 예시 핀이 든 견본 도면을 바로 보여 준다   // 체험판: 로그인 없이 바로 개인 도면
 else if(!readInvite()){ if(!cloudOn()) showGate(cloudSet()?2:1); else syncDrawings(); }
 (async()=>{ let r=null; try{ r=JSON.parse(localStorage.getItem(RESUME_KEY)||"null"); localStorage.removeItem(RESUME_KEY); }catch(e){}
   if(!r||!r.d||Date.now()-r.t>10*60e3||!$("#gate").hidden) return;
