@@ -59,12 +59,12 @@ header{position:relative}
 /* 도면 보기 */
 #viewer{background:#9CA3AF}
 #vp{position:relative;z-index:0;isolation:isolate;flex:1;overflow:hidden;touch-action:none;background:#D1D5DB;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-.pin.drag{transform:scale(1.25);transform-origin:50% 100%;z-index:2}
-.pin.drag::after{content:"";position:absolute;left:50%;top:34px;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;border:2px solid #FBBF24;background:rgba(251,191,36,.3)}
+.pin.drag{transform:scale(1.25);transform-origin:50% 36px;z-index:2}
+.pin.drag::after{content:"";position:absolute;left:50%;top:36px;width:12px;height:12px;margin:-6px 0 0 -6px;box-sizing:border-box;border-radius:50%;border:2px solid #fff;background:#FBBF24;box-shadow:0 0 0 1px rgba(0,0,0,.25),0 1px 3px rgba(0,0,0,.35)}
 #base{position:absolute;left:0;top:0;transform-origin:0 0;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.2)}
 #detail{position:absolute;left:0;top:0;pointer-events:none;transform-origin:0 0}
 #pinLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-.pin{position:absolute;width:30px;height:30px;margin:-34px 0 0 -15px}
+.pin{position:absolute;width:30px;height:30px;margin:-36px 0 0 -15px}   /* 4.27 핀 끝(가운데에서 15√2≈21px 아래)이 정확히 찍은 자리에 오게 */
 .pin::before{content:"";position:absolute;inset:0;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--pc,var(--open));border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)}
 .pin.done::before{opacity:.55}
 .pin.memo::before{background:#fff;border:3px solid var(--pc)}.pin.memo span{color:var(--pc)}   /* 4.03 기록만 핀: 속이 빈 핀 */
@@ -1212,7 +1212,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.26";
+const APP_VER = "4.27";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -2741,6 +2741,7 @@ function pinAt(p){   // 손가락 아래(핀 머리까지 넉넉하게) 있는 �
   return inside.length?inside[inside.length-1]:null;
 }
 /* 꾹 누르기(0.45초): 위치 옮기기 중인 핀만 들어 옮기고, 핀 찍기 중이면 새 핀을 손가락 위에 띄워 끌어 맞춘다 */
+const LIFT=70;   // 끌 때 핀을 손가락 위로 띄우는 거리(px)
 function longPress(p){
   lpTimer=null;
   if(!G||G.type!=="pan"||G.moved||ptrs.size!==1) return;
@@ -2756,8 +2757,10 @@ function longPress(p){
   if(!pin) return;
   if(!canEdit(pin)){ toast(`${pin.by}님이 만든 핀은 옮길 수 없습니다`); return; }
   G={type:"drag",pin,temp,sx:p.x,sy:p.y,nx:pin.nx,ny:pin.ny,shape:pin.shape?JSON.parse(JSON.stringify(pin.shape)):null};
+  // 4.27 휴대폰에서는 핀을 손가락보다 조금 위로 띄워 끌게 한다 (손가락에 가려지지 않게). 손가락을 움직인 만큼 핀이 따라간다
+  if(TOUCH&&!pin.shape){ G.ny=Math.max(0,G.ny-LIFT/(V.ph*V.k)); pin.ny=G.ny; G.lift=true; }
   if(navigator.vibrate) try{navigator.vibrate(20);}catch(_){}
-  const h=$("#hint"); h.textContent=temp?"끌어서 위치를 맞추고 손가락을 떼세요":`${pinLabel(pin)} 핀 · 끌어서 옮기고 손가락을 떼세요`; h.hidden=false;
+  const h=$("#hint"); h.textContent=(temp?"끌어서 위치를 맞추고 손가락을 떼세요":`${pinLabel(pin)} 핀 · 끌어서 옮기고 손가락을 떼세요`)+(G.lift?" · 노란 점이 찍히는 자리":""); h.hidden=false;
   drawPins();
 }
 function dragTo(p){
