@@ -767,6 +767,17 @@ body.lbOn #setDlg::after,body.lbOn #pwDlg::after{top:calc(env(safe-area-inset-to
 #pinSheet .prow #pText{min-height:76px}
 #pinSheet .prow #pDoneText{min-height:60px}
 #listSheet .lq{margin:0 0 8px}
+#expBody .xpk{width:100%;margin:2px 0 6px;font-size:14px}
+#expBody .xpl{border:1px solid var(--line);border-radius:14px;padding:6px 10px;max-height:46vh;overflow:auto;background:var(--card)}
+#expBody .xpa{display:flex;gap:8px;justify-content:flex-end;padding:4px 0 6px}
+#expBody .xpa button{padding:6px 12px;border-radius:999px;background:var(--chip);font-weight:700;font-size:13px;width:auto;margin:0}
+#expBody .xpi{display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--line);cursor:pointer;opacity:.45}
+#expBody .xpi.on{opacity:1}
+#expBody .xpi .ck{flex:none;width:22px;height:22px;border-radius:7px;border:2px solid #B9BEC4;background:#fff;position:relative}
+#expBody .xpi.on .ck{background:var(--accent,#E31937);border-color:var(--accent,#E31937)}
+#expBody .xpi.on .ck::after{content:"";position:absolute;left:6px;top:2px;width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+#expBody .xpi .badge{flex:none}
+#expBody .xpi .xt{font-size:13.5px;line-height:1.35;min-width:0;overflow:hidden;text-overflow:ellipsis}
 #listSheet .lq .inp{width:100%;padding:9px 12px;font-size:15px}
 #pinSheet .prow .seg.team{flex-wrap:wrap;gap:6px;background:none!important;box-shadow:none!important;padding:0;border-radius:0}
 #pinSheet .prow .seg.team button.on{background:var(--tc)!important;color:#fff!important}
@@ -848,7 +859,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 #lBar{flex:none;border-top:1px solid var(--line);background:var(--card,#fff);padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px))}
 #lBar .lbtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:14px}
 #lBar .lbtop button{border:0;background:none;color:#E31937;font-weight:700;font-size:14px}
-#lBar .lbbtn{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+#lBar .lbbtn{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 #lBar .lbbtn button{border:1px solid var(--line);border-radius:12px;background:var(--soft,#F3F4F2);font-weight:700;font-size:14px;padding:11px 0;color:var(--ink,#1E2226)}
 #lBar .lbbtn button.del{color:#E31937}
 #lBar .lbbtn button:disabled{opacity:.4}
@@ -1004,7 +1015,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
     <div id="lItems" style="margin-top:6px"></div>
   </div>
   <div id="lBar" hidden><div class="lbtop"><b id="lCnt">0개 선택</b><button id="lAll">전체 선택</button></div>
-    <div class="lbbtn"><button data-a="date">날짜</button><button data-a="team">팀</button><button data-a="vw">업체·공종</button><button data-a="del" class="del">삭제</button></div></div>
+    <div class="lbbtn"><button data-a="date">날짜</button><button data-a="team">팀</button><button data-a="vw">업체·공종</button><button data-a="exp">사진대지</button><button data-a="del" class="del">삭제</button></div></div>
 </div>
 
 <!-- 업체·공종 필터 -->
@@ -1174,7 +1185,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.18";
+const APP_VER = "4.19";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -3419,6 +3430,7 @@ async function bulkDone(msg){ renumber(V.pins); lSel=null; sdClose(); drawPins()
 $("#lBar").addEventListener("click",async e=>{
   const b=e.target.closest("[data-a]"); if(!b||!lSel||!lSel.size) return;
   const ps=selPins(), n=ps.length; if(!n) return;
+  if(b.dataset.a==="exp"){ const ids=new Set([...lSel]); lSel=null; renderList(); closeSheets(); setTimeout(()=>showExport(V.drawing,V.pins,false,ids),250); return; }   // 4.19 고른 핀만 사진대지로
   const a=b.dataset.a, d0=new Date(ps[0].created||Date.now()), ymd=x=>`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;
   if(a==="del"){
     if(!confirm(`고른 핀 ${n}개를 삭제할까요? 사진과 댓글도 함께 지워져요.`)) return;
@@ -3823,7 +3835,7 @@ async function showPlainExport(drawing,shown){
 const TMPLS=[["internal","내부 관리 현황","사진대지"],["vendor","하자조치요청서","조치요청서"],["crack","균열관리사진대지","균열관리사진대지"]];
 const TEAM_TMPL={공사:"vendor",품질:"crack"};
 const crkOf=l=>{ const c=l.filter(p=>workOf(p)==="균열"); return c.length?c:l; };   // 균열 핀만 (균열 핀이 없으면 고른 핀 그대로)
-async function showExport(drawing,allPins,fromHome){
+async function showExport(drawing,allPins,fromHome,only){   // 4.19 only: 핀 목록에서 고른 핀 id들 (그 핀만 넣음)
   const body=$("#expBody");
   openSheet("#expSheet");
   allPins=allPins.filter(p=>p.id!=="temp"&&!p.deleted);
@@ -3834,6 +3846,9 @@ async function showExport(drawing,allPins,fromHome){
   const [evs]=vfVals(allPins), EV={v:!fromHome&&VF.v?new Set(VF.v):null,w:!fromHome&&VF.w?new Set(VF.w):null};
   let ews=[]; const scopeW=()=>{ ews=vfVals(allPins.filter(p=>!EV.v||EV.v.has(vendorOf(p))))[1]; if(EV.w){ [...EV.w].forEach(x=>{ if(!ews.includes(x)) EV.w.delete(x); }); if(!EV.w.size) EV.w=null; } };   // 공종은 고른 업체의 공종만
   scopeW();
+  // 4.19 원하는 핀만: 뺀 핀 id (처음엔 다 넣음, 핀 목록에서 골라 왔으면 고른 핀만)
+  const excl=new Set(only?allPins.filter(p=>!only.has(p.id)).map(p=>p.id):[]); let pickOpen=!!only;
+  if(only){ TEAMS.forEach(t=>sel.add(t[0])); sel.add(""); EV.v=null; EV.w=null; scopeW(); }
   // 기간: 핀을 등록한 날짜로 거르기
   const day0=t=>{ const d=new Date(t); d.setHours(0,0,0,0); return d.getTime(); }, ymd=t=>{ const d=new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
   let per="all", pFrom=ymd(Math.min(...allPins.map(p=>p.created||Date.now()))), pTo=ymd(Date.now());
@@ -3851,7 +3866,7 @@ async function showExport(drawing,allPins,fromHome){
   let tmpl="internal"; try{ const t=localStorage.getItem("expTmpl"); if(TMPLS.some(x=>x[0]===t)) tmpl=t; }catch(e){}
   { const ts=[...sel].filter(Boolean); if(ts.length===1&&TEAM_TMPL[ts[0]]&&!fromHome) tmpl=TEAM_TMPL[ts[0]]; }   // 한 팀만 보고 있으면 그 팀 서식
   // 3.76 조치 상태: 하자조치요청서는 처음부터 '미조치만' (조치완료 핀은 빼고 낸다)
-  let st=tmpl==="vendor"?"open":"all"; const stPass=p=>st==="all"||(st==="open"?isOpen(p):isDone(p));
+  let st=tmpl==="vendor"&&!only?"open":"all"; const stPass=p=>st==="all"||(st==="open"?isOpen(p):isDone(p));
   // 3.83 균열관리: 원본 엑셀 양식(대장·평면도·사진대지)으로 내기
   let fmt="xlsx", cWho="", cChk=""; try{ fmt=localStorage.getItem("crkFmt")==="pdf"?"pdf":"xlsx"; cWho=localStorage.getItem("crkWho")||myName()||""; cChk=localStorage.getItem("crkChk")||""; }catch(e){ cWho=myName()||""; }
   const XL=()=>tmpl==="crack"&&fmt==="xlsx", CK=()=>tmpl==="crack";   // 3.92 균열관리는 PDF도 같은 엑셀 양식 그대로
@@ -3859,7 +3874,8 @@ async function showExport(drawing,allPins,fromHome){
   let selSave=null; const crkMode=on=>{ if(on&&!selSave){ selSave=new Set(sel); sel.clear(); sel.add("품질"); st="all"; EV.v=null; } else if(!on&&selSave){ sel.clear(); selSave.forEach(x=>sel.add(x)); selSave=null; } };
   crkMode(tmpl==="crack");
   const pick=()=>new Promise(res=>{
-    const draw=()=>{ const l=allPins.filter(p=>sel.has(p.team||"")&&evPass(p)&&inPer(p)&&stPass(p)), n=l.length, blocks=l.reduce((a,p)=>a+(allPh?photoRows(p):1),0);
+    const draw=()=>{ const l0=allPins.filter(p=>sel.has(p.team||"")&&evPass(p)&&inPer(p)&&stPass(p)).sort(pinCmp), l=l0.filter(p=>!excl.has(p.id)), n=l.length, blocks=l.reduce((a,p)=>a+(allPh?photoRows(p):1),0);
+      const nOut=l0.length-n;
       body.innerHTML=`<div class="lbl">사진대지 양식</div>
         <div class="tmgrid" id="expTm">${TMPLS.map(([v,t])=>`<button data-v="${v}" class="${tmpl===v?"on":""}">${t}${Object.keys(TEAM_TMPL).find(k=>TEAM_TMPL[k]===v)?`<small>${Object.keys(TEAM_TMPL).find(k=>TEAM_TMPL[k]===v)}팀</small>`:""}</button>`).join("")}</div>
         <p style="font-size:13px;color:var(--sub);margin-top:6px">${tmpl==="crack"?"「균열관리사진대지」: 현장 「콘크리트 구조물 균열관리 현황」 양식(균열관리대장·평면도·사진대지)으로 냅니다. 엑셀과 PDF가 같은 모양이에요.":tmpl==="patrol"?"「현장순회점검 보고서」: 맨 앞에 점검 개요·결재란·지적사항 표, 핀마다 지적 사진 | 조치 사진과 지적 내용·조치 결과.":tmpl==="vendor"?"「하자 조치 요청서」: 업체별로 쪽을 나누고, 조치 전 사진만 넣어요(조치 후 칸 없음). 업체 이름만 적고 공종·팀·등록한 사람·등록 날짜는 빼요.":"맨 앞에 전체·팀별·업체별·공종별 미조치/완료 개수와 조치율, 핀 목록 표를 넣고 그 뒤에 사진대지가 나와요."}</p>
@@ -3872,6 +3888,9 @@ async function showExport(drawing,allPins,fromHome){
         <div class="lbl">기간 <small style="font-weight:500;color:var(--sub)">· 핀을 찍은 날짜</small></div>
         <div class="seg" id="expPer">${[["all","전체"],["today","오늘"],["week","최근 7일"],["month","이번 달"],["custom","직접 입력"]].map(([v,t])=>`<button data-v="${v}" class="${per===v?"on":""}">${t}</button>`).join("")}</div>
         ${per==="custom"?`<div class="perrow"><input type="date" class="inp" id="expFrom" value="${pFrom}"><span>~</span><input type="date" class="inp" id="expTo" value="${pTo}"></div>`:""}
+        <div class="lbl">넣을 핀 하나씩 고르기 <small style="font-weight:500;color:var(--sub)">· 위 조건에 맞는 핀 ${l0.length}개 중 ${n}개 넣음</small></div>
+        <button class="sec xpk" id="expPickT">${pickOpen?"▴ 접기":nOut?`▾ ${nOut}개 뺌 · 다시 고르기`:"▾ 핀 고르기 (지금은 모두 넣음)"}</button>
+        ${pickOpen?`<div class="xpl" id="expPick"><div class="xpa"><button data-x="all">모두 넣기</button><button data-x="none">모두 빼기</button></div>${l0.map(p=>`<label class="xpi${excl.has(p.id)?"":" on"}" data-id="${p.id}"><i class="ck"></i><span class="badge${p.status==="done"?" done":""}" style="${isMemo(p)?`background:#fff;color:${teamColor(p.team)};box-shadow:inset 0 0 0 2.5px ${teamColor(p.team)}`:`background:${teamColor(p.team)}`}">${pinLabel(p)}</span><span class="xt"><b>${esc(vendorOf(p)||"미분류")}${workOf(p)?" · "+esc(workOf(p)):""}</b><br>${esc(p.text||"(내용 없음)")}</span></label>`).join("")||'<p style="color:var(--sub)">조건에 맞는 핀이 없어요</p>'}</div>`:""}
         ${tmpl==="crack"?`<div class="lbl">파일 형식</div><div class="seg" id="expFmt"><button data-v="xlsx" class="${fmt==="xlsx"?"on":""}">엑셀 (원본 양식)</button><button data-v="pdf" class="${fmt==="pdf"?"on":""}">PDF</button></div>`:""}
         ${CK()?`<p style="font-size:13px;color:var(--sub);margin-top:6px">「콘크리트 구조물 균열관리 현황」 ${XL()?"엑셀":"PDF도 엑셀과 같은"} 양식 그대로 균열관리대장·평면도·사진대지(한 장에 균열 5개)를 채우고, 핀 사진 전부를 같은 사진대지 양식에 5장씩 넣은 사진장부도 붙입니다. 품질팀 균열 핀이 모두 들어가요.</p>
         <div class="crkg" style="margin-top:6px"><label>조사자<input class="inp" id="expWho" value="${esc(cWho)}" autocomplete="off"></label><label>확인자<input class="inp" id="expChk" value="${esc(cChk)}" autocomplete="off"></label></div>`:`<div class="lbl">사진대지에 넣을 사진</div>
@@ -3890,6 +3909,10 @@ async function showExport(drawing,allPins,fromHome){
       if($("#expWho")) $("#expWho").oninput=$("#expChk").oninput=keep;
       if($("#expPh")) $("#expPh").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; allPh=b.dataset.v==="all"; try{localStorage.setItem("expAllPhotos",allPh?"1":"0");}catch(_){} draw(); };
       $("#expTm").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; if(tmpl!==b.dataset.v) st=b.dataset.v==="vendor"?"open":"all"; tmpl=b.dataset.v; crkMode(tmpl==="crack"); if(tmpl==="crack"&&qOnly()){ EV.v=null; } try{localStorage.setItem("expTmpl",tmpl);}catch(_){} draw(); };
+      $("#expPickT").onclick=()=>{ pickOpen=!pickOpen; draw(); };
+      if($("#expPick")) $("#expPick").onclick=e=>{ e.preventDefault(); const x=e.target.closest("[data-x]");
+        if(x){ l0.forEach(p=>x.dataset.x==="all"?excl.delete(p.id):excl.add(p.id)); } else { const it=e.target.closest(".xpi"); if(!it) return; excl.has(it.dataset.id)?excl.delete(it.dataset.id):excl.add(it.dataset.id); }
+        const sc=$("#expSheet .sb")?$("#expSheet .sb").scrollTop:0; draw(); if($("#expSheet .sb")) $("#expSheet .sb").scrollTop=sc; };
       if($("#expPv")) $("#expPv").onclick=()=>res("pv");
       $("#expGo").onclick=()=>res("go"); };
     draw(); });
@@ -3907,8 +3930,8 @@ async function showExport(drawing,allPins,fromHome){
       const act=await pick();
       try{
       if($("#expSheet").hidden) return;   // 창을 닫았으면 그만
-      const key=(CK()?"ck|"+fmt+"|"+cWho+"|"+cChk+"|":"")+[...sel].sort().join(",")+"|"+allPh+"|"+tmpl+"|"+[...(EV.v||[])].join(",")+"|"+[...(EV.w||[])].join(",")+"|"+range().join(",")+"|"+st;
-      pinList=allPins.filter(p=>sel.has(p.team||"")&&evPass(p)&&inPer(p)&&stPass(p));
+      const key=(CK()?"ck|"+fmt+"|"+cWho+"|"+cChk+"|":"")+[...sel].sort().join(",")+"|"+allPh+"|"+tmpl+"|"+[...(EV.v||[])].join(",")+"|"+[...(EV.w||[])].join(",")+"|"+range().join(",")+"|"+st+"|"+[...excl].sort().join(",");
+      pinList=allPins.filter(p=>sel.has(p.team||"")&&evPass(p)&&inPer(p)&&stPass(p)&&!excl.has(p.id));
       teamsTxt=TEAMS.filter(t=>sel.has(t[0])).map(t=>t[1]).join("·")||"팀 없음";
       if(CK()){ pinList=crkOf(pinList);
         if(!bytes||bytes.key!==key){
