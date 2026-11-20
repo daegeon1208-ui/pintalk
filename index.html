@@ -1210,7 +1210,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.23";
+const APP_VER = "4.24";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -2128,7 +2128,8 @@ async function syncDrawings(){
 /* 1) 보내기: 고친 핀 */
 let pushLock=Promise.resolve();
 function pushDirty(id){ const r=pushLock.then(()=>pushDirty_(id)); pushLock=r.catch(()=>{}); return r; }
-let photoAhead=true;   // 서버가 사진 먼저 저장(savePhotos)을 알면 true (3.79)
+let photoAhead=true, pinBatch=true;   // pinBatch: 서버가 savePins(여러 핀 한 번에)를 알면 true (4.24)
+let _pa=0;   // 서버가 사진 먼저 저장(savePhotos)을 알면 true (3.79)
 async function pushDirty_(drawingId){
     const dirty=(await pinsOf(drawingId)).filter(p=>p.dirty);
     if(dirty.length) setSync("wait",`핀 ${dirty.length}개 보내는 중`);
@@ -2138,8 +2139,7 @@ async function pushDirty_(drawingId){
     const prog=()=>{ if(!many) return; const pc=Math.min(100,Math.round(wd/W*100)); toast(`핀 올리는 중 ${pc}% (${k}/${dirty.length}개) · 다 올라갈 때까지 핀톡을 켜 두세요`,120000); setSync("wait",`보내는 중 ${pc}%`); };
     prog();
     // 핀 하나 보내기: 사진은 먼저 드라이브에 저장(서버가 잠그지 않아 동시에 됨)하고, 핀 자료는 사진 id만 담아 짧게 보낸다
-    const one=async p0=>{
-      if(p0.deleted){ await api({action:"deletePin",id:p0.id,drawingId:p0.drawingId}); await dbDel("pins",p0.id); return; }
+    const upPhotos=async p0=>{
       const all=[...(p0.photos||[]),...(p0.donePhotos||[])]; all.forEach(x=>{ if(!x.k) x.k=uid(); });
       const todo=all.filter(x=>!x.id&&x.data);
       if(photoAhead&&todo.length){
@@ -2151,22 +2151,52 @@ async function pushDirty_(drawingId){
           if(cur){ [...(cur.photos||[]),...(cur.donePhotos||[])].forEach(x=>{ const t=todo.find(y=>y.k===x.k); if(t&&t.id) x.id=t.id; }); await dbPut("pins",cur); }
         }catch(e){ if(/알 수 없는 요청/.test(e.message)) photoAhead=false; else throw e; }   // 예전 서버면 예전처럼 핀과 함께 보낸다
       }
-      const photos={}, out=l=>(l||[]).map(x=>{ if(!x.id&&x.data) photos[x.k]=bufToB64(x.data); return {k:x.k,id:x.id||null,w:x.w,h:x.h,rep:x.rep?true:undefined,at:x.at||undefined,lines:x.lines&&x.lines.length?x.lines:undefined}; });
-      const pin={...p0,photos:out(p0.photos),donePhotos:out(p0.donePhotos)};
-      delete pin.dirty; delete pin.serverUpdated;
-      const j=await api({action:"savePin",item:pin,photos});
+    };
+    const pack=(p0,photos)=>{ const out=l=>(l||[]).map(x=>{ if(!x.id&&x.data&&photos) photos[x.k]=bufToB64(x.data); return {k:x.k,id:x.id||null,w:x.w,h:x.h,rep:x.rep?true:undefined,at:x.at||undefined,lines:x.lines&&x.lines.length?x.lines:undefined}; });
+      const pin={...p0,photos:out(p0.photos),donePhotos:out(p0.donePhotos)}; delete pin.dirty; delete pin.serverUpdated; return pin; };
+    const after=async(p0,sp)=>{   // 서버가 돌려준 핀으로 휴대폰 쪽 정리
       const cur=V.pins.find(q=>q.id===p0.id)||await dbGet("pins",p0.id); if(!cur) return;
-      if(j.pin.deleted){ V.pins=V.pins.filter(q=>q.id!==cur.id); await dbDel("pins",cur.id); toast(`${pinLabel(cur)} 핀은 다른 사람이 삭제했습니다`); return; }
-      cur.serverUpdated=j.pin.updated;   // 번호는 찍은 날짜 순서로 앱에서 매긴다 (3.76)
-      if(cur.updated===p0.updated){ cur.by=j.pin.by; cur.status=j.pin.status; cur.doneAt=j.pin.doneAt; cur.doneBy=j.pin.doneBy||""; }   // 만든 사람·완료한 사람은 서버 기록을 따른다
-      for(const sp of [...(j.pin.photos||[]),...(j.pin.donePhotos||[])]){ const lp=[...cur.photos,...(cur.donePhotos||[])].find(x=>x.k===sp.k); if(lp) lp.id=sp.id; }
+      if(sp.deleted){ V.pins=V.pins.filter(q=>q.id!==cur.id); await dbDel("pins",cur.id); toast(`${pinLabel(cur)} 핀은 다른 사람이 삭제했습니다`); return; }
+      cur.serverUpdated=sp.updated;   // 번호는 찍은 날짜 순서로 앱에서 매긴다 (3.76)
+      if(cur.updated===p0.updated){ cur.by=sp.by; cur.status=sp.status; cur.doneAt=sp.doneAt; cur.doneBy=sp.doneBy||""; }   // 만든 사람·완료한 사람은 서버 기록을 따른다
+      for(const x of [...(sp.photos||[]),...(sp.donePhotos||[])]){ const lp=[...cur.photos,...(cur.donePhotos||[])].find(y=>y.k===x.k); if(lp) lp.id=x.id; }
       if(cur.updated===p0.updated) cur.dirty=false;
       await dbPut("pins",cur);
     };
-    // 3개씩 동시에 보낸다. 하나라도 실패하면 새로 시작하지 않고, 하던 것만 마친 뒤 멈춘다
+    const one=async p0=>{
+      if(p0.deleted){ await api({action:"deletePin",id:p0.id,drawingId:p0.drawingId}); await dbDel("pins",p0.id); return; }
+      await upPhotos(p0);
+      const photos={}, pin=pack(p0,photos);
+      const j=await api({action:"savePin",item:pin,photos});
+      await after(p0,j.pin);
+    };
+    // 4.24 빠르게: 사진을 먼저 3개씩 동시에 올리고, 핀 자료는 여러 개를 한 번에(savePins) 보낸다. 예전 서버면 하나씩
     let next=0, err=null, done=0;
-    const worker=async()=>{ while(!err&&next<dirty.length){ const p0=dirty[next++]; try{ await one(p0); done++; k=done; wd+=wOf(p0); prog(); }catch(e){ err=err||e; } } };
-    await Promise.all([worker(),worker(),worker()]);
+    const tick=p0=>{ done++; k=done; wd+=wOf(p0); prog(); };
+    const live=dirty.filter(p=>!p.deleted), dels=dirty.filter(p=>p.deleted);
+    let batchOk=pinBatch&&live.length>1&&photoAhead;
+    if(batchOk){
+      const photoW=async()=>{ while(!err&&next<live.length){ const p0=live[next++]; try{ await upPhotos(p0); wd+=wOf(p0)-1; prog(); }catch(e){ err=err||e; } } };
+      await Promise.all([photoW(),photoW(),photoW()]);
+      if(!photoAhead) batchOk=false;
+      for(let i=0;!err&&batchOk&&i<live.length;i+=15){
+        const grp=live.slice(i,i+15);
+        try{
+          const items=[]; for(const p0 of grp){ const fresh=await dbGet("pins",p0.id)||p0; [...(fresh.photos||[]),...(fresh.donePhotos||[])].forEach(x=>{ const o=[...(p0.photos||[]),...(p0.donePhotos||[])].find(y=>y.k===x.k); if(o&&x.id) o.id=x.id; }); items.push(pack(p0,null)); }
+          const j=await api({action:"savePins",items});
+          for(const r of j.pins||[]){ const p0=grp.find(q=>q.id===r.id); if(!p0) continue; if(r.error){ err=err||new Error(r.error); continue; } await after(p0,r.pin); done++; k=done; wd+=1; prog(); }
+        }catch(e){ if(/알 수 없는 요청/.test(e.message)){ pinBatch=false; batchOk=false; } else err=err||e; }
+      }
+      next=0;
+      let rest=dels;   // 지운 핀, 그리고 묶음이 안 되면 아직 못 보낸 핀을 하나씩
+      if(!batchOk&&!err){ rest=[]; for(const p of dirty){ if(p.deleted){ rest.push(p); continue; } const c=await dbGet("pins",p.id); if(c&&c.dirty) rest.push(c); } }
+      const restW=async()=>{ while(!err&&next<rest.length){ const p0=rest[next++]; try{ await one(p0); done++; k=done; prog(); }catch(e){ err=err||e; } } };
+      await Promise.all([restW(),restW(),restW()]);
+    } else {
+      // 3개씩 동시에 보낸다. 하나라도 실패하면 새로 시작하지 않고, 하던 것만 마친 뒤 멈춘다
+      const worker=async()=>{ while(!err&&next<dirty.length){ const p0=dirty[next++]; try{ await one(p0); tick(p0); }catch(e){ err=err||e; } } };
+      await Promise.all([worker(),worker(),worker()]);
+    }
     if(err){ if(many) toast(`핀 올리다 멈췄습니다 (${Math.round(wd/W*100)}%, ${done}/${dirty.length}개) · 다시 연결되면 이어서 올립니다`,5000); throw err; }
     if(many) toast(`100% · 핀 ${dirty.length}개를 공유 서버에 다 올렸습니다`,3000);
 }
@@ -3505,7 +3535,8 @@ $("#lAll").addEventListener("click",()=>{ if(!lSel) return;
   const ok=[...$("#lItems").querySelectorAll(".li")].map(el=>V.pins.find(q=>q.id===el.dataset.id)).filter(p=>p&&canEdit(p));
   if(ok.length&&lSel.size===ok.length) lSel.clear(); else ok.forEach(p=>lSel.add(p.id)); renderList(); });
 const selPins=()=>V.pins.filter(p=>lSel&&lSel.has(p.id)&&!p.deleted&&canEdit(p));
-async function bulkDone(msg){ renumber(V.pins); lSel=null; sdClose(); drawPins(); renderTeamBar(); renderList(); toast(msg,3000); }
+async function bulkDone(msg){ renumber(V.pins); sdClose();   // 4.24 바꾼 뒤에도 선택은 그대로 (이어서 다른 것도 바꿀 수 있게)
+  drawPins(); renderTeamBar(); renderList(); toast(msg,3000); }
 $("#lBar").addEventListener("click",async e=>{
   const b=e.target.closest("[data-a]"); if(!b||!lSel||!lSel.size) return;
   const ps=selPins(), n=ps.length; if(!n) return;
@@ -4136,7 +4167,11 @@ async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per)
   const siteHead=pg=>{ if(!SITE) return; const st=wrap(SITE,8.5,W-2*M)[0], sw=kor.widthOfTextAtSize(st,8.5); pg.drawText(st,{x:(W-sw)/2,y:H-M+8,size:8.5,font:kor,color:SUB}); };   // 맨 위 현장 이름
   const pins=[...pinList].sort(VEN?(a,b)=>tradeOf(a).localeCompare(tradeOf(b),"ko")||pinCmp(a,b):pinCmp);
   const cOf=colorsOf(pins), pc=p=>{const [r,g,b]=hexRgb(cOf(p));return rgb(r/255,g/255,b/255);};
-  if(tmpl!=="plain") for(const p of pins){ const all=[...p.photos,...(p.donePhotos||[])]; if(all.some(x=>!x.data)) progress&&progress(`${PL(p)} 핀 사진 받는 중…`); for(const x of all) await ensurePhoto(p,x); }
+  if(tmpl!=="plain"){   // 4.24 받을 사진이 있는 핀을 4개씩 동시에 받는다 (한 핀 안의 사진은 차례로)
+    const need=pins.filter(p=>[...p.photos,...(p.donePhotos||[])].some(x=>!x.data&&x.id)); let ni=0, nd=0;
+    const w=async()=>{ while(ni<need.length){ const p=need[ni++]; for(const x of [...p.photos,...(p.donePhotos||[])]) await ensurePhoto(p,x); nd++; progress&&progress(`사진 받는 중… (${nd}/${need.length}개 핀)`); } };
+    if(need.length){ progress&&progress(`사진 받는 중… (0/${need.length}개 핀)`); await Promise.all([w(),w(),w(),w()]); }
+  }
 
   // PDF 좌표가 없는 핀(테스트 도면 등)은 화면 비율(nx,ny)로 계산
   for(const p of pins){ if(Number.isFinite(p.px)&&Number.isFinite(p.py)) continue; const pg=doc.getPage(p.page-1); if(!pg) continue;
