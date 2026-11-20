@@ -1146,7 +1146,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
     <div id="admBox" hidden>
       <div class="lbl">관리자</div>
       <button class="sec" id="siteBtn">현장 이름 바꾸기</button>
-      <button class="sec" id="vendBtn">현장 업체 목록 관리</button>
+      
       <button class="sec" id="userBtn">사용자 관리</button>
       <button class="sec" id="pushAdmBtn">휴대폰 알림 서버 설정</button>
       <button id="tourAllBtn" class="sec">모든 사용자에게 따라하기 알림 보내기</button>
@@ -1201,7 +1201,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.21";
+const APP_VER = "4.22";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -1377,7 +1377,7 @@ function openMovePins(){
 }
 $("#lMove").addEventListener("click",openMovePins);
 /* 설정 팝업 */
-const SD_LB={"저장 공간":"E2-1","현장 이름":"E2-2","현장 업체 목록":"E2-3","사용자 관리":"E2-4","화면 분류표":"E2-5","핀 다른 쪽으로 옮기기":"C3-1","핀 호출":"C2-1","문의·개선사항":"E2-6","받은 문의·개선사항":"E2-7"};
+const SD_LB={"저장 공간":"E2-1","현장 이름":"E2-2","업체 목록":"E2-3","사용자 관리":"E2-4","화면 분류표":"E2-5","핀 다른 쪽으로 옮기기":"C3-1","핀 호출":"C2-1","문의·개선사항":"E2-6","받은 문의·개선사항":"E2-7"};
 function sdOpen(title,html){ $("#setDlg").dataset.lb=(SD_LB[title]||"E2")+" "+title; $("#sdTitle").textContent=title; $("#sdBody").innerHTML=html; $("#setDlg").hidden=false; }
 function sdClose(){ $("#setDlg").hidden=true; $("#sdBody").innerHTML=""; }
 $("#sdX").addEventListener("click",sdClose);
@@ -1469,12 +1469,13 @@ $("#siteBtn").addEventListener("click",()=>{
     catch(e){ toast(/알 수 없는 요청/.test(e.message)?"서버가 아직 예전 코드예요. 몇 분 뒤에 다시 해 주세요.":"저장하지 못했습니다: "+e.message,4000); b.disabled=false; } };
 });
 /* 관리자: 현장 업체 목록 (업체 이름 + 기본 공종). 4.21 팀별로 나눠 등록·삭제 (품질팀은 업체 대신 종류를 써서 뺌) */
-$("#vendBtn").addEventListener("click",()=>{
+/* 4.22 업체 목록은 도면마다 따로 (d.vendors, 없으면 기본 목록 VENDORS) */
+function vendorEditor(d,after){
   const VT=TEAMS.filter(t=>t[0]!=="품질"), ALL=VT.map(t=>t[0]);
-  let rows=VENDORS.map(v=>({n:v[0],w:v[1],t:vTeams(v)?vTeams(v).filter(x=>ALL.includes(x)):[...ALL]})), ask=null, tab=ALL[0];
+  let rows=dVendors(d).map(v=>({n:v[0],w:v[1],t:vTeams(v)?vTeams(v).filter(x=>ALL.includes(x)):[...ALL]})), ask=null, tab=ALL[0];
   try{ const x=localStorage.getItem("vendTab"); if(x==="*"||ALL.includes(x)) tab=x; }catch(e){}
   const inTab=r=>tab==="*"||r.t.includes(tab);
-  const draw=()=>{ $("#sdBody").innerHTML=`<p class="sdnote">핀 창의 업체 버튼에 나오는 목록이에요. 팀마다 따로 등록하고, 그 팀 핀에는 그 팀 업체만 나와요. 공종은 업체를 고를 때 자동으로 채워져요. 모든 사람에게 같이 적용돼요.</p>
+  const draw=()=>{ $("#sdBody").innerHTML=`<p class="sdnote">「${esc(d.name)}」 핀 창의 업체 버튼에 나오는 목록이에요. 이 도면에만 적용되고, 팀마다 따로 등록해서 그 팀 핀에는 그 팀 업체만 나와요. 공종은 업체를 고를 때 자동으로 채워져요.${cloudOn()&&d.cloud?" 이 도면을 함께 쓰는 사람 모두에게 같이 적용돼요.":""}</p>
     <div class="seg vtab" id="vTab">${VT.map(([k,nm])=>`<button data-v="${k}" class="${tab===k?"on":""}">${nm.replace("팀","")}</button>`).join("")}<button data-v="*" class="${tab==="*"?"on":""}">전체</button></div>
     ${rows.map((r,i)=>!inTab(r)?"":`<div class="vrow"><input class="inp" data-i="${i}" data-k="n" placeholder="업체 이름" value="${esc(r.n)}"><input class="inp" data-i="${i}" data-k="w" placeholder="공종" value="${esc(r.w)}" style="max-width:34%"><button data-up="${i}" aria-label="위로">↑</button><button data-rm="${i}" aria-label="삭제">✕</button></div>
       <div class="vtm">${VT.map(([k,nm,c])=>`<button data-tg="${i}" data-t="${k}" class="${r.t.includes(k)?"on":""}" style="--c:${c}">${nm.replace("팀","")}</button>`).join("")}</div>
@@ -1486,7 +1487,7 @@ $("#vendBtn").addEventListener("click",()=>{
       if(t.dataset.v&&t.closest("#vTab")){ tab=t.dataset.v; ask=null; try{localStorage.setItem("vendTab",tab);}catch(_){} draw(); return; }
       if(t.dataset.tg!==undefined){ const r=rows[+t.dataset.tg], k=t.dataset.t; if(r.t.includes(k)){ if(r.t.length>1) r.t=r.t.filter(x=>x!==k); else toast("팀을 하나는 골라 주세요",1800); } else r.t=ALL.filter(x=>r.t.includes(x)||x===k); draw(); return; }
       if(t.dataset.rm!==undefined){ const i=+t.dataset.rm, name=rows[i].n.trim(), team=tab==="*"?"":tab;   // 그 업체로 된 핀이 있으면 한 번 묻는다
-        const n=name?(await dbAll("pins")).filter(p=>!p.deleted&&vendorOf(p)===name&&(!team||(p.team||"")===team)).length:0;
+        const n=name?(await pinsOf(d.id)).filter(p=>!p.deleted&&vendorOf(p)===name&&(!team||(p.team||"")===team)).length:0;
         if(n){ ask={i,name,n,team}; draw(); return; } ask=null; drop(i); draw(); }
       else if(t.dataset.ask){ if(t.dataset.ask==="yes"&&ask){ drop(ask.i); toast(`「${ask.name}」을(를) 삭제했어요. 저장을 눌러야 적용돼요`,2600); } ask=null; draw(); }
       else if(t.dataset.up!==undefined){ const i=+t.dataset.up; let j=i-1; while(j>=0&&!inTab(rows[j])) j--; if(j>=0){ [rows[j],rows[i]]=[rows[i],rows[j]]; draw(); } }
@@ -1495,11 +1496,14 @@ $("#vendBtn").addEventListener("click",()=>{
         // 같은 이름은 한 줄로 합침 (팀 목록 합치기)
         const out=[]; rows.forEach(r=>{ const n=r.n.trim(); if(!n) return; const o=out.find(x=>x[0]===n); if(o){ o[2]=ALL.filter(k=>o[2].includes(k)||r.t.includes(k)); if(!o[1]) o[1]=r.w.trim(); } else out.push([n,r.w.trim(),[...r.t]]); });
         out.forEach(o=>{ if(ALL.every(k=>o[2].includes(k))) o[2]=[]; });   // 모든 팀이면 공통
-        try{ const j=await api({action:"saveSettings",settings:{vendors:out}}); applySettings(j.settings); sdClose(); toast("업체 목록을 저장했어요",2500); }
+        try{ if(cloudOn()&&d.cloud) await api({action:"setVendors",id:d.id,vendors:out});
+          d.vendors=out; await dbPut("drawings",d); if(V.drawing&&V.drawing.id===d.id) V.drawing.vendors=out;
+          sdClose(); toast("이 도면의 업체 목록을 저장했어요",2500); if(after) after(); }
         catch(err){ toast(/알 수 없는 요청/.test(err.message)?"서버가 아직 예전 코드예요. 몇 분 뒤에 다시 해 주세요.":"저장하지 못했습니다: "+err.message,4000); t.disabled=false; } } };
   };
-  sdOpen("현장 업체 목록",""); draw();
-});
+  sdOpen("업체 목록",""); draw();
+}
+
 /* 관리자: 사용자 관리 */
 $("#userBtn").addEventListener("click",async()=>{
   sdOpen("사용자 관리","<p class='sdnote'>불러오는 중…</p>");
@@ -1691,6 +1695,7 @@ $("#dlist").addEventListener("click",async e=>{
       ["-"],
       ...(canEditD(d)?[["rename","이름 바꾸기","","edit"],
       ["pages","쪽 편집","쪽 이름 · 다른 PDF 합치기 · 빼기","pages"],
+      ["vendors","업체 목록","이 도면 핀에 고를 업체 · 팀별 등록·삭제","people"],
       ["copy","도면 복사","핀·사진까지 또는 도면만","copy"]]:[]),
       ...(d.sample?[]:d.private?[["toTeam","협업 도면으로 바꾸기","공유 서버에 올려 함께 쓰는 사람과 핀 공유","people"]]
         :[["toPrivate","개인 도면으로 바꾸기",shared?(lockMine(d)?"공유에서 내리거나 · 개인 사본 만들기":"내 휴대폰에만 개인 사본 만들기"):"공유 서버에 올리지 않고 나만 쓰기","lock"]]),
@@ -1698,7 +1703,7 @@ $("#dlist").addEventListener("click",async e=>{
       ...(canLock?[["lock",d.locked?"비밀번호 바꾸기·풀기":"비밀번호 걸기",d.locked?"🔒 걸려 있음 · 올린 사람과 관리자는 그냥 열림":"알려 준 사람만 열 수 있게","lock"]]:[]),
       ...(canEditD(d)?[["-"],
       ["delete","삭제",shared?"도면과 핀 모두 · 함께 쓰는 사람 모두에게서":"도면과 핀 모두 · 되돌릴 수 없음","trash"]]:[]),
-      ...(!canEditD(d)?[["-"],["noedit","이름 바꾸기·쪽 편집·복사·삭제",`올린 사람(${d.by||"-"})과 관리자만 할 수 있어요`,"lock"]]:[])],
+      ...(!canEditD(d)?[["-"],["noedit","이름 바꾸기·쪽 편집·업체 목록·복사·삭제",`올린 사람(${d.by||"-"})과 관리자만 할 수 있어요`,"lock"]]:[])],
       {sub:`${d.pages}쪽 · 미조치 ${mo} · 완료 ${mp.length-mo}${shared?" · 공유":""}${d.locked?" · 🔒 비밀번호":""}`});
     try{
       if(act==="noedit"){ toast(NOEDIT,3000); }
@@ -1706,6 +1711,7 @@ $("#dlist").addEventListener("click",async e=>{
       else if(act==="share"){ showExport(d,(await pinsOf(d.id)).filter(p=>!p.deleted),true); }
       else if(act==="rename"){ if(await renameDrawing(d)) renderHome(); }
       else if(act==="pages"){ editPages(d); }
+      else if(act==="vendors"){ vendorEditor(d); }
       else if(act==="copy"){ await copyDrawing(d); }
       else if(act==="lock"){ await lockMenu(d); }
       else if(act==="toTeam"){
@@ -1735,7 +1741,7 @@ $("#dlist").addEventListener("click",async e=>{
     try{
       const j=await api({action:"drawingFile",id:r.id});
       await dbPut("files",{id:r.id,data:b64ToBuf(j.data)});
-      await dbPut("drawings",{id:r.id,name:r.name,pages:r.pages,created:r.created,opened:Date.now(),cloud:true,by:r.by||"",ver:r.ver||"",pageNames:r.pageNames||[],kind:r.kind||"",locked:!!r.locked,members:r.members||[]});
+      await dbPut("drawings",{id:r.id,name:r.name,pages:r.pages,created:r.created,opened:Date.now(),cloud:true,by:r.by||"",ver:r.ver||"",pageNames:r.pageNames||[],kind:r.kind||"",locked:!!r.locked,members:r.members||[],vendors:r.vendors||undefined});
       remoteOnly=remoteOnly.filter(x=>x.id!==r.id);
       $("#toast").hidden=true; openDrawing(r.id);
     }catch(err){ toast((err.locked?"도면 비밀번호: ":"도면을 받지 못했습니다: ")+err.message,4000); }
@@ -1817,7 +1823,7 @@ async function copyDrawing(d){
   try{
     const id=uid(), now=Date.now();
     await dbPut("files",{id,data:f.data.slice(0)});
-    await dbPut("drawings",{id,name:nm.trim(),pages:d.pages,pageNames:(d.pageNames||[]).slice(),created:now,opened:now,by:myName()||"",kind:d.kind||"",private:d.private||undefined});
+    await dbPut("drawings",{id,name:nm.trim(),pages:d.pages,pageNames:(d.pageNames||[]).slice(),created:now,opened:now,by:myName()||"",kind:d.kind||"",private:d.private||undefined,vendors:Array.isArray(d.vendors)?JSON.parse(JSON.stringify(d.vendors)):undefined});
     if(how==="pins") await copyPins(d.id,id);
     $("#toast").hidden=true; toast(`「${nm.trim()}」(으)로 복사했습니다`); await renderHome();
     if(cloudOn()) syncDrawings();   // 공유 중이면 새 도면도 공유 서버에 올린다
@@ -2066,6 +2072,7 @@ async function uploadDrawing(d){
   await api({action:"uploadDrawing",drawing:{id:d.id,name:d.name,pages:d.pages,created:d.created,kind:d.kind||""},data:bufToB64(f.data),by:d.by||myName()});
   d.cloud=true; if(!d.by) d.by=myName(); await dbPut("drawings",d);
   if((d.pageNames||[]).some(Boolean)){ try{ await api({action:"setPageNames",id:d.id,names:d.pageNames}); }catch(e){} }   // 쪽 이름도 함께
+  if(Array.isArray(d.vendors)){ try{ await api({action:"setVendors",id:d.id,vendors:d.vendors}); }catch(e){} }   // 업체 목록도 함께
   for(const p of await pinsOf(d.id)){ p.dirty=true; if(!p.by)p.by=myName(); [...p.photos,...(p.donePhotos||[])].forEach(x=>{if(!x.k)x.k=uid();}); await dbPut("pins",p); }   // 이전에 찍은 핀도 함께 올린다
 }
 let homeSyncing=false;
@@ -2084,6 +2091,7 @@ async function syncDrawings(){
       if(!!r.locked!==!!l.locked){ l.locked=!!r.locked; await dbPut("drawings",l); if(V.drawing&&V.drawing.id===l.id) V.drawing.locked=l.locked; }
       if(l.name!==r.name||!l.cloud||(r.by&&l.by!==r.by)){ l.name=r.name; l.cloud=true; if(r.by) l.by=r.by; await dbPut("drawings",l); }
       if(r.pageNames&&JSON.stringify(r.pageNames)!==JSON.stringify(l.pageNames||[])){ l.pageNames=r.pageNames; await dbPut("drawings",l); if(V.drawing&&V.drawing.id===l.id){ V.drawing.pageNames=l.pageNames; updatePager(); } }
+      if("vendors" in r&&JSON.stringify(r.vendors||null)!==JSON.stringify(l.vendors||null)){ l.vendors=r.vendors||undefined; await dbPut("drawings",l); if(V.drawing&&V.drawing.id===l.id) V.drawing.vendors=l.vendors; }
       if((r.ver||"")!==(l.ver||"")){ l.ver=r.ver||""; l.pages=r.pages; l.stale=true; await dbPut("drawings",l); }   // 다른 사람이 쪽을 바꿈 → 열 때 새 PDF를 받는다
     }
     remoteOnly=live.filter(r=>!locals.some(d=>d.id===r.id));
@@ -2472,7 +2480,8 @@ let SITE="온천제2공영아파트일원 가로주택정비사업";
 let VENDORS=[["세모건설","토목"],["동우건설","골조"],["수우전기","전기"],["정진설비","설비"],["HK안전시스템","안전시설물"],["청오건설","방수"]];
 // 4.21 업체는 팀별로: [이름, 기본 공종, 팀 목록]. 팀 목록이 없거나 비면 모든 팀 공통
 const vTeams=v=>Array.isArray(v[2])&&v[2].length?v[2]:null;
-const vendorsFor=team=>VENDORS.filter(v=>!vTeams(v)||vTeams(v).includes(team||""));
+const dVendors=d=>d&&Array.isArray(d.vendors)?d.vendors:VENDORS, curV=()=>dVendors(V.drawing);
+const vendorsFor=team=>curV().filter(v=>!vTeams(v)||vTeams(v).includes(team||""));
 try{ const o=JSON.parse(localStorage.getItem("pinsSettings")||"null"); if(o){ if(typeof o.site==="string") SITE=o.site; if(Array.isArray(o.vendors)) VENDORS=o.vendors; } }catch(e){}
 let PUSH=null, PUSH_READY=false;   // 3.95 휴대폰 알림 설정(공개값)과 서버 준비 여부
 try{ const o=JSON.parse(localStorage.getItem("pinsSettings")||"null"); if(o){ PUSH=o.push||null; PUSH_READY=!!o.pushReady; } }catch(e){}
@@ -2486,7 +2495,7 @@ const setPref=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
 function splitTrade(p){
   if(p.vendor!==undefined||p.work!==undefined) return [String(p.vendor||"").trim(),String(p.work||"").trim()];
   const t=String(p.trade||"").trim(); if(!t) return ["",""];
-  const v=VENDORS.find(([n])=>t.startsWith(n)); if(v) return [v[0],t.slice(v[0].length).replace(/^[\s\-·/]+/,"").trim()];
+  const v=curV().find(([n])=>t.startsWith(n)); if(v) return [v[0],t.slice(v[0].length).replace(/^[\s\-·/]+/,"").trim()];
   const i=t.indexOf(" "); return i>0?[t.slice(0,i),t.slice(i+1).trim()]:[t,""];
 }
 const vendorOf=p=>{ const v=splitTrade(p)[0]; return v==="미분류"?"":v; }, workOf=p=>splitTrade(p)[1];
@@ -2997,7 +3006,7 @@ async function openPin(id){
   setStatusUI(p); setTeamUI(p);
   const allP=await pinsLite();
   knownVendors=allP;   // 4.21 이 도면 핀들 (같은 팀 핀에 쓴 업체를 버튼으로 보여 줌)
-  const works=[...new Set(VENDORS.map(x=>x[1]).concat(allP.map(workOf)).filter(Boolean))];
+  const works=[...new Set(curV().map(x=>x[1]).concat(allP.map(workOf)).filter(Boolean))];
   $("#workList").innerHTML=works.map(t=>`<option value="${esc(t)}">`).join("");
   vendorTyping=false; renderVendorUI(p);
   renderPhotos(p); $("#pCmIn").value=""; renderCm(true);
@@ -3124,18 +3133,20 @@ function renderVendorUI(p){
   const [v,w]=splitTrade(p), ed=canEdit(p), names=reg.concat(used), custom=v&&!names.includes(v);
   const list=custom?names.concat([v]):names;
   $("#pVendor").innerHTML=`<button class="vchip${!v&&!vendorTyping?" on":""}" data-vn="__none" ${ed?"":"disabled"}>미분류</button>`+list.map(n=>`<button class="vchip${n===v&&!vendorTyping?" on":""}" data-vn="${esc(n)}" ${ed?"":"disabled"}>${esc(n)}</button>`).join("")
-    +(ed?`<button class="vchip add${vendorTyping?" on":""}" data-vn="__input">+ 직접 입력</button>`:"");
+    +(ed?`<button class="vchip add${vendorTyping?" on":""}" data-vn="__input">+ 직접 입력</button>`:"")+(canEditD(V.drawing)?`<button class="vchip add" data-vn="__edit">⚙ 목록 편집</button>`:"");
   $("#pVendorIn").hidden=!vendorTyping; if(vendorTyping) $("#pVendorIn").value=v;
   if(document.activeElement!==$("#pWork")) $("#pWork").value=w;
 }
 $("#pVendor").addEventListener("click",e=>{
-  const b=e.target.closest("[data-vn]"), p=selPin(); if(!b||!p||!canEdit(p)) return;
+  const b=e.target.closest("[data-vn]"), p=selPin();
+  if(b&&b.dataset.vn==="__edit"){ vendorEditor(V.drawing,()=>{ const q=selPin(); if(q) renderVendorUI(q); }); return; }
+  if(!b||!p||!canEdit(p)) return;
   const [v,w]=splitTrade(p), n=b.dataset.vn;
   if(n==="__input"){ vendorTyping=!vendorTyping; renderVendorUI(p); if(vendorTyping) setTimeout(()=>$("#pVendorIn").focus(),50); return; }
   vendorTyping=false;
-  if(n==="__none"){ setVW(p,"",VENDORS.some(x=>x[0]===v&&x[1]===w)?"":w); renderVendorUI(p); return; }   // 미분류: 업체 비움(업체 기본 공종이면 함께 비움)
+  if(n==="__none"){ setVW(p,"",curV().some(x=>x[0]===v&&x[1]===w)?"":w); renderVendorUI(p); return; }   // 미분류: 업체 비움(업체 기본 공종이면 함께 비움)
   if(n===v){ setVW(p,"",w); }   // 다시 누르면 선택 해제
-  else { const pre=VENDORS.find(x=>x[0]===n), oldPre=VENDORS.find(x=>x[0]===v);
+  else { const pre=curV().find(x=>x[0]===n), oldPre=curV().find(x=>x[0]===v);
     setVW(p,n,(!w||(oldPre&&w===oldPre[1]))&&pre?pre[1]:w); }   // 공종이 비어 있으면 그 업체의 기본 공종
   renderVendorUI(p);
 });
@@ -3496,7 +3507,7 @@ $("#lBar").addEventListener("click",async e=>{
   if(a==="vw"){
     const same=f=>ps.every(p=>f(p)===f(ps[0]))?f(ps[0]):"";
     sdOpen("업체·공종 바꾸기",`<p class="sdnote">고른 핀 ${n}개에 같은 업체·공종을 넣어요. 칸을 비워 두면 그 항목은 그대로 둬요.</p>
-      <div class="bkch">${(()=>{ const ts=[...new Set(ps.map(p=>p.team||""))]; return VENDORS.filter(v=>!vTeams(v)||ts.some(t=>vTeams(v).includes(t))); })().map(([v,w])=>`<button data-v="${esc(v)}" data-w="${esc(w)}">${esc(v)}</button>`).join("")}</div>
+      <div class="bkch">${(()=>{ const ts=[...new Set(ps.map(p=>p.team||""))]; return curV().filter(v=>!vTeams(v)||ts.some(t=>vTeams(v).includes(t))); })().map(([v,w])=>`<button data-v="${esc(v)}" data-w="${esc(w)}">${esc(v)}</button>`).join("")}</div>
       <div class="lbl">업체</div><input class="inp" id="bkV" value="${esc(same(vendorOf))}" placeholder="비워 두면 그대로">
       <div class="lbl">공종</div><input class="inp" id="bkW" value="${esc(same(workOf))}" placeholder="비워 두면 그대로">
       <button class="pwbtn" id="bkGo">핀 ${n}개 바꾸기</button>`);
