@@ -1212,7 +1212,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.27";
+const APP_VER = "4.28";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -2542,6 +2542,9 @@ const vTeams=v=>Array.isArray(v[2])&&v[2].length?v[2]:null;
 const dVendors=d=>d&&Array.isArray(d.vendors)?d.vendors:VENDORS, curV=()=>dVendors(V.drawing);
 const vendorsFor=team=>curV().filter(v=>!vTeams(v)||vTeams(v).includes(team||""));
 try{ const o=JSON.parse(localStorage.getItem("pinsSettings")||"null"); if(o){ if(typeof o.site==="string") SITE=o.site; if(Array.isArray(o.vendors)) VENDORS=o.vendors; } }catch(e){}
+// 4.28 체험판은 실제 업체 대신 예시 업체만 (사용자 지정: 네모창호·세모방수·동글골조)
+const TRY_VENDORS=[["네모창호","창호",[]],["세모방수","방수",[]],["동글골조","골조",[]]];
+if(TRY){ VENDORS=TRY_VENDORS; (async()=>{ try{ if(localStorage.getItem("tryVend")==="1") return; for(const d of await dbAll("drawings")) if(d.vendors){ delete d.vendors; await dbPut("drawings",d); } localStorage.setItem("tryVend","1"); }catch(e){} })(); }
 let PUSH=null, PUSH_READY=false;   // 3.95 휴대폰 알림 설정(공개값)과 서버 준비 여부
 try{ const o=JSON.parse(localStorage.getItem("pinsSettings")||"null"); if(o){ PUSH=o.push||null; PUSH_READY=!!o.pushReady; } }catch(e){}
 function applySettings(o){ if(!o) return; if(typeof o.site==="string") SITE=o.site; if(Array.isArray(o.vendors)) VENDORS=o.vendors;
@@ -4842,7 +4845,8 @@ async function demoPhoto(team,label,i,color){
   return {k:uid(),type:"image/jpeg",data:await blob.arrayBuffer(),w:800,h:600};
 }
 async function makeDemo(){
-  const T_=[["공사",[["동우건설","골조"],["동우건설","철근"],["동우건설","거푸집"],["세모건설","토목"],["청오건설","방수"],["대한창호","창호"]],["벽체 철근 피복 부족","슬래브 거푸집 처짐 확인","타설 후 양생 상태 확인","방수층 들뜸","창호 실링 누락","전달: 내일 오전 타설 구간","도면 치수 불일치 확인 요청","개구부 위치 변경 전달","콘크리트 면 곰보","기둥 수직도 확인"]],
+  const TV_={"동우건설":"동글골조","세모건설":"동글골조","청오건설":"세모방수","HK안전시스템":"네모창호","수우전기":"네모창호","정진설비":"세모방수","대한창호":"네모창호"};
+  const T0_=[["공사",[["동우건설","골조"],["동우건설","철근"],["동우건설","거푸집"],["세모건설","토목"],["청오건설","방수"],["대한창호","창호"]],["벽체 철근 피복 부족","슬래브 거푸집 처짐 확인","타설 후 양생 상태 확인","방수층 들뜸","창호 실링 누락","전달: 내일 오전 타설 구간","도면 치수 불일치 확인 요청","개구부 위치 변경 전달","콘크리트 면 곰보","기둥 수직도 확인"]],
     ["안전",[["HK안전시스템","안전시설물"],["동우건설","골조"],["세모건설","토목"]],["안전난간 미설치","개구부 덮개 고정 불량","추락방호망 처짐","통로 자재 적치","소화기 미비치","전달: 양중 작업 통제 구간","가설계단 손잡이 파손","작업발판 고정 불량","안전표지판 훼손","흙막이 상부 안전펜스 보강"]],
     ["품질",[["동우건설","골조"],["청오건설","방수"],["동우건설","철근"]],["철근 이음 길이 확인","슬래브 두께 측정","방수 시험 결과 확인","콘크리트 시험체 채취","배근 간격 불량","전달: 검측 일정 변경","거푸집 박리제 도포 확인","줄눈 시공 불량","레미콘 반입 시간 기록","균열 폭 측정"]],
     ["전기",[["수우전기","전기"],["수우전기","통신"]],["매립 배관 누락","전선관 연결 불량","분전반 위치 확인","접지선 미연결","전달: 내일 배선 작업","박스 위치 도면과 다름","가설 전기 누전 차단기 점검","통신 배관 막힘","조명 위치 변경 요청","케이블 트레이 고정 불량"]],
@@ -4853,6 +4857,7 @@ async function makeDemo(){
   await dbPut("files",{id:DEMO_ID,data:buf});
   await dbPut("drawings",{id:DEMO_ID,name:"테스트 도면 (핀 50개)",pages:1,created:now,opened:now,by:me,kind:"pdf",private:true});
   let k=0;
+  const T_=TRY?T0_.map(([t,vw,tx])=>[t,vw.map(([v,w])=>[TV_[v]||v,w]),tx]):T0_;
   for(const [team,vw,texts] of T_){
     const color=teamColor(team);
     for(let i=0;i<10;i++){ k++;
