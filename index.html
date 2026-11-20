@@ -652,6 +652,11 @@ header .cloud[data-state="err"]:not(.dot) i{background:#E31937}
 .sync{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 4px;flex:none;cursor:pointer}
 .sync b{font-size:12px;font-weight:700;color:#fff;opacity:.92;white-space:nowrap}
 .sync i{flex:none}
+/* 4.29 연결 독 1안: 연결 점과 상태 글자를 볼록한 알약 하나로 (뉴모피즘) */
+header #cloudBtn.dot,#syncTxt{display:inline-flex!important;align-items:center;gap:7px;height:32px!important;padding:0 13px 0 11px!important;border-radius:999px!important;margin-left:6px!important;background:#8E8E88!important;box-shadow:4px 4px 9px rgba(0,0,0,.28),-3px -3px 8px rgba(255,255,255,.22)!important}
+header #cloudBtn.dot span,#syncTxt b{display:inline!important;margin:0!important;font-size:12.5px!important;font-weight:800!important;letter-spacing:-.2px;opacity:1!important;color:#fff!important}
+header #cloudBtn.dot i,#syncTxt i{width:11px!important;height:11px!important;flex:none;box-shadow:none!important}
+#syncTxt[hidden]{display:none!important}
 .sync i{width:12px;height:12px;border-radius:50%;background:#9CA3AF;box-shadow:0 0 0 2px rgba(255,255,255,.3)}
 .sync[data-state="on"] i{background:#4ADE80}.sync[data-state="wait"] i{background:#FBBF24}.sync[data-state="err"] i{background:#E31937}
 /* 핀 개수 독 */
@@ -1212,7 +1217,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.28";
+const APP_VER = "4.29";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
