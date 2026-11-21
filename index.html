@@ -541,6 +541,8 @@ header #backBtn{color:#fff!important;background:none!important}
 #tryAsk .tabox{width:100%;max-width:360px;background:var(--card);border-radius:20px;padding:22px 20px 18px;box-shadow:0 18px 50px rgba(0,0,0,.3);border-top:5px solid #E31937;text-align:center}
 #tryAsk h2{margin:0 0 8px;font-size:19px;font-weight:800}
 #tryAsk p{margin:0 0 18px;color:var(--sub);font-size:14.5px;line-height:1.55}
+#tryAsk .tanote{text-align:left;background:#F5F5F3;border-radius:12px;padding:10px 12px;margin:-6px 0 16px;font-size:13px;line-height:1.55;color:var(--sub)}
+#tryAsk .tanote b{color:var(--ink)}
 #tryAsk .tabt{display:flex;flex-direction:column;gap:8px}
 #tryAsk button{border:0;border-radius:14px;padding:13px;font-size:15.5px;font-weight:700;background:#ECEDEA;color:var(--ink)}
 #tryAsk button.yes{background:#E31937;color:#fff}
@@ -1227,6 +1229,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 <div id="tryAsk" hidden><div class="tabox" role="dialog" aria-modal="true" aria-labelledby="taTitle">
   <h2 id="taTitle">핀톡 체험판이에요 👋</h2>
   <p>견본 도면으로 핀 찍기부터 보고서 만들기까지<br>한 단계씩 <b>따라하기</b>로 배워 볼까요?</p>
+  <div class="tanote" id="taNote"></div>
   <div class="tabt"><button class="yes" id="taYes">따라하기 시작</button><button id="taNo">혼자 둘러볼게요</button></div>
 </div></div>
 <div id="pwDlg" data-lb="E3 비밀번호 변경" hidden>
@@ -1264,7 +1267,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.41";
+const APP_VER = "4.42";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -4606,12 +4609,22 @@ if(TRY){   // 3.99 체험판 따라하기: 서버 연결·협업 탭·알림 단
   TOUR[0].x="<b>견본 도면</b>으로 연습해요. 견본 도면을 눌러 열어 보세요.";
   TOUR.forEach(s=>{ if(s.t==="#actSheet") s.x="<b>도면 설정</b>이에요. <b>공유하기</b>(PDF 보내기) · <b>도면 정보</b> · <b>이름 바꾸기</b> · <b>쪽 편집</b> · <b>도면 복사</b> · <b>삭제</b>를 할 수 있어요.";
     if(s.t==="#helpBtn") s.x="⚙️ <b>설정</b>: 내 기본 팀, 사진 화질, 내보내기 기본 양식, 저장 공간 정리가 있어요. <b>따라하기</b>와 <b>사진 가이드</b>도 여기서 다시 볼 수 있어요.";
-    if(s.t==="#importBtn") s.x="이제 실제 도면을 쓰려면 <b>도면 불러오기</b>로 메일·파일 앱에 받은 PDF나 DWG를 고르면 돼요. 체험판의 도면·사진·핀은 <b>이 휴대폰에만</b> 저장돼요."; }); }
+    if(s.t==="#importBtn") s.x="이제 실제 도면을 쓰려면 <b>도면 불러오기</b>로 메일·파일 앱에 받은 PDF나 DWG를 고르면 돼요. 체험판의 도면·사진·핀은 <b>이 휴대폰에만</b> 저장돼서, 앱이나 사이트 데이터를 지우면 함께 지워져요. <b>홈 화면에 추가</b>해 아이콘으로 열어 쓰세요."; }); }
 let tourStarting=false;
+/* 4.42 체험판 기록이 지워지는 경우 안내 (아이폰은 홈 화면에 추가해야 7일 규칙에서 빠진다) */
+function tryKeepMsg(){
+  const ua=navigator.userAgent||"", ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
+  const sa=(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone;
+  const a=sa?"지금은 <b>홈 화면 아이콘</b>으로 열고 있어 저절로 지워지지 않아요. "
+    :ios?"<b>홈 화면에 추가</b>해 아이콘으로 열면 저절로 지워지지 않아요. 사파리로만 열면 <b>7일 넘게 안 쓸 때</b> 아이폰이 지울 수 있어요. "
+    :"<b>홈 화면에 추가</b>해 아이콘으로 열면 편해요. ";
+  return "📱 체험판 기록은 <b>이 휴대폰에만</b> 저장돼요. "+a+"앱을 지우거나 방문 기록·사이트 데이터를 지우면 함께 지워지고, 되살릴 수 없어요."+(ios&&!sa?" 사파리와 홈 화면 앱은 저장 공간이 따로라서, 처음부터 아이콘으로 열어 쓰세요.":"")+(sa?"":' <a href="guide/#s2" target="_blank" rel="noopener" style="color:#E31937;font-weight:700">홈 화면에 추가하는 방법 ›</a>');
+}
 function askTryTour(){   // 4.37 체험판: 처음 들어오면 따라하기를 할지 팝업으로 묻는다 (한 번만)
   try{ if(localStorage.getItem("tourDone")||localStorage.getItem("tryAsked")) return; }catch(e){}
   if(tourStarting||!$("#tour").hidden) return;   // 가이드 링크(?tour=1)로 이미 따라하기 중
   const close=yes=>{ $("#tryAsk").hidden=true; try{ localStorage.setItem("tryAsked","1"); }catch(e){} if(yes) startTour(); else toast("설정 › 어플 사용법에서 언제든 따라하기를 시작할 수 있어요",3500); };
+  $("#taNote").innerHTML=tryKeepMsg();
   $("#taYes").onclick=()=>close(true); $("#taNo").onclick=()=>close(false);
   $("#tryAsk").hidden=false;
 }
