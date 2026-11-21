@@ -970,7 +970,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
     <div id="gStep2" hidden data-lb="A2 로그인">
       <div class="gstep"><span>✓ 서버 연결</span><i></i><span class="on"><b>2</b>로그인</span></div>
       <label class="lbl" for="gName">이름</label>
-      <input class="inp" id="gName" autocomplete="username" placeholder="예: 김대건">
+      <input class="inp" id="gName" autocomplete="username" placeholder="예: 김ㅇㅇ">
       <label class="lbl" for="gPw">비밀번호</label>
       <input class="inp" id="gPw" type="password" autocomplete="current-password" placeholder="4자 이상">
       <label class="sw" style="margin-top:12px"><input type="checkbox" id="gRemember" checked><span></span>비밀번호 기억하기</label>
@@ -983,7 +983,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
     <div id="gStep3" data-lb="A3 회원가입" hidden>
       <div class="gstep"><span>✓ 서버 연결</span><i></i><span class="on"><b>2</b>회원가입</span></div>
       <label class="lbl" for="jName">이름 <small>· 현장에서 부르는 실명</small></label>
-      <input class="inp" id="jName" autocomplete="username" placeholder="예: 김대건">
+      <input class="inp" id="jName" autocomplete="username" placeholder="예: 김ㅇㅇ">
       <label class="lbl" for="jPw">비밀번호</label>
       <input class="inp" id="jPw" type="password" autocomplete="new-password" placeholder="4자 이상">
       <label class="lbl" for="jPw2">비밀번호 확인</label>
@@ -1262,7 +1262,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.38";
+const APP_VER = "4.39";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -2144,7 +2144,7 @@ let pushT=null;
 function schedulePush(){ if(!cloudOn()) return; clearTimeout(pushT); pushT=setTimeout(syncPins,1200); }
 async function uploadDrawing(d){
   const f=await dbGet("files",d.id);
-  setSync("wait","도면 올리는 중…"); toast(`도면 파일 올리는 중… (${(f.data.byteLength/1048576).toFixed(1)}MB) · 다음에 핀을 % 로 보여 드려요`,120000);
+  setSync("wait","도면 올리는 중…"); toast(`도면 파일 올리는 중… (${(f.data.byteLength/1048576).toFixed(1)}MB) · 다 올라가면 핀도 함께 공유돼요`,120000);
   await api({action:"uploadDrawing",drawing:{id:d.id,name:d.name,pages:d.pages,created:d.created,kind:d.kind||""},data:bufToB64(f.data),by:d.by||myName()});
   d.cloud=true; if(!d.by) d.by=myName(); await dbPut("drawings",d);
   if((d.pageNames||[]).some(Boolean)){ try{ await api({action:"setPageNames",id:d.id,names:d.pageNames}); }catch(e){} }   // 쪽 이름도 함께
@@ -3208,7 +3208,7 @@ $("#pDates").addEventListener("change",e=>{ if(e.target.id!=="pCreated") return;
   $("#pBadge").textContent=mapLabel(p); $("#pTitle").textContent=pinTitle(p);
   savePin(p); drawPins(); renderTeamBar(); if(!$("#listSheet").hidden) renderList();
   toast(before!==pinLabel(p)?`찍은 날짜를 고쳐 ${before} → ${pinLabel(p)}(으)로 바뀌었습니다`:"찍은 날짜를 고쳤습니다"); });
-function pinTitle(p){ return `${p.team?teamName(p.team)+" ":""}${isMemo(p)?"기록 ":""}${p.no}번 ${kindLabel(p)}`+(pgLabel(V.drawing,p.page)?` · ${pgLabel(V.drawing,p.page)}`:""); }
+function pinTitle(p){ return `${p.team?teamName(p.team)+" ":""}${isMemo(p)?"기록 ":""}${p.no}번 ${kindLabel(p)}`+(V.drawing&&V.drawing.pages>1&&pgLabel(V.drawing,p.page)?` · ${pgLabel(V.drawing,p.page)}`:""); }   // 4.39 한 쪽짜리 도면은 쪽 이름 생략
 /* 4.01 기록 방식: fix = 조치 전·후 관리(미조치/조치완료), memo = 기록만(메모·사진, 조치 개수에 안 셈) */
 const isMemo=p=>p&&p.rec==="memo";
 const isOpen=p=>p.status!=="done"&&!isMemo(p);
