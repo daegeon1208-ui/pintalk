@@ -59,6 +59,16 @@ header{position:relative}
 /* 도면 보기 */
 #viewer{background:#9CA3AF}
 #vp{position:relative;z-index:0;isolation:isolate;flex:1;overflow:hidden;touch-action:none;background:#D1D5DB;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.pin.hov{transform:scale(1.3);transform-origin:50% 36px;z-index:3;transition:transform .12s}   /* 4.36 컴퓨터: 마우스를 올린 핀 */
+#pinTip{position:absolute;z-index:6;width:240px;box-sizing:border-box;background:#fff;color:#1F2937;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.28);padding:10px 12px;font-size:13px;line-height:1.45;pointer-events:none}
+#pinTip img{display:block;width:100%;height:130px;object-fit:cover;border-radius:8px;background:#E5E7EB;margin-bottom:8px}
+#pinTip b{display:block;font-size:13.5px}
+#pinTip .tst{font-size:12px;color:#6B7280;margin:1px 0 5px}
+#pinTip .tst i{font-style:normal;font-weight:700;color:var(--pc)}
+#pinTip p{margin:0;white-space:pre-wrap;word-break:break-all;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+#pinTip p.tdn{margin-top:5px;color:#15803D;-webkit-line-clamp:2}
+#pinTip p.tno{color:#9CA3AF}
+#pinTip small{display:block;margin-top:5px;color:#6B7280;font-size:12px}
 .pin.drag{transform:scale(1.25);transform-origin:50% 36px;z-index:2}
 .pin.drag::after{content:"";position:absolute;left:50%;top:36px;width:12px;height:12px;margin:-6px 0 0 -6px;box-sizing:border-box;border-radius:50%;border:2px solid #fff;background:#FBBF24;box-shadow:0 0 0 1px rgba(0,0,0,.25),0 1px 3px rgba(0,0,0,.35)}
 #base{position:absolute;left:0;top:0;transform-origin:0 0;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.2)}
@@ -1217,7 +1227,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.35";
+const APP_VER = "4.36";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -2702,9 +2712,54 @@ function drawPins(){
   const list=visPins().filter(p=>p.page===V.pageNo).sort(pinCmp);
   pinLayer.innerHTML=list.map(p=>{
     const x=V.tx+p.nx*V.pw*V.k, y=V.ty+p.ny*V.ph*V.k;
-    return `<div class="pin${p.status==="done"?" done":""}${isMemo(p)?" memo":""}${V.sel===p.id?" sel":""}${(G&&G.type==="drag"&&G.pin===p)||(V.pending&&V.pending.pin===p)?" drag":""}" style="left:${x}px;top:${y}px;--pc:${p.id==="temp"?"#E31937":colorOf(p)}"><span class="${pinCls(p)}">${mapLabel(p)}</span>${p.status==="done"?'<i class="ck">✓</i>':""}</div>`;
+    return `<div data-id="${p.id}" class="pin${p.status==="done"?" done":""}${isMemo(p)?" memo":""}${V.sel===p.id?" sel":""}${V.hov===p.id?" hov":""}${(G&&G.type==="drag"&&G.pin===p)||(V.pending&&V.pending.pin===p)?" drag":""}" style="left:${x}px;top:${y}px;--pc:${p.id==="temp"?"#E31937":colorOf(p)}"><span class="${pinCls(p)}">${mapLabel(p)}</span>${p.status==="done"?'<i class="ck">✓</i>':""}</div>`;
   }).join("");
+  if(V.hov) placeTip();
 }
+/* 4.36 컴퓨터: 핀 위에 마우스를 올리면 핀이 조금 커지고 내용·사진을 간단히 보여 준다 */
+const HOVER=matchMedia("(hover:hover) and (pointer:fine)");
+const pinTip=document.createElement("div"); pinTip.id="pinTip"; pinTip.hidden=true;
+const tipUrls=new WeakMap();
+const tipUrl=x=>{ let u=tipUrls.get(x); if(!u||u.d!==x.data){ if(u) URL.revokeObjectURL(u.u); u={d:x.data,u:URL.createObjectURL(new Blob([x.data],{type:x.type||"image/jpeg"}))}; tipUrls.set(x,u); } return u.u; };
+function placeTip(){
+  const p=V.hov&&V.pins.find(q=>q.id===V.hov);
+  if(!p||p.page!==V.pageNo||!visPins().includes(p)){ setHov(null); return; }
+  const W=vp.clientWidth, H=vp.clientHeight, w=pinTip.offsetWidth, h=pinTip.offsetHeight;
+  const x=V.tx+p.nx*V.pw*V.k, y=V.ty+p.ny*V.ph*V.k-24;
+  let l=x+28; if(l+w>W-8) l=x-28-w; l=Math.max(8,l);
+  const t=Math.max(8,Math.min(H-h-8,y-h/2));
+  pinTip.style.left=l+"px"; pinTip.style.top=t+"px";
+}
+function setHov(p){
+  const id=p?p.id:null;
+  if(id===V.hov) return;
+  V.hov=id;
+  pinLayer.querySelectorAll(".pin.hov").forEach(el=>el.classList.remove("hov"));
+  if(!p){ pinTip.hidden=true; return; }
+  const el=pinLayer.querySelector(`.pin[data-id="${CSS.escape(id)}"]`); if(el) el.classList.add("hov");
+  const done=p.status==="done", memo=isMemo(p);
+  const st=memo?"기록":done?"조치완료":"미조치";
+  const who=[p.vendor,p.work||p.trade].filter(Boolean).join(" · ");
+  const tx=(p.text||"").trim(), dt=done&&(p.doneText||"").trim();
+  const nc=cmOn()?cmOf(p.id).length:0;
+  const list=done&&(p.donePhotos||[]).length?p.donePhotos:(p.photos||[]);
+  const ph=list.find(x=>x.rep)||list[0];
+  pinTip.style.setProperty("--pc",colorOf(p));
+  pinTip.innerHTML=`${ph?'<img alt="">':""}<b>${esc(`${p.team?teamName(p.team)+" ":""}${memo?"기록 ":""}${p.no}번 ${kindLabel(p)}`)}</b><div class="tst"><i>${st}</i>${who?" · "+esc(who):""}</div>`+
+    (tx?`<p>${esc(tx)}</p>`:`<p class="tno">내용 없음</p>`)+(dt?`<p class="tdn">조치: ${esc(dt)}</p>`:"")+
+    (nc||list.length>1?`<small>${[list.length>1?`사진 ${list.length}장`:"",nc?`댓글 ${nc}개`:""].filter(Boolean).join(" · ")}</small>`:"");
+  pinTip.hidden=false; placeTip();
+  if(ph){ const show=()=>{ const im=pinTip.querySelector("img"); if(im&&V.hov===id&&ph.data){ im.onload=placeTip; im.src=tipUrl(ph); } };
+    if(ph.data) show(); else ensurePhoto(p,ph,false).then(ok=>{ if(ok) show(); }); }
+}
+vp.appendChild(pinTip);
+vp.addEventListener("pointermove",e=>{
+  if(e.pointerType!=="mouse"||!HOVER.matches) return;
+  if(e.buttons||ptrs.size||V.mode!=="view"||!V.page){ setHov(null); return; }
+  setHov(pinAt(rel(e)));
+});
+vp.addEventListener("pointerleave",()=>setHov(null));
+vp.addEventListener("pointerdown",()=>setHov(null),true);
 /* 확대했을 때 보이는 부분만 선명하게 다시 그린다 */
 let detailTimer=null;
 function scheduleDetail(){clearTimeout(detailTimer);detailTimer=setTimeout(renderDetail,220);}
