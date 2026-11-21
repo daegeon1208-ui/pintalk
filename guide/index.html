@@ -58,6 +58,18 @@ ul.plain{padding-left:18px;margin:8px 0}
 ul.plain li{margin:6px 0;line-height:1.6}
 dl.faq dt{font-weight:700;margin-top:14px}
 dl.faq dd{margin:4px 0 0;color:#3d3d3a}
+.addr{background:var(--soft);border-radius:10px;padding:8px 12px;font-size:15px;word-break:break-all}
+.os{display:flex;gap:6px;background:#E4E4E1;border-radius:12px;padding:4px;margin:12px 0 4px}
+.os button{flex:1;border:0;background:none;font:inherit;font-weight:700;color:var(--sub);padding:9px 6px;border-radius:9px;cursor:pointer}
+.os button[aria-selected="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.osHint{font-size:13.5px;color:var(--sub);margin:4px 2px 0}
+ol.flow{counter-reset:f;list-style:none;padding:0;margin:12px 0 0}
+ol.flow li{counter-increment:f;position:relative;padding:0 0 14px 40px;line-height:1.6}
+ol.flow li::before{content:counter(f);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;font-weight:800;font-size:14px;display:grid;place-items:center}
+ol.flow li:not(:last-child)::after{content:"";position:absolute;left:13px;top:32px;bottom:2px;width:2px;background:var(--line)}
+ol.flow small{display:block;color:var(--sub);font-size:13.5px;margin-top:2px}
+.gi{width:20px;height:20px;vertical-align:-4px;fill:none;stroke:#2F6FEB;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;background:#EEF3FE;border-radius:6px;padding:2px}
+.gi circle{fill:#2F6FEB;stroke:none}
 footer{text-align:center;color:var(--sub);font-size:13px;padding:10px 16px 30px}
 </style>
 </head>
@@ -110,12 +122,34 @@ footer{text-align:center;color:var(--sub);font-size:13px;padding:10px 16px 30px}
 
   <section id="s2">
     <h2><span class="n">2</span>설치 (홈 화면에 추가)</h2>
-    <p>앱스토어 없이 인터넷 주소로 열어요. 한 번 홈 화면에 추가하면 일반 앱처럼 아이콘으로 열려요.</p>
-    <ol class="steps">
-      <li><b>아이폰</b>: 사파리에서 <b>daegeon1208-ui.github.io/pintalk/</b> 를 열고, 아래 <b>공유 버튼(□↑)</b> → <b>홈 화면에 추가</b>.</li>
-      <li><b>안드로이드</b>: 크롬에서 같은 주소를 열고, 오른쪽 위 <b>⋮</b> → <b>홈 화면에 추가</b>(또는 앱 설치).</li>
-    </ol>
-    <div class="tip"><b>아이콘이나 이름이 예전 그대로라면</b> 홈 화면에서 앱을 지우고 다시 추가하세요. 앱 내용은 열 때마다 자동으로 최신이 돼요.</div>
+    <p>핀톡은 앱스토어 없이 인터넷 주소로 여는 <b>웹앱</b>이에요. 한 번 홈 화면에 추가해 두면 일반 앱처럼 아이콘을 눌러 바로 열리고, 주소창 없이 화면을 넓게 써요.</p>
+    <p class="addr">주소: <b>daegeon1208-ui.github.io/pintalk/</b></p>
+    <div class="os" role="tablist">
+      <button type="button" role="tab" data-os="ios">아이폰</button>
+      <button type="button" role="tab" data-os="and">안드로이드</button>
+    </div>
+    <p class="osHint" id="osHint" hidden></p>
+    <div class="osPane" data-pane="ios">
+      <ol class="flow">
+        <li><b>사파리</b>로 위 주소를 열어요.<small>다른 앱 안에서 링크를 눌러 열렸다면, 화면 오른쪽 아래나 ⋯ 메뉴의 <b>Safari로 열기</b>를 먼저 눌러 주세요.</small></li>
+        <li>화면 아래(또는 주소창 옆)의 <b>공유 버튼</b> <svg class="gi" viewBox="0 0 24 24"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v10h14V11h-1"/></svg> 을 눌러요.<small>공유 버튼이 안 보이면 주소창 옆 <b>⋯</b> 를 누른 뒤 <b>공유</b>를 눌러요.</small></li>
+        <li>올라온 목록을 위로 밀어 <b>홈 화면에 추가</b> <svg class="gi" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg> 를 눌러요.<small>목록에 없으면 맨 아래 <b>더 보기</b>나 <b>작업 편집</b>에서 찾을 수 있어요.</small></li>
+        <li>이름이 <b>핀톡</b>인지 보고 오른쪽 위 <b>추가</b>를 눌러요.<small><b>웹 앱으로 열기</b> 스위치가 보이면 켜 둔 채로 추가하세요.</small></li>
+        <li>홈 화면에 생긴 <b>핀톡 아이콘</b>을 눌러 열어요. 다음부터는 이 아이콘으로 열면 돼요.</li>
+      </ol>
+      <div class="tip"><b>아이폰은 사파리를 권장해요.</b> 크롬에서도 공유 버튼으로 추가할 수 있지만, 사파리에서 추가해야 가장 안정적으로 열려요.</div>
+    </div>
+    <div class="osPane" data-pane="and">
+      <ol class="flow">
+        <li><b>크롬</b>으로 위 주소를 열어요.<small>다른 앱 안에서 열렸다면 오른쪽 위 ⋮ 메뉴의 <b>다른 브라우저로 열기</b>나 <b>Chrome으로 열기</b>를 먼저 눌러 주세요.</small></li>
+        <li>화면 아래에 <b>앱 설치</b> 안내가 뜨면 바로 <b>설치</b>를 눌러도 돼요. 안 뜨면 다음 단계로.</li>
+        <li>오른쪽 위 <b>점 세 개 버튼</b> <svg class="gi" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg> 를 눌러요.</li>
+        <li><b>홈 화면에 추가</b>를 누르고, 이어서 <b>설치</b>(또는 <b>추가</b>)를 눌러요.<small>메뉴에 <b>앱 설치</b>로 나오기도 해요. 같은 기능이에요.</small></li>
+        <li>홈 화면(또는 앱 목록)에 생긴 <b>핀톡 아이콘</b>을 눌러 열어요.</li>
+      </ol>
+      <div class="tip"><b>삼성 인터넷을 쓴다면</b> 화면 아래 <b>≡</b> → <b>현재 페이지 추가</b> → <b>홈 화면</b>을 눌러요.</div>
+    </div>
+    <div class="note"><b>아이콘이나 이름이 예전 그대로라면</b> 홈 화면에서 앱을 지우고 다시 추가하세요. 앱 내용은 열 때마다 자동으로 최신이 돼요. 홈 화면의 앱을 지우면 <b>개인 도면</b>은 로그인 후 다시 받을 수 있지만, 서버에 아직 올라가지 않은 핀은 사라질 수 있으니 인터넷이 연결된 상태에서 지워 주세요.</div>
   </section>
 
   <section id="s3">
@@ -421,5 +455,19 @@ footer{text-align:center;color:var(--sub);font-size:13px;padding:10px 16px 30px}
   </section>
 </main>
 <footer>핀톡 · 앱 버전 3.88 기준 (2026.11.18)</footer>
+<script>
+/* 열어 본 휴대폰이 아이폰인지 안드로이드인지 보고 맞는 설명을 먼저 보여 준다 */
+(function(){
+  var ua=navigator.userAgent||"", ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1), and=/Android/i.test(ua);
+  var cur=ios?"ios":and?"and":"ios", tabs=document.querySelectorAll("[data-os]"), panes=document.querySelectorAll("[data-pane]");
+  function show(o){ for(var i=0;i<tabs.length;i++) tabs[i].setAttribute("aria-selected",tabs[i].getAttribute("data-os")===o?"true":"false");
+    for(var j=0;j<panes.length;j++) panes[j].hidden=panes[j].getAttribute("data-pane")!==o; }
+  for(var i=0;i<tabs.length;i++) tabs[i].addEventListener("click",function(){ show(this.getAttribute("data-os")); });
+  show(cur);
+  var h=document.getElementById("osHint"), sa=(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone;
+  if(sa){ h.textContent="지금 홈 화면의 핀톡 아이콘으로 열고 있어요. 이미 설치돼 있어요."; h.hidden=false; }
+  else if(ios||and){ h.textContent=ios?"이 휴대폰은 아이폰이에요. 아이폰 방법을 먼저 보여 드려요.":"이 휴대폰은 안드로이드폰이에요. 안드로이드 방법을 먼저 보여 드려요."; h.hidden=false; }
+})();
+</script>
 </body>
 </html>
