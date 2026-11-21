@@ -382,6 +382,8 @@ header #backBtn{background:none;padding-left:4px}
 .toolbar button:active{background:var(--soft)}
 .modebar button{box-shadow:0 2px 8px rgba(22,33,58,.2)}
 .hint,.toast{background:rgba(22,33,58,.94);box-shadow:var(--sh2)}
+.toast .tbar{display:block;width:180px;max-width:100%;height:4px;margin:7px auto 1px;border-radius:2px;background:rgba(255,255,255,.22);overflow:hidden}
+.toast .tbar i{display:block;height:100%;background:#fff;border-radius:2px;transition:width .25s linear}
 /* 아래 창 */
 .sheet-bg{background:rgba(16,24,40,.42)}
 .sheet{border-radius:22px 22px 0 0;box-shadow:0 -8px 28px rgba(22,33,58,.18)}
@@ -1262,7 +1264,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.39";
+const APP_VER = "4.40";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -1811,11 +1813,10 @@ $("#dlist").addEventListener("click",async e=>{
   if(rc){
     const r=remoteOnly.find(x=>x.id===rc.dataset.remote); if(!r) return;
     if(!await ensureUnlocked(r)) return;
-    toast("공유 서버에서 도면을 받는 중…",120000);
     try{
-      const j=await api({action:"drawingFile",id:r.id});
-      await dbPut("files",{id:r.id,data:b64ToBuf(j.data)});
-      await dbPut("drawings",{id:r.id,name:r.name,pages:r.pages,created:r.created,opened:Date.now(),cloud:true,by:r.by||"",ver:r.ver||"",pageNames:r.pageNames||[],kind:r.kind||"",locked:!!r.locked,members:r.members||[],vendors:r.vendors||undefined});
+      const buf=await fetchDrawingFile(r,"협업 도면 받는 중");
+      await dbPut("files",{id:r.id,data:buf});
+      await dbPut("drawings",{id:r.id,name:r.name,pages:r.pages,created:r.created,opened:Date.now(),cloud:true,by:r.by||"",ver:r.ver||"",pageNames:r.pageNames||[],kind:r.kind||"",locked:!!r.locked,members:r.members||[],vendors:r.vendors||undefined,size:buf.byteLength});
       remoteOnly=remoteOnly.filter(x=>x.id!==r.id);
       $("#toast").hidden=true; openDrawing(r.id);
     }catch(err){ toast((err.locked?"도면 비밀번호: ":"도면을 받지 못했습니다: ")+err.message,4000); }
@@ -2018,11 +2019,17 @@ function renderMode(){
   $("#asUserBar").hidden=!(cloudOn()&&cloud.admin&&asUser);
   $("#asUserTxt").textContent=`임시 테스트 계정 「${myName()}」(으)로 쓰는 중이에요. 여기서 찍은 핀·조치완료·알림은 이 계정 이름으로 남아요.`;
 }
-async function api(body){
+async function api(body,onRecv){
   const did=body.drawingId||(body.item&&body.item.drawingId)||body.id;   // 잠긴 도면이면 넣어 둔 도면 비밀번호를 함께 보낸다
   if(did&&lockPws[did]&&body.lockPw===undefined) body={...body,lockPw:lockPws[did]};
   const r=await fetch(cloud.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({pin:cloud.pin,user:cloud.name,pw:cloud.pw},asUser?{asUser:true}:{},body)),redirect:"follow"});
-  let j; try{j=await r.json();}catch(e){throw new Error("서버 응답을 읽지 못했습니다");}
+  let j; try{
+    if(onRecv&&r.body&&r.body.getReader&&window.TextDecoder){   // 받은 만큼 알려 준다 (도면 받기 %)
+      const rd=r.body.getReader(), dec=new TextDecoder(), parts=[]; let got=0;
+      for(;;){ const {done,value}=await rd.read(); if(done) break; got+=value.length; parts.push(dec.decode(value,{stream:true})); onRecv(got); }
+      parts.push(dec.decode()); j=JSON.parse(parts.join(""));
+    } else j=await r.json();
+  }catch(e){throw new Error("서버 응답을 읽지 못했습니다");}
   if(!j.ok){
     if(/^LOCKED: /.test(j.error||"")){   // 도면 비밀번호가 없거나 틀림(바뀜)
       if(did&&lockPws[did]&&!body.unlockTry){ delete lockPws[did]; saveLockPws(); }
@@ -2031,6 +2038,30 @@ async function api(body){
     if(/비밀번호가 맞지|등록되지 않은|로그인이 필요/.test(j.error||"")) needLogin(j.error); throw new Error(j.error||"서버 오류"); }
   if(j.me&&!j.me.asUser&&j.me.admin!==cloud.admin){ cloud.admin=j.me.admin; saveCloud(); renderMode(); }
   return j;
+}
+/* ---------- 도면 받기 % ----------
+   서버가 도면 파일을 꺼내는 동안은 진행 정도를 알려 주지 않으므로, 이 휴대폰에서 지난번에 받은 속도(1MB에 몇 초)로 걸릴 시간을 짐작해 %를 올리고,
+   내려오기 시작하면 받은 바이트로 남은 부분을 채운다. 받을 때마다 속도를 다시 배워서 점점 맞아진다. */
+function dlRate(){ try{ const r=JSON.parse(localStorage.getItem("pinsDlRate")||"null"); if(r&&r.perMB>0) return r; }catch(e){} return {perMB:3000}; }
+async function fetchDrawingFile(d,msg){
+  const DL_BASE=1500, R=dlRate(), size=+d.size||0, mb=(size||2e6)/1048576, est=DL_BASE+R.perMB*mb, total=size?Math.ceil(size/3)*4+30:0;
+  const t0=Date.now(); let got=0, tf=0, pf=0, shown=0;
+  const draw=()=>{
+    const el=Date.now()-t0; let p=0.92*(1-Math.exp(-el/est*1.6))/(1-Math.exp(-1.6));   // 짐작한 시간에 92%쯤, 넘어가면 천천히
+    p=Math.min(p,0.95);
+    if(tf&&total) p=Math.max(p,pf+(1-pf)*Math.min(got/total,1));
+    shown=Math.max(shown,Math.min(p,0.99));
+    const pc=Math.floor(shown*100); toast(msg+" "+pc+"%",120000);
+    const t=$("#toast"); t.insertAdjacentHTML("beforeend",`<b class="tbar"><i style="width:${pc}%"></i></b>`);
+  };
+  draw(); const iv=setInterval(draw,250);
+  try{
+    const j=await api({action:"drawingFile",id:d.id},n=>{ if(!tf){ tf=Date.now(); pf=shown; } got=n; });
+    const T=Date.now()-t0, realMB=(j.data.length*3/4)/1048576;
+    if(realMB>0.05){ const per=Math.min(Math.max((T-DL_BASE)/realMB,300),30000); try{ localStorage.setItem("pinsDlRate",JSON.stringify({perMB:Math.round(R.perMB*0.4+per*0.6)})); }catch(e){} }
+    clearInterval(iv); toast(msg+" 100%",800); $("#toast").insertAdjacentHTML("beforeend",'<b class="tbar"><i style="width:100%"></i></b>');
+    return b64ToBuf(j.data);
+  } finally { clearInterval(iv); }
 }
 /* ---------- 도면 비밀번호 ----------
    도면을 올린 사람(또는 관리자)이 도면마다 비밀번호를 건다. 서버가 막으므로 비밀번호 없이는 도면 파일·핀을 받을 수 없다.
@@ -2168,7 +2199,7 @@ async function syncDrawings(){
       if(l.name!==r.name||!l.cloud||(r.by&&l.by!==r.by)){ l.name=r.name; l.cloud=true; if(r.by) l.by=r.by; await dbPut("drawings",l); }
       if(r.pageNames&&JSON.stringify(r.pageNames)!==JSON.stringify(l.pageNames||[])){ l.pageNames=r.pageNames; await dbPut("drawings",l); if(V.drawing&&V.drawing.id===l.id){ V.drawing.pageNames=l.pageNames; updatePager(); } }
       if("vendors" in r&&JSON.stringify(r.vendors||null)!==JSON.stringify(l.vendors||null)){ l.vendors=r.vendors||undefined; await dbPut("drawings",l); if(V.drawing&&V.drawing.id===l.id) V.drawing.vendors=l.vendors; }
-      if((r.ver||"")!==(l.ver||"")){ l.ver=r.ver||""; l.pages=r.pages; l.stale=true; await dbPut("drawings",l); }   // 다른 사람이 쪽을 바꿈 → 열 때 새 PDF를 받는다
+      if((r.ver||"")!==(l.ver||"")){ l.ver=r.ver||""; l.pages=r.pages; l.stale=true; l.size=r.size||0; await dbPut("drawings",l); }   // 다른 사람이 쪽을 바꿈 → 열 때 새 PDF를 받는다
     }
     remoteOnly=live.filter(r=>!locals.some(d=>d.id===r.id));
     await renderHome();
@@ -2481,8 +2512,7 @@ async function openDrawing(id,pageNo){
   if(!await ensureUnlocked(d)) return;
   V.cm=[];   // 댓글은 도면을 열 때마다 서버에서 다시 받는다
   if(d&&d.stale&&cloudOn()){
-    toast("바뀐 도면을 공유 서버에서 받는 중…",120000);
-    try{ const j=await api({action:"drawingFile",id}); f={id,data:b64ToBuf(j.data)}; await dbPut("files",f); d.stale=false; await dbPut("drawings",d); $("#toast").hidden=true; }
+    try{ const buf=await fetchDrawingFile(d,"바뀐 도면 받는 중"); f={id,data:buf}; await dbPut("files",f); d.stale=false; d.size=buf.byteLength; await dbPut("drawings",d); $("#toast").hidden=true; }
     catch(err){ toast("바뀐 도면을 받지 못해 예전 도면을 엽니다: "+err.message,4000); }
   }
   if(!d||!f){toast("도면 파일이 없습니다");return;}
