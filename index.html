@@ -512,6 +512,14 @@ header #backBtn{color:#fff!important;background:none!important}
 #gate .gstep b{background:#8E8E88}
 #gate .gbtn{background:#E31937}
 /* PDF 미리보기 */
+#tryAsk{position:fixed;inset:0;z-index:16;background:rgba(0,0,0,.45);display:flex;justify-content:center;align-items:center;padding:16px}   /* 4.37 체험판 첫 화면: 따라하기 할지 묻기 */
+#tryAsk[hidden]{display:none}
+#tryAsk .tabox{width:100%;max-width:360px;background:var(--card);border-radius:20px;padding:22px 20px 18px;box-shadow:0 18px 50px rgba(0,0,0,.3);border-top:5px solid #E31937;text-align:center}
+#tryAsk h2{margin:0 0 8px;font-size:19px;font-weight:800}
+#tryAsk p{margin:0 0 18px;color:var(--sub);font-size:14.5px;line-height:1.55}
+#tryAsk .tabt{display:flex;flex-direction:column;gap:8px}
+#tryAsk button{border:0;border-radius:14px;padding:13px;font-size:15.5px;font-weight:700;background:#ECEDEA;color:var(--ink)}
+#tryAsk button.yes{background:#E31937;color:#fff}
 #pwDlg{position:fixed;inset:0;z-index:16;background:rgba(0,0,0,.45);display:flex;justify-content:center;align-items:flex-start;padding:max(14vh,calc(env(safe-area-inset-top) + 24px)) 16px 16px}
 #pwDlg[hidden]{display:none}
 #pwDlg .pwbox{width:100%;max-width:380px;background:var(--card);border-radius:20px;padding:16px 18px 18px;box-shadow:0 18px 50px rgba(0,0,0,.3);border-top:5px solid #E31937}
@@ -1192,6 +1200,11 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
   </div>
 </div>
 <!-- 비밀번호 변경 팝업 -->
+<div id="tryAsk" hidden><div class="tabox" role="dialog" aria-modal="true" aria-labelledby="taTitle">
+  <h2 id="taTitle">핀톡 체험판이에요 👋</h2>
+  <p>견본 도면으로 핀 찍기부터 보고서 만들기까지<br>한 단계씩 <b>따라하기</b>로 배워 볼까요?</p>
+  <div class="tabt"><button class="yes" id="taYes">따라하기 시작</button><button id="taNo">혼자 둘러볼게요</button></div>
+</div></div>
 <div id="pwDlg" data-lb="E3 비밀번호 변경" hidden>
   <div class="pwbox" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
     <div class="pwhd"><h2 id="pwTitle">비밀번호 변경</h2><button class="x" id="pwX" aria-label="닫기">✕</button></div>
@@ -1227,7 +1240,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.36";
+const APP_VER = "4.37";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -1678,7 +1691,7 @@ async function renderHome(){
   const box=$("#dlist");
   const rem=remoteOnly.filter(r=>!ds.some(d=>d.id===r.id));
   $("#hTop").hidden=!ds.length&&!rem.length;
-  if(!ds.length&&!rem.length){box.innerHTML=`<div class="empty">아직 불러온 도면이 없습니다.<br>아래 <b>도면 불러오기</b>를 눌러<br>휴대폰에 받은 도면 PDF나 DWG를 고르세요.<br><button class="tourGo" data-tour>▶ 처음이세요? 연습 도면으로 따라하기</button></div>`;return;}
+  if(!ds.length&&!rem.length){box.innerHTML=`<div class="empty">아직 불러온 도면이 없습니다.<br>아래 <b>도면 불러오기</b>를 눌러<br>휴대폰에 받은 도면 PDF나 DWG를 고르세요.${TRY?"":`<br><button class="tourGo" data-tour>▶ 처음이세요? 연습 도면으로 따라하기</button>`}</div>`;return;}
   // 협업 / 개인 탭 + 도면 이름 검색 (띄어쓰기·대소문자 무시)
   if(!hqTyped&&$("#hq").value){ $("#hq").value=""; $("#hqX").hidden=true; }   // 자동완성으로 들어온 글자
   const q=($("#hq").value||"").replace(/\s+/g,"").toLowerCase(), hit=d=>!q||String(d.name||"").replace(/\s+/g,"").toLowerCase().includes(q);
@@ -4511,8 +4524,17 @@ if(TRY){   // 3.99 체험판 따라하기: 서버 연결·협업 탭·알림 단
   TOUR.forEach(s=>{ if(s.t==="#actSheet") s.x="<b>도면 설정</b>이에요. <b>공유하기</b>(PDF 보내기) · <b>도면 정보</b> · <b>이름 바꾸기</b> · <b>쪽 편집</b> · <b>도면 복사</b> · <b>삭제</b>를 할 수 있어요.";
     if(s.t==="#helpBtn") s.x="⚙️ <b>설정</b>: 내 기본 팀, 사진 화질, 내보내기 기본 양식, 저장 공간 정리가 있어요. <b>따라하기</b>와 <b>사진 가이드</b>도 여기서 다시 볼 수 있어요.";
     if(s.t==="#importBtn") s.x="이제 실제 도면을 쓰려면 <b>도면 불러오기</b>로 메일·파일 앱에 받은 PDF나 DWG를 고르면 돼요. 체험판의 도면·사진·핀은 <b>이 휴대폰에만</b> 저장돼요."; }); }
+let tourStarting=false;
+function askTryTour(){   // 4.37 체험판: 처음 들어오면 따라하기를 할지 팝업으로 묻는다 (한 번만)
+  try{ if(localStorage.getItem("tourDone")||localStorage.getItem("tryAsked")) return; }catch(e){}
+  if(tourStarting||!$("#tour").hidden) return;   // 가이드 링크(?tour=1)로 이미 따라하기 중
+  const close=yes=>{ $("#tryAsk").hidden=true; try{ localStorage.setItem("tryAsked","1"); }catch(e){} if(yes) startTour(); else toast("설정 › 어플 사용법에서 언제든 따라하기를 시작할 수 있어요",3500); };
+  $("#taYes").onclick=()=>close(true); $("#taNo").onclick=()=>close(false);
+  $("#tryAsk").hidden=false;
+}
 function tourHome(){ setPref("homeFilter","private"); $("#hq").value=""; $("#hqX").hidden=true; }   // 견본 도면이 있는 개인 도면 탭으로
 async function startTour(){
+  tourStarting=true; $("#tryAsk").hidden=true;
   closeSheets();
   try{ await ensureSample(); }catch(e){ toast("연습 도면을 불러오지 못했습니다: "+e.message,3000); return; }
   if(!$("#viewer").hidden) $("#backBtn").click();
@@ -4915,7 +4937,7 @@ async function inviteMenu(d){
 
 /* ---------- 시작 ---------- */
 renderHome(); setSync("",""); renderMode(); renderNoteBadge();
-if(TRY){ offMode=true; $("#gate").hidden=true; setSync("",""); renderMode(); renderHome(); ensureSample().then(renderHome).catch(e=>console.error(e)); }   // 4.35 체험판: 예시 핀이 든 견본 도면을 바로 보여 준다   // 체험판: 로그인 없이 바로 개인 도면
+if(TRY){ offMode=true; $("#gate").hidden=true; setSync("",""); renderMode(); renderHome(); ensureSample().then(renderHome).then(askTryTour).catch(e=>console.error(e)); }   // 4.35 체험판: 예시 핀이 든 견본 도면을 바로 보여 준다   // 체험판: 로그인 없이 바로 개인 도면
 else if(!readInvite()){ if(!cloudOn()) showGate(cloudSet()?2:1); else syncDrawings(); }
 (async()=>{ let r=null; try{ r=JSON.parse(localStorage.getItem(RESUME_KEY)||"null"); localStorage.removeItem(RESUME_KEY); }catch(e){}
   if(!r||!r.d||Date.now()-r.t>10*60e3||!$("#gate").hidden) return;
