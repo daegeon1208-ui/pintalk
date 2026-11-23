@@ -416,6 +416,11 @@ header #backBtn{background:none;padding-left:4px}
 header .hbtn.ico{width:34px;height:34px;padding:0;display:grid;place-items:center;position:relative;font-weight:800;flex:none}
 header .hbtn.ico svg{width:19px;height:19px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .nbadge{position:absolute;right:-3px;top:-3px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--open);color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--accent);font-variant-numeric:tabular-nums}
+header .hbtn.mtog{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:6px 9px;flex:none}
+.mtog i{width:30px;height:18px;border-radius:9px;background:rgba(255,255,255,.28);position:relative;transition:background .2s}
+.mtog i::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .2s}
+.mtog.on i{background:#22C55E}
+.mtog.on i::after{left:14px}
 #measFrame{position:fixed;inset:0;z-index:60;width:100%;height:100%;border:0;background:#E4E6E3}
 header .hbtn.mode{font-size:13px;padding:6px 10px;background:#F59E0B;color:#1B2B4B;font-weight:800}
 header .hbtn.mode.admin{background:rgba(255,255,255,.08);color:#fff;font-weight:600}
@@ -1008,6 +1013,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
   <header>
     <button class="hbtn" id="backBtn">‹ 목록</button>
     <h1 id="vTitle" title="눌러서 도면 정보"></h1><span class="sync" id="syncTxt" role="status" hidden><i></i><b id="syncLab"></b></span>
+    <button class="hbtn mtog" id="measTog" hidden aria-label="잰 치수 보이기"><i></i>치수</button>
     <button class="hbtn ico" id="measBtn" aria-label="길이 재기" title="길이 재기"><svg viewBox="0 0 24 24"><path d="M3 16.5 16.5 3 21 7.5 7.5 21z"/><path d="M7 12.5l1.8 1.8M10 9.5l2.6 2.6M13 6.5l1.8 1.8"/></svg></button>
   </header>
   <div class="pgbar" id="pager" hidden><button id="prevPg" aria-label="이전 쪽">‹</button><button class="pgmid" id="pgMid"><b id="pgTxt"></b><small id="pgNum"></small></button><button id="nextPg" aria-label="다음 쪽">›</button></div>
@@ -1270,7 +1276,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.49";
+const APP_VER = "4.50";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -2549,10 +2555,29 @@ $("#measBtn").onclick=async()=>{
     w.ptMeasureLoad(f.data.slice(0),d.name||"도면","p:"+d.id,d.pageNames,V.pageNo||1); }catch(e){ console.error(e); toast("측정 화면을 열지 못했어요"); ptMeasureClose(); } };
   fr.src="measure/?embed=1"; document.body.appendChild(fr);
 };
-window.ptMeasureClose=()=>{ const fr=$("#measFrame"); if(fr){ fr.src="about:blank"; fr.remove(); } };
+window.ptMeasureClose=()=>{ setTimeout(()=>{ const fr=$("#measFrame"); if(fr){ fr.src="about:blank"; fr.remove(); } if(V.drawing){ loadMeas(); if(V.page) apply(); } },0); };
+/* 4.50 측정에서 잰 치수를 핀 화면에도 그린다 (머리줄 '치수' 스위치로 켜고 끔) */
+V.measOn=(()=>{ try{ return localStorage.getItem("measure-show")!=="0"; }catch(e){ return true; } })();
+function loadMeas(){ V.meas=[]; try{ const a=JSON.parse(localStorage.getItem("measure-items:p:"+V.drawing.id+":"+V.pageNo)||"[]"); if(Array.isArray(a)) V.meas=a; }catch(e){}
+  const b=$("#measTog"); b.hidden=!V.meas.length; b.classList.toggle("on",V.measOn); }
+$("#measTog").onclick=()=>{ V.measOn=!V.measOn; try{ localStorage.setItem("measure-show",V.measOn?"1":"0"); }catch(e){} $("#measTog").classList.toggle("on",V.measOn); if(V.page) apply(); toast(V.measOn?"잰 치수를 보여요":"잰 치수를 숨겼어요"); };
+function measSvg(){
+  const N=q=>scr([q.x/V.pw,q.y/V.ph]), ink="#1E2226"; let h="";
+  const tag=(t,x,y)=>{ let w=14; for(const ch of String(t)) w+=ch.charCodeAt(0)>255?12.5:6.8; return `<g><rect x="${x-w/2}" y="${y-10.5}" width="${w}" height="21" rx="8" fill="${ink}" fill-opacity=".9"/><text x="${x}" y="${y+0.5}" fill="#fff" font-size="12.5" font-weight="700" text-anchor="middle" dominant-baseline="middle">${esc(t)}</text></g>`; };
+  for(const it of V.meas){ if(!it||!it.t) continue;
+    if(it.t==="area"&&it.pts&&it.pts.length>2){ const Q=it.pts.map(N); let cx=0,cy=0; Q.forEach(([x,y])=>{cx+=x;cy+=y;}); cx/=Q.length; cy/=Q.length;
+      h+=`<polygon points="${Q.map(q=>q.join(",")).join(" ")}" fill="${ink}" fill-opacity=".08" stroke="${ink}" stroke-width="1.8" stroke-linejoin="round"/>`+tag(it.txt||"",cx,cy); continue; }
+    if(!it.a||!it.b) continue;
+    const [ax,ay]=N(it.a),[bx,by]=N(it.b), L=Math.hypot(bx-ax,by-ay)||1, nx=-(by-ay)/L*6, ny=(bx-ax)/L*6, col=it.t==="cal"?"#0EA5E9":ink;
+    if(it.t==="gap"&&it.line){ const p1=N({x:it.line[0],y:it.line[1]}), p2=N({x:it.line[2],y:it.line[3]}), nr=Math.hypot(ax-p1[0],ay-p1[1])<Math.hypot(ax-p2[0],ay-p2[1])?p1:p2;
+      h+=`<line x1="${nr[0]}" y1="${nr[1]}" x2="${ax}" y2="${ay}" stroke="${col}" stroke-width="1.2" stroke-dasharray="5 4"/>`; }
+    h+=`<path d="M${ax},${ay}L${bx},${by}M${ax-nx},${ay-ny}L${ax+nx},${ay+ny}M${bx-nx},${by-ny}L${bx+nx},${by+ny}" stroke="${col}" stroke-width="1.8" fill="none"/>`;
+    h+=tag(it.txt||"",(ax+bx)/2,(ay+by)/2-13); }
+  return h;
+}
 async function showPage(n){
   if(V.draft) V.draft.pts=[];
-  V.pageNo=n; updatePager();
+  V.pageNo=n; updatePager(); loadMeas();
   $("#vLoading").hidden=false; detail.hidden=true;
   if(V.renderTask){try{V.renderTask.cancel();}catch(e){}}
   V.page=await V.pdf.getPage(n);
@@ -2728,7 +2753,7 @@ const CLOUD_PX=26;   // 4.45 화면에서 호 하나 길이: 확대·축소와 �
 const cloudPx=()=>CLOUD_PX;
 function drawShapes(){
   colorOf=colorsOf(V.pins.filter(q=>q.id!=="temp"));
-  const svg=$("#shapeLayer"); let h="";
+  const svg=$("#shapeLayer"); let h=V.measOn&&V.meas&&V.meas.length?measSvg():"";
   for(const p of visPins()){ if(p.page!==V.pageNo||!p.shape) continue;
     const col=colorOf(p), done=p.status==="done", sel=V.sel===p.id||(G&&G.type==="drag"&&G.pin===p)||(V.pending&&V.pending.pin===p);
     if(p.shape.type==="sketch"){
