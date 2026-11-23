@@ -79,7 +79,7 @@ header select option{color:#000}
     <button data-m="gap"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 19h18M12 5v14M9 8l3-3 3 3M9 16l3 3 3-3"/></svg>선 간격</button>
     <button class="snap on" id="snapBtn"><svg viewBox="0 0 24 24"><path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 7h4M14 7h4"/></svg>스냅</button>
   </div>
-  <div id="sub"><span id="hint">두 손가락으로 확대·이동해요.</span><button id="areaOk" hidden style="background:var(--red);color:#fff;border-color:var(--red)">면적 완료</button><button id="undoBtn">되돌리기</button><button id="clrBtn">지우기</button></div>
+  <div id="sub"><span id="hint">두 손가락으로 확대·이동해요.</span><button id="areaOk" hidden style="background:var(--red);color:#fff;border-color:var(--red)">면적 완료</button><button id="ptDel" hidden style="color:var(--red)">점 지우기</button><button id="undoBtn">되돌리기</button><button id="clrBtn">지우기</button></div>
 </div>
 <div id="toast" hidden></div>
 
@@ -342,8 +342,15 @@ const areaLabel=(P,dep)=>{ const A=polyArea(P);
   if(dep>0) return `${f2(m2)} m² × ${+(dep/1000).toFixed(3)} m = ${f2(m2*dep/1000)} m³`;
   return f2(m2)+" m² · 둘레 "+per.toFixed(2)+" m"; };
 function areaDone(){ if(S.poly.length<3) return toast("점을 3개 이상 찍어 주세요"); S.items.push({t:"area",pts:S.poly.map(p=>({x:p.x,y:p.y}))}); S.poly=[]; areaBtn(); draw(); }
-function areaBtn(){ const b=$("#areaOk"); b.textContent=S.sel?"완료":"면적 완료"; b.hidden=!(S.sel||(S.mode==="area"&&S.poly.length>=3)); }
+function areaBtn(){ const b=$("#areaOk"); b.textContent=S.sel?"완료":"면적 완료"; b.hidden=!(S.sel||(S.mode==="area"&&S.poly.length>=3));
+  if(!S.sel||S.sel.t!=="area") S.selPt=null; $("#ptDel").hidden=S.selPt==null; }
 $("#areaOk").onclick=()=>{ if(S.sel){ S.sel=null; areaBtn(); setHint(); draw(); } else areaDone(); };
+/* 면적 점 지우기: 흰 점을 톡 누르면 고르고, '점 지우기' */
+$("#ptDel").onclick=()=>{ const it=S.sel; if(!it||it.t!=="area"||S.selPt==null) return;
+  if(it.pts.length<=3) return toast("면적은 점이 3개 이상이어야 해요");
+  it.pts.splice(S.selPt,1); S.selPt=null; areaBtn(); draw(); };
+/* 면적 변 가운데 + 점: 끌거나 누르면 그 자리에 점이 생긴다 */
+const midPts=it=>it.t!=="area"?[]:it.pts.map((p,i)=>{ const q=it.pts[(i+1)%it.pts.length]; return {x:(p.x+q.x)/2,y:(p.y+q.y)/2}; });
 /* 잰 값 편집: 글자를 누르면 창, '점 옮기기'로 점을 끌어 옮긴다 */
 const selPts=it=>it.t==="area"?it.pts:it.t==="gap"?[it.b]:[it.a,it.b];
 const KIND={dist:"거리",gap:"선 간격",area:"면적",cal:"눈금 기준"};
@@ -369,7 +376,7 @@ $("#itOk").onclick=()=>{ const it=edIt; if(!it) return;
 $("#itDel").onclick=()=>{ S.items=S.items.filter(x=>x!==edIt); $("#itDlg").hidden=true; if(edIt&&edIt.t==="cal") toast("기준선을 지웠어요. 맞춘 눈금은 그대로예요"); edIt=null; draw(); };
 $("#itMove").onclick=()=>{ S.sel=edIt; edIt=null; $("#itDlg").hidden=true; S.first=null; S.poly=[]; areaBtn(); setHint(); draw(); };
 function calFix(it){ const du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y); if(du>1e-6) saveScale(it.mm/du,"치수 "+Math.round(it.mm).toLocaleString()+"mm로 맞춤"); }
-function setHint(){ $("#hint").textContent=S.sel?"흰 점이나 그 아래를 끌면 점이 손가락 위로 따라와요. 다 되면 '완료'.":HINT[S.mode]; }
+function setHint(){ $("#hint").textContent=S.sel?(S.sel.t==="area"?"점을 끌어 옮기고, ＋로 점 추가, 점을 눌러 고르면 지우기.":"흰 점이나 그 아래를 끌면 점이 손가락 위로 따라와요. 다 되면 '완료'."):HINT[S.mode]; }
 /* 점 하나 옮긴 뒤 다시 계산 */
 function movePt(it,i,h,live){
   if(it.t==="area"){ it.pts[i]={x:h.x,y:h.y}; return; }
@@ -426,7 +433,9 @@ function draw(){
   if(!S.page) return;
   S.lab=[];
   for(const it of S.items) it.t==="area"?drawArea(x,it.pts,false,it):drawItem(x,it);
-  if(S.sel){ for(const q of selPts(S.sel)){ const h=toS(q.x,q.y); x.save(); x.fillStyle="#fff"; x.strokeStyle="#E31937"; x.lineWidth=3; x.beginPath(); x.arc(h.x,h.y,10,0,7); x.fill(); x.stroke(); x.restore(); } }
+  if(S.sel){
+    for(const q of midPts(S.sel)){ const h=toS(q.x,q.y); x.save(); x.globalAlpha=.9; x.fillStyle="#fff"; x.strokeStyle="#E31937"; x.lineWidth=2; x.beginPath(); x.arc(h.x,h.y,8,0,7); x.fill(); x.stroke(); x.beginPath(); x.moveTo(h.x-4,h.y); x.lineTo(h.x+4,h.y); x.moveTo(h.x,h.y-4); x.lineTo(h.x,h.y+4); x.stroke(); x.restore(); }
+    selPts(S.sel).forEach((q,i)=>{ const h=toS(q.x,q.y), on=S.sel.t==="area"&&S.selPt===i; x.save(); x.fillStyle=on?"#E31937":"#fff"; x.strokeStyle=on?"#fff":"#E31937"; x.lineWidth=3; x.beginPath(); x.arc(h.x,h.y,on?12:10,0,7); x.fill(); x.stroke(); x.restore(); }); }
   // 그리는 중인 선
   const cur=S.hit;
   if(S.mode==="area"&&S.poly.length){ const P=cur?[...S.poly,{x:cur.x,y:cur.y}]:S.poly; drawArea(x,P,true);
@@ -510,10 +519,13 @@ stage.addEventListener("pointerdown",e=>{
   if(P.size>2) return;
   const mouse=e.pointerType==="mouse";
   if(S.sel){ /* 흰 점 바로 위나, 흰 점 아래(손가락 들어 올린 자리)를 잡는다 */
-    const lift=mouse?0:LIFT; let bi=-1, bd=32, below=false;
-    selPts(S.sel).forEach((q,i)=>{ const h=toS(q.x,q.y), d=Math.hypot(h.x-p.x,h.y-p.y), d2=Math.hypot(h.x-p.x,h.y+lift-p.y); if(d<bd){ bd=d; bi=i; below=false; } if(lift&&d2<bd){ bd=d2; bi=i; below=true; } });
-    if(bi>=0){ const q=selPts(S.sel)[bi], h=toS(q.x,q.y);
-      g={k:"edit",i:bi,s:p,moved:false,mouse,orig:JSON.parse(JSON.stringify(S.sel)),off:below||mouse?{x:h.x-p.x,y:h.y-p.y}:{x:0,y:-LIFT}};
+    const lift=mouse?0:LIFT; let bi=-1, bd=32, below=false, mid=false;
+    const test=(arr,isMid)=>arr.forEach((q,i)=>{ const h=toS(q.x,q.y), d=Math.hypot(h.x-p.x,h.y-p.y)+(isMid?4:0), d2=Math.hypot(h.x-p.x,h.y+lift-p.y)+(isMid?4:0); if(d<bd){ bd=d; bi=i; below=false; mid=isMid; } if(lift&&d2<bd){ bd=d2; bi=i; below=true; mid=isMid; } });
+    test(selPts(S.sel),false); test(midPts(S.sel),true);
+    if(bi>=0){ const orig=JSON.parse(JSON.stringify(S.sel));
+      if(mid){ const q=midPts(S.sel)[bi]; S.sel.pts.splice(bi+1,0,{x:q.x,y:q.y}); bi=bi+1; S.selPt=null; areaBtn(); draw(); }
+      const q=selPts(S.sel)[bi], h=toS(q.x,q.y);
+      g={k:"edit",i:bi,s:p,moved:false,mid,mouse,orig,off:below||mouse?{x:h.x-p.x,y:h.y-p.y}:{x:0,y:-LIFT}};
       if(!mouse) loupe(h,true); return; } }
   if(!S.first&&!S.poly.length){ const it=labAt(p); if(it){ g={k:"label",it,s:p,T0:{...S.T},moved:false,mouse}; return; } }
   if(S.sel){ g={k:"pan",s:p,T0:{...S.T},moved:false,mouse,noPlace:true}; return; }
@@ -548,6 +560,8 @@ function up(e){
   if(g.k==="pinch"){ if(P.size===0) g=null; else { const q=[...P.values()][0]; g={k:"pan",s:q,T0:{...S.T},moved:true}; } return; }
   if(g.k==="edit"){ const it=S.sel;
     if(it&&g.moved){ if(e.type==="pointerup"){ if(it.t==="cal") calFix(it); } else { for(const k of Object.keys(it)) delete it[k]; Object.assign(it,g.orig); } }
+    else if(it&&e.type==="pointerup"&&it.t==="area"&&!g.mid){ S.selPt=S.selPt===g.i?null:g.i; areaBtn(); }
+    else if(it&&e.type!=="pointerup"&&g.mid){ for(const k of Object.keys(it)) delete it[k]; Object.assign(it,g.orig); }
     S.hit=null; loupe(null,false); draw(); g=null; return; }
   if(g.k==="label"){ if(e.type==="pointerup") openItem(g.it); g=null; return; }
   if(g.k==="aim"&&e.type==="pointerup"&&S.hit) place(S.hit);
