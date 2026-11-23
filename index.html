@@ -1282,7 +1282,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.57";
+const APP_VER = "4.58";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -2062,7 +2062,17 @@ async function api(body,onRecv){
    서버가 도면 파일을 꺼내는 동안은 진행 정도를 알려 주지 않으므로, 이 휴대폰에서 지난번에 받은 속도(1MB에 몇 초)로 걸릴 시간을 짐작해 %를 올리고,
    내려오기 시작하면 받은 바이트로 남은 부분을 채운다. 받을 때마다 속도를 다시 배워서 점점 맞아진다. */
 function dlRate(){ try{ const r=JSON.parse(localStorage.getItem("pinsDlRate")||"null"); if(r&&r.perMB>0) return r; }catch(e){} return {perMB:3000}; }
+/* 4.58 도면을 받거나 올리는 동안 화면이 꺼지지 않게 (Screen Wake Lock, 지원 안 되면 조용히 넘어감) */
+const AW={n:0,lock:null};
+async function awGet(){ if(AW.n<=0||AW.lock||document.visibilityState!=="visible") return; try{ if(navigator.wakeLock){ AW.lock=await navigator.wakeLock.request("screen"); AW.lock.addEventListener("release",()=>{ AW.lock=null; }); if(AW.n<=0) awFree(); } }catch(e){ AW.lock=null; } }
+function awFree(){ const l=AW.lock; AW.lock=null; if(l) l.release().catch(()=>{}); }
+function keepAwake(on){ AW.n=Math.max(0,AW.n+(on?1:-1)); if(AW.n>0) awGet(); else awFree(); }
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") awGet(); });
 async function fetchDrawingFile(d,msg){
+  keepAwake(true);
+  try{ return await fetchDrawingFile0(d,msg); } finally { keepAwake(false); }
+}
+async function fetchDrawingFile0(d,msg){
   const DL_BASE=1500, R=dlRate(), size=+d.size||0, mb=(size||2e6)/1048576, est=DL_BASE+R.perMB*mb, total=size?Math.ceil(size/3)*4+30:0;
   const t0=Date.now(); let got=0, tf=0, pf=0, shown=0;
   const draw=()=>{
@@ -2192,7 +2202,8 @@ async function savePin(p){
 }
 let pushT=null;
 function schedulePush(){ if(!cloudOn()) return; clearTimeout(pushT); pushT=setTimeout(syncPins,1200); }
-async function uploadDrawing(d){
+async function uploadDrawing(d){ keepAwake(true); try{ return await uploadDrawing0(d); } finally { keepAwake(false); } }
+async function uploadDrawing0(d){
   const f=await dbGet("files",d.id);
   setSync("wait","도면 올리는 중…"); toast(`도면 파일 올리는 중… (${(f.data.byteLength/1048576).toFixed(1)}MB) · ${d.private?"내 계정에 보관돼 앱을 지워도 다시 받을 수 있어요":"다 올라가면 핀도 함께 공유돼요"}`,120000);
   await api({action:"uploadDrawing",drawing:{id:d.id,name:d.name,pages:d.pages,created:d.created,kind:d.kind||"",private:!!d.private},data:bufToB64(f.data),by:d.by||myName()});
@@ -2235,7 +2246,8 @@ let pushLock=Promise.resolve();
 function pushDirty(id){ const r=pushLock.then(()=>pushDirty_(id)); pushLock=r.catch(()=>{}); return r; }
 let photoAhead=true, pinBatch=true;   // pinBatch: 서버가 savePins(여러 핀 한 번에)를 알면 true (4.24)
 let _pa=0;   // 서버가 사진 먼저 저장(savePhotos)을 알면 true (3.79)
-async function pushDirty_(drawingId){
+async function pushDirty_(drawingId){ keepAwake(true); try{ return await pushDirty_W(drawingId); } finally { keepAwake(false); } }
+async function pushDirty_W(drawingId){
     const dirty=(await pinsOf(drawingId)).filter(p=>p.dirty);
     if(dirty.length) setSync("wait",`핀 ${dirty.length}개 보내는 중`);
     const many=dirty.length>=3; let k=0;   // 여러 개를 올릴 때는 몇 개째인지 보여 준다 (3.78)
@@ -4406,7 +4418,8 @@ async function locCrop(full,pin,pins,aspect,PL){ PL=PL||pinLabel;
 /* 사진대지: 사진 전부 넣기면 조치 전·후 사진을 대표 사진부터 한 칸에 한 장씩 짝짓는다 */
 const photoOrder=list=>{ const l=(list||[]).slice(), i=l.findIndex(x=>x.rep); if(i>0) l.unshift(l.splice(i,1)[0]); return l; };
 const photoRows=p=>Math.max(1,(p.photos||[]).length,(p.donePhotos||[]).length);
-async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per){
+async function buildExport(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per){ keepAwake(true); try{ return await buildExportW(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per); } finally { keepAwake(false); } }
+async function buildExportW(drawing,pinList,progress,teamsTxt,allPhotos,tmpl,per){
   const VEN=tmpl==="vendor", CRK=tmpl==="crack", PAT=tmpl==="patrol"; const PL=mapLabel;   // 4.07 모든 양식에서 핀 번호는 숫자만 (팀은 색으로)   // 협력업체 전달용: 업체별로 묶고, 우리 쪽 이름·팀은 빼고, 쪽마다 조치 확인(서명) 칸
   if(!pdfLibReady) pdfLibReady=Promise.all([loadScript("lib/pdf-lib.min.js"),loadScript("lib/fontkit.umd.min.js")]);
   await pdfLibReady;
