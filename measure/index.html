@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>핀톡 측정</title>
+<meta name="theme-color" content="#8E8E88">
+<link rel="icon" href="../icon-192.png">
+<style>
+@font-face{font-family:"Pretendard";src:url(../fonts/PretendardVariable.woff2) format("woff2");font-weight:45 920;font-display:swap}
+:root{--sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom);--sal:env(safe-area-inset-left);--sar:env(safe-area-inset-right);--ink:#1E2226;--sub:#6F6F69;--line:#DCDCD8;--bg:#E4E6E3;--card:#fff;--red:#E31937;--gray:#8E8E88;--snap:#0EA5E9}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font:15px/1.45 "Pretendard",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-user-select:none;user-select:none}
+header{position:fixed;left:0;right:0;top:0;z-index:5;background:var(--gray);color:#fff;box-shadow:inset 0 -4px 0 var(--red);padding:calc(var(--sat) + 8px) max(12px,var(--sar)) 12px max(12px,var(--sal));display:flex;align-items:center;gap:8px}
+header h1{margin:0;font-size:16px;font-weight:800;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header h1 small{font-weight:600;opacity:.85;margin-left:6px;font-size:12px;background:var(--red);padding:1px 7px;border-radius:8px}
+header button,header select{border:0;border-radius:10px;background:rgba(255,255,255,.22);color:#fff;font:inherit;font-weight:700;font-size:13.5px;padding:7px 10px}
+header select option{color:#000}
+#info{position:fixed;left:0;right:0;z-index:4;padding:6px max(12px,var(--sal));font-size:12.5px;color:var(--sub);background:rgba(228,230,227,.92);border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center}
+#info b{color:var(--ink)}
+#info .sc{margin-left:auto;font-weight:700;color:var(--ink);white-space:nowrap}
+#info .sc.no{color:var(--red)}
+#stage{position:fixed;left:0;right:0;bottom:0;overflow:hidden;touch-action:none;background:#D3D6D2}
+#world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+#world canvas{display:block;background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.18)}
+#detail,#ov{position:absolute;left:0;top:0;pointer-events:none}
+#loupe{position:absolute;width:132px;height:132px;border-radius:50%;border:3px solid #fff;box-shadow:0 6px 22px rgba(0,0,0,.35);pointer-events:none;background:#fff;overflow:hidden}
+#loupe[hidden]{display:none}
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:#fff;border-top:1px solid var(--line);padding:8px max(8px,var(--sar)) calc(var(--sab) + 8px) max(8px,var(--sal))}
+#tools{display:flex;gap:6px}
+#tools button{flex:1;border:0;border-radius:12px;background:#ECEDEA;color:var(--ink);font:inherit;font-size:12.5px;font-weight:700;padding:7px 2px 6px;display:flex;flex-direction:column;align-items:center;gap:2px}
+#tools button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#tools button.on{background:var(--ink);color:#fff}
+#tools button.snap.on{background:var(--snap);color:#fff}
+#sub{display:flex;gap:6px;margin-top:7px;align-items:center}
+#hint{flex:1;font-size:12.5px;color:var(--sub);min-width:0}
+#sub button{border:1px solid var(--line);background:#fff;border-radius:10px;font:inherit;font-size:12.5px;font-weight:700;padding:6px 10px;color:var(--ink)}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:130px;z-index:9;background:rgba(30,34,38,.92);color:#fff;padding:9px 14px;border-radius:12px;font-size:13.5px;max-width:90vw;text-align:center}
+#toast[hidden]{display:none}
+.dlg{position:fixed;inset:0;z-index:8;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.dlg[hidden]{display:none}
+.dlg .box{width:100%;max-width:520px;background:#fff;border-radius:20px 20px 0 0;padding:16px 16px calc(var(--sab) + 16px);max-height:80vh;overflow:auto}
+.dlg h2{margin:0 0 10px;font-size:17px}
+.dlg p{margin:4px 0 10px;color:var(--sub);font-size:13.5px}
+.dlg .row{display:flex;gap:8px;align-items:center;margin:8px 0}
+.dlg input{flex:1;min-width:0;font:inherit;font-size:17px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px}
+.dlg .btns{display:flex;gap:8px;margin-top:12px}
+.dlg .btns button,.dlg .opt{flex:1;border:0;border-radius:12px;padding:12px;font:inherit;font-weight:700;background:#ECEDEA;color:var(--ink)}
+.dlg .btns .pri{background:var(--red);color:#fff}
+.dlg .opt{display:block;width:100%;text-align:left;margin:6px 0;font-weight:600}
+.dlg .opt b{display:block;font-size:15px}
+.dlg .opt small{color:var(--sub);font-weight:500}
+.dlg .sec{font-size:12.5px;color:var(--sub);font-weight:700;margin:14px 2px 2px}
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--sub);padding:24px;gap:12px}
+.empty[hidden]{display:none}
+.empty button{border:0;border-radius:14px;background:var(--red);color:#fff;font:inherit;font-weight:700;padding:13px 22px}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="ttl">핀톡 측정<small>측정</small></h1>
+  <select id="pg" hidden aria-label="쪽"></select>
+  <button id="openBtn">도면 열기</button>
+</header>
+<div id="info"><span id="lineInfo">도면을 열어 주세요</span><span class="sc no" id="scInfo"></span></div>
+<div id="stage">
+  <div id="world"><canvas id="base"></canvas></div>
+  <canvas id="detail"></canvas>
+  <canvas id="ov"></canvas>
+  <div id="loupe" hidden><canvas id="lp" width="132" height="132"></canvas></div>
+  <div class="empty" id="empty"><div id="emptyTx">PDF 도면에서 길이와 선 사이 간격을 재요.</div><button id="openBtn2">도면 열기</button></div>
+</div>
+<div id="bar">
+  <div id="tools">
+    <button data-m="view" class="on"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>이동</button>
+    <button data-m="cal"><svg viewBox="0 0 24 24"><path d="M3 17 17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg>눈금</button>
+    <button data-m="dist"><svg viewBox="0 0 24 24"><path d="M4 12h16M4 8v8M20 8v8M7 9l-3 3 3 3M17 9l3 3-3 3"/></svg>거리</button>
+    <button data-m="gap"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 19h18M12 5v14M9 8l3-3 3 3M9 16l3 3 3-3"/></svg>선 간격</button>
+    <button class="snap on" id="snapBtn"><svg viewBox="0 0 24 24"><path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 7h4M14 7h4"/></svg>스냅</button>
+  </div>
+  <div id="sub"><span id="hint">두 손가락으로 확대·이동해요.</span><button id="undoBtn">되돌리기</button><button id="clrBtn">지우기</button></div>
+</div>
+<div id="toast" hidden></div>
+
+<div class="dlg" id="openDlg" hidden><div class="box">
+  <h2>도면 열기</h2>
+  <button class="opt" id="pickFile"><b>📄 휴대폰에서 PDF 고르기</b><small>캐드에서 뽑은 PDF면 선에 스냅이 잡혀요</small></button>
+  <button class="opt" id="pickSample"><b>🧪 견본 도면</b><small>핀톡 연습용 1층 평면도</small></button>
+  <div class="sec" id="ptSec" hidden>핀톡에 저장된 도면 (읽기만 해요)</div>
+  <div id="ptList"></div>
+  <div class="btns"><button id="openX">닫기</button></div>
+  <input type="file" id="fileIn" accept="application/pdf,.pdf" hidden>
+</div></div>
+
+<div class="dlg" id="calDlg" hidden><div class="box">
+  <h2>눈금 맞추기</h2>
+  <p>화면 거리를 실제 치수로 바꾸는 기준이에요. 한 번 맞추면 이 도면·이 쪽에서 계속 써요.</p>
+  <button class="opt" id="calPts"><b>① 길이를 아는 두 점 찍기 (권장)</b><small>치수선 양 끝이나 기둥 중심 두 개를 찍고 실제 길이를 넣어요</small></button>
+  <div class="sec">② 축척으로 맞추기</div>
+  <div class="row"><span style="font-weight:700">1 /</span><input id="calN" type="number" inputmode="decimal" placeholder="100"><button class="opt" id="calNGo" style="flex:0 0 auto;width:auto;margin:0;background:var(--ink);color:#fff;text-align:center">적용</button></div>
+  <p>도면을 원래 종이 크기 그대로 PDF로 뽑았을 때만 맞아요. 크기를 바꿔 뽑았으면 ①을 쓰세요.</p>
+  <div class="btns"><button id="calX">닫기</button></div>
+</div></div>
+
+<div class="dlg" id="lenDlg" hidden><div class="box">
+  <h2>두 점 사이 실제 길이</h2>
+  <p id="lenP"></p>
+  <div class="row"><input id="lenIn" type="number" inputmode="decimal" placeholder="예: 8200"><span style="font-weight:700">mm</span></div>
+  <div class="btns"><button id="lenX">취소</button><button class="pri" id="lenOk">맞추기</button></div>
+</div></div>
+
+<script src="../lib/pdfjs.min.js"></script>
+<script>
+"use strict";
+pdfjsLib.GlobalWorkerOptions.workerSrc="../lib/pdfjs.worker.min.js";
+const $=s=>document.querySelector(s);
+const PT_MM=25.4/72;                 // PDF 1pt = 0.3528mm (종이 위)
+const S={pdf:null,page:null,pn:1,key:"",name:"",w:0,h:0,B:1,Z:1,T:{x:0,y:0},
+  segs:null,nseg:0,pts:null,grid:new Map(),C:16,mode:"view",snap:true,mmPerU:0,scSrc:"",
+  items:[],first:null,cursor:null,hit:null,renderTask:null,detailOK:false};
+let dpr=Math.min(window.devicePixelRatio||1,3);
+
+/* ---------- 화면 크기 ---------- */
+function layout(){
+  const hh=$("header").offsetHeight; $("#info").style.top=hh+"px";
+  const top=hh+$("#info").offsetHeight, bot=$("#bar").offsetHeight;
+  const st=$("#stage"); st.style.top=top+"px"; st.style.bottom=bot+"px";
+  for(const c of [$("#ov"),$("#detail")]){ c.width=st.clientWidth*dpr; c.height=st.clientHeight*dpr; c.style.width=st.clientWidth+"px"; c.style.height=st.clientHeight+"px"; }
+  $("#toast").style.bottom=(bot+14)+"px";
+  draw(); scheduleDetail();
+}
+addEventListener("resize",()=>{ dpr=Math.min(window.devicePixelRatio||1,3); layout(); });
+
+function toast(t,ms){ const e=$("#toast"); e.textContent=t; e.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>e.hidden=true,ms||2500); }
+
+/* ---------- 도면 열기 ---------- */
+/* 핀톡 도면 화면 안에서 열릴 때(embed): 지금 보던 도면·쪽을 받아서 연다 */
+const EMB=new URLSearchParams(location.search).has("embed")&&parent!==window;
+if(EMB){ $("#openBtn").textContent="닫기"; $("#openBtn").onclick=()=>{ try{ parent.ptMeasureClose(); }catch(e){} };
+  $("#openBtn2").hidden=true; $("#emptyTx").textContent="도면을 불러오는 중…"; }
+else $("#openBtn").onclick=openDlg;
+$("#openBtn2").onclick=openDlg;
+window.ptMeasureLoad=(buf,name,key,pageNames,start)=>loadPdf(buf,name,key,pageNames,start);
+$("#openX").onclick=()=>$("#openDlg").hidden=true;
+$("#pickFile").onclick=()=>$("#fileIn").click();
+$("#fileIn").onchange=async e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return; $("#openDlg").hidden=true; await loadPdf(await f.arrayBuffer(),f.name,"f:"+f.name+":"+f.size); };
+$("#pickSample").onclick=async()=>{ $("#openDlg").hidden=true; toast("견본 도면 받는 중…",9000); const b=await (await fetch("../sample.pdf")).arrayBuffer(); await loadPdf(b,"견본 도면 (연습용)","sample"); };
+
+/* 핀톡에 저장된 도면을 읽기만 한다. 핀톡 저장소가 없으면 만들지 않는다(onupgradeneeded면 바로 취소) */
+async function ptDb(){
+  try{ if(indexedDB.databases){ const ds=await indexedDB.databases(); if(!ds.some(d=>d.name==="drawing-pins")) return null; } }catch(e){}
+  return new Promise(res=>{ let r; try{ r=indexedDB.open("drawing-pins"); }catch(e){ return res(null); }
+    r.onupgradeneeded=()=>{ try{ r.transaction.abort(); }catch(e){} };
+    r.onsuccess=()=>{ const d=r.result; if(!d.objectStoreNames.contains("drawings")||!d.objectStoreNames.contains("files")){ d.close(); return res(null); } res(d); };
+    r.onerror=()=>res(null); r.onblocked=()=>res(null); });
+}
+const idb=(d,store,fn)=>new Promise((res,rej)=>{ const q=fn(d.transaction(store,"readonly").objectStore(store)); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); });
+async function openDlg(){
+  $("#openDlg").hidden=false; const L=$("#ptList"); L.innerHTML=""; $("#ptSec").hidden=true;
+  const d=await ptDb(); if(!d) return;
+  try{
+    const ds=(await idb(d,"drawings",s=>s.getAll())).filter(x=>!x.deleted).sort((a,b)=>(b.opened||b.created||0)-(a.opened||a.created||0));
+    const keys=new Set(await idb(d,"files",s=>s.getAllKeys()));
+    const ok=ds.filter(x=>keys.has(x.id)); if(!ok.length){ d.close(); return; }
+    $("#ptSec").hidden=false;
+    L.innerHTML=ok.map(x=>`<button class="opt" data-id="${x.id}"><b>${esc(x.name||"도면")}</b><small>${x.pages||1}쪽${x.kind==="dwg"?" · DWG에서 바꾼 PDF":""}</small></button>`).join("");
+    L.onclick=async e=>{ const b=e.target.closest("[data-id]"); if(!b) return; $("#openDlg").hidden=true;
+      const x=ok.find(y=>y.id===b.dataset.id), f=await idb(d,"files",s=>s.get(x.id));
+      await loadPdf(f.data.slice(0),x.name||"도면","p:"+x.id,x.pageNames); };
+  }catch(e){ console.error(e); }
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function loadPdf(buf,name,key,pageNames,start){
+  try{
+    toast("도면 여는 중…",20000);
+    if(S.pdf) S.pdf.destroy();
+    S.pdf=await pdfjsLib.getDocument({data:buf}).promise; S.name=name; S.key=key;
+    $("#ttl").firstChild.textContent=name; $("#empty").hidden=true;
+    const pg=$("#pg"); pg.innerHTML=""; for(let i=1;i<=S.pdf.numPages;i++){ const o=document.createElement("option"); o.value=i; o.textContent=(pageNames&&pageNames[i-1])||(i+"쪽"); pg.appendChild(o); }
+    pg.hidden=S.pdf.numPages<2; layout();
+    const n0=Math.min(Math.max(1,start||1),S.pdf.numPages); pg.value=n0;
+    await openPage(n0);
+  }catch(e){ console.error(e); toast("PDF를 열 수 없어요: "+e.message,4000); }
+}
+$("#pg").onchange=e=>openPage(+e.target.value);
+
+async function openPage(n){
+  S.pn=n; S.items=[]; S.first=null; S.hit=null; S.detailOK=false;
+  S.page=await S.pdf.getPage(n);
+  const vp=S.page.getViewport({scale:1}); S.w=vp.width; S.h=vp.height;
+  // 처음 화면: 도면 전체가 보이게
+  const st=$("#stage"), W=st.clientWidth, H=st.clientHeight;
+  S.Z=Math.min(W/S.w,H/S.h)*0.94; S.T={x:(W-S.w*S.Z)/2,y:(H-S.h*S.Z)/2};
+  // 바탕 그림: 긴 변 최대 4096px
+  S.B=Math.min(4096/Math.max(S.w,S.h), Math.sqrt((matchMedia("(pointer:coarse)").matches?6e6:12e6)/(S.w*S.h)), S.Z*dpr*2.5);
+  const c=$("#base"); c.width=Math.round(S.w*S.B); c.height=Math.round(S.h*S.B); c.style.width=c.width+"px"; c.style.height=c.height+"px";
+  applyView();
+  loadScale();
+  toast("도면 그리는 중…",20000);
+  await S.page.render({canvasContext:c.getContext("2d"),viewport:S.page.getViewport({scale:S.B})}).promise;
+  toast("선 읽는 중…",30000);
+  const t0=performance.now(); await extract(S.page);
+  const n2=S.nseg;
+  $("#lineInfo").innerHTML=n2?`선 <b>${n2.toLocaleString()}</b>개 읽음 · 스냅 됨`:`선 정보가 없는 도면(스캔·이미지)이라 <b>스냅이 안 돼요</b>`;
+  $("#toast").hidden=true;
+  if(!n2) toast("이 도면은 선 정보가 없어 손으로 찍어서 재야 해요",3500);
+  console.log("segs",n2,"ms",Math.round(performance.now()-t0));
+  draw(); scheduleDetail();
+}
+
+/* ---------- PDF 선 읽기: 그리기 명령에서 직선만 좌표로 뽑는다 ---------- */
+async function extract(page){
+  const vp=page.getViewport({scale:1}), vt=vp.transform, ol=await page.getOperatorList(), O=pdfjsLib.OPS;
+  const mul=(m,n)=>[m[0]*n[0]+m[2]*n[1],m[1]*n[0]+m[3]*n[1],m[0]*n[2]+m[2]*n[3],m[1]*n[2]+m[3]*n[3],m[0]*n[4]+m[2]*n[5]+m[4],m[1]*n[4]+m[3]*n[5]+m[5]];
+  let ctm=[1,0,0,1,0,0]; const st=[], out=[], pts=[]; let pend=[], ppts=[];
+  const P=(x,y)=>{ const X=ctm[0]*x+ctm[2]*y+ctm[4], Y=ctm[1]*x+ctm[3]*y+ctm[5]; return [vt[0]*X+vt[2]*Y+vt[4], vt[1]*X+vt[3]*Y+vt[5]]; };
+  const seg=(a,b)=>{ if(Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])>0.02) pend.push(a[0],a[1],b[0],b[1]); };
+  const paint=new Set([O.stroke,O.closeStroke,O.fill,O.eoFill,O.fillStroke,O.eoFillStroke,O.closeFillStroke,O.closeEOFillStroke]);
+  const F=ol.fnArray, A=ol.argsArray;
+  for(let i=0;i<F.length;i++){
+    const fn=F[i], a=A[i];
+    if(fn===O.save) st.push(ctm);
+    else if(fn===O.restore) ctm=st.pop()||ctm;
+    else if(fn===O.transform) ctm=mul(ctm,a);
+    else if(fn===O.paintFormXObjectBegin){ st.push(ctm); if(a&&a[0]) ctm=mul(ctm,a[0]); }
+    else if(fn===O.paintFormXObjectEnd) ctm=st.pop()||ctm;
+    else if(fn===O.constructPath){
+      const ops=a[0], q=a[1]; let k=0, cur=null, start=null;
+      for(const op of ops){
+        if(op===O.moveTo){ cur=start=P(q[k],q[k+1]); k+=2; }
+        else if(op===O.lineTo){ const nx=P(q[k],q[k+1]); k+=2; if(cur) seg(cur,nx); cur=nx; }
+        else if(op===O.curveTo){ const nx=P(q[k+4],q[k+5]); k+=6; if(cur) ppts.push(cur[0],cur[1]); ppts.push(nx[0],nx[1]); cur=nx; }   // 곡선은 끝점만 (문 열림선 등)
+        else if(op===O.curveTo2||op===O.curveTo3){ const nx=P(q[k+2],q[k+3]); k+=4; if(cur) ppts.push(cur[0],cur[1]); ppts.push(nx[0],nx[1]); cur=nx; }
+        else if(op===O.closePath){ if(cur&&start) seg(cur,start); cur=start; }
+        else if(op===O.rectangle){ const x=q[k],y=q[k+1],w=q[k+2],h=q[k+3]; k+=4; const p1=P(x,y),p2=P(x+w,y),p3=P(x+w,y+h),p4=P(x,y+h); seg(p1,p2);seg(p2,p3);seg(p3,p4);seg(p4,p1); cur=start=p1; }
+      }
+    }
+    else if(paint.has(fn)){ for(const v of pend) out.push(v); for(const v of ppts) pts.push(v); pend=[]; ppts=[]; }
+    else if(fn===O.endPath){ pend=[]; ppts=[]; }   // 잘라내기(clip) 경로는 그려지지 않으므로 뺀다
+  }
+  S.segs=new Float32Array(out); S.nseg=out.length/4; S.pts=new Float32Array(pts);
+  // 격자 색인: 선이 지나는 칸마다 번호를 넣는다
+  const C=S.C=Math.max(8,Math.max(S.w,S.h)/200), G=S.grid=new Map();
+  const add=(cx,cy,v)=>{ const key=cx*65536+cy; let l=G.get(key); if(!l) G.set(key,l=[]); l.push(v); };
+  for(let s=0;s<S.nseg;s++){
+    const x1=S.segs[4*s],y1=S.segs[4*s+1],x2=S.segs[4*s+2],y2=S.segs[4*s+3], L=Math.hypot(x2-x1,y2-y1), n=Math.max(1,Math.ceil(L/(C*0.5)));
+    let lk=-1; for(let j=0;j<=n;j++){ const cx=Math.floor((x1+(x2-x1)*j/n)/C)+1000, cy=Math.floor((y1+(y2-y1)*j/n)/C)+1000, kk=cx*65536+cy; if(kk!==lk){ add(cx,cy,s); lk=kk; } }
+  }
+  const PG=S.pgrid=new Map();
+  for(let j=0;j<S.pts.length;j+=2){ const key=(Math.floor(S.pts[j]/C)+1000)*65536+Math.floor(S.pts[j+1]/C)+1000; let l=PG.get(key); if(!l) PG.set(key,l=[]); l.push(j); }
+}
+
+/* ---------- 스냅: 끝점·교차점 > 선 위 ---------- */
+function snapAt(ux,uy){
+  const r=24/S.Z;   // 화면에서 손가락 약 24px 안
+  if(!S.snap||!S.nseg) return {x:ux,y:uy,type:"free",seg:-1};
+  const C=S.C, x0=Math.floor((ux-r)/C)+1000, x1=Math.floor((ux+r)/C)+1000, y0=Math.floor((uy-r)/C)+1000, y1=Math.floor((uy+r)/C)+1000;
+  const ids=new Set(), cps=[];
+  for(let cx=x0;cx<=x1;cx++) for(let cy=y0;cy<=y1;cy++){ const key=cx*65536+cy, l=S.grid.get(key); if(l) for(const s of l) ids.add(s); const pl=S.pgrid&&S.pgrid.get(key); if(pl) for(const j of pl) cps.push(j); }
+  const sg=S.segs; let best=null, bd=r;
+  const tryPt=(x,y,type)=>{ const d=Math.hypot(x-ux,y-uy); if(d<bd-1e-9||(best&&type==="end"&&best.type!=="end"&&d<=bd+r*0.15)){ bd=Math.min(bd,d); best={x,y,type}; } };
+  const minL=10/S.Z;   // 화면에서 10px보다 짧은 선(해치 무늬 등)은 확대해야 잡힌다
+  const L=[...ids].filter(s=>Math.hypot(sg[4*s+2]-sg[4*s],sg[4*s+3]-sg[4*s+1])>=minL).slice(0,600);
+  // 가까운 선 (선 간격 첫 선을 정할 때 쓴다)
+  let ns=-1, nd=r, nx=0, ny=0;
+  for(const s of L){ const ax=sg[4*s],ay=sg[4*s+1],bx=sg[4*s+2],by=sg[4*s+3];
+    tryPt(ax,ay,"end"); tryPt(bx,by,"end");
+    const dx=bx-ax,dy=by-ay,ll=dx*dx+dy*dy; let t=ll?((ux-ax)*dx+(uy-ay)*dy)/ll:0; t=Math.max(0,Math.min(1,t));
+    const px=ax+t*dx,py=ay+t*dy,d=Math.hypot(px-ux,py-uy); if(d<nd){ nd=d; ns=s; nx=px; ny=py; } }
+  for(const j of cps) tryPt(S.pts[j],S.pts[j+1],"end");
+  // 교차점
+  const near=L.filter(s=>{ const ax=sg[4*s],ay=sg[4*s+1],bx=sg[4*s+2],by=sg[4*s+3],dx=bx-ax,dy=by-ay,ll=dx*dx+dy*dy; let t=ll?((ux-ax)*dx+(uy-ay)*dy)/ll:0; t=Math.max(0,Math.min(1,t)); return Math.hypot(ax+t*dx-ux,ay+t*dy-uy)<r; }).slice(0,120);
+  for(let i=0;i<near.length;i++) for(let j=i+1;j<near.length;j++){ const p=inter(near[i],near[j]); if(p) tryPt(p[0],p[1],"int"); }
+  if(best) return {...best,seg:ns};
+  if(ns>=0) return {x:nx,y:ny,type:"on",seg:ns};
+  return {x:ux,y:uy,type:"free",seg:-1};
+}
+/* 선 간격용: 끝점보다 '선 자체'를 고른다. 가까운 선 중 긴 선을 먼저 (해치·글자 조각보다 벽선·축선) */
+function snapLine(ux,uy){
+  if(!S.nseg) return {x:ux,y:uy,type:"free",seg:-1};
+  const r=26/S.Z, C=S.C, sg=S.segs, x0=Math.floor((ux-r)/C)+1000, x1=Math.floor((ux+r)/C)+1000, y0=Math.floor((uy-r)/C)+1000, y1=Math.floor((uy+r)/C)+1000, ids=new Set();
+  for(let cx=x0;cx<=x1;cx++) for(let cy=y0;cy<=y1;cy++){ const l=S.grid.get(cx*65536+cy); if(l) for(const s of l) ids.add(s); }
+  const minL=14/S.Z; let best=null;
+  for(const s of ids){ const ax=sg[4*s],ay=sg[4*s+1],bx=sg[4*s+2],by=sg[4*s+3],dx=bx-ax,dy=by-ay,ll=Math.hypot(dx,dy); if(ll<minL) continue;
+    let t=((ux-ax)*dx+(uy-ay)*dy)/(ll*ll); t=Math.max(0,Math.min(1,t)); const px=ax+t*dx,py=ay+t*dy,d=Math.hypot(px-ux,py-uy); if(d>r) continue;
+    const score=d*S.Z-Math.min(ll*S.Z,600)/60;   // 화면 px 거리 - 긴 선 가산점(최대 10px)
+    if(!best||score<best.score) best={x:px,y:py,type:"on",seg:s,score}; }
+  return best||{x:ux,y:uy,type:"free",seg:-1};
+}
+const pick=(ux,uy)=>S.mode==="gap"&&S.snap?snapLine(ux,uy):snapAt(ux,uy);
+function inter(a,b){
+  const s=S.segs, x1=s[4*a],y1=s[4*a+1],x2=s[4*a+2],y2=s[4*a+3],x3=s[4*b],y3=s[4*b+1],x4=s[4*b+2],y4=s[4*b+3];
+  const d=(x1-x2)*(y3-y4)-(y1-y2)*(x3-x4); if(Math.abs(d)<1e-9) return null;
+  const t=((x1-x3)*(y3-y4)-(y1-y3)*(x3-x4))/d, u=-((x1-x2)*(y1-y3)-(y1-y2)*(x1-x3))/d;
+  if(t<-1e-6||t>1+1e-6||u<-1e-6||u>1+1e-6) return null;
+  return [x1+t*(x2-x1),y1+t*(y2-y1)];
+}
+
+/* ---------- 눈금 ---------- */
+const scKey=()=>"measure-scale:"+S.key+":"+S.pn;
+function loadScale(){ S.mmPerU=0; S.scSrc=""; try{ const o=JSON.parse(localStorage.getItem(scKey())||"null"); if(o&&o.k>0){ S.mmPerU=o.k; S.scSrc=o.src||""; } }catch(e){} showScale(); }
+function saveScale(k,src){ S.mmPerU=k; S.scSrc=src; try{ localStorage.setItem(scKey(),JSON.stringify({k,src})); }catch(e){} showScale(); draw(); }
+function showScale(){ const e=$("#scInfo");
+  if(!S.mmPerU){ e.textContent=S.pdf?"눈금 없음":""; e.className="sc no"; return; }
+  const N=S.mmPerU/PT_MM; e.textContent=`약 1/${N>=10?Math.round(N):N.toFixed(1)}`+(S.scSrc?` · ${S.scSrc}`:""); e.className="sc"; }
+const fmt=mm=>{ const a=Math.abs(mm); return (a>=100?Math.round(mm).toLocaleString():a>=10?mm.toFixed(1):mm.toFixed(2))+" mm"; };
+const label=du=>S.mmPerU?fmt(du*S.mmPerU):`종이 ${(du*PT_MM).toFixed(1)}mm · 눈금 없음`;
+
+$("#calX").onclick=()=>$("#calDlg").hidden=true;
+$("#calPts").onclick=()=>{ $("#calDlg").hidden=true; setMode("cal",true); };
+$("#calNGo").onclick=()=>{ const N=parseFloat($("#calN").value); if(!(N>0)) return toast("축척 숫자를 넣어 주세요"); $("#calDlg").hidden=true; saveScale(N*PT_MM,"축척 1/"+N); toast(`축척 1/${N}로 맞췄어요`); setMode("dist"); };
+let calPend=null;
+function askLen(a,b){ calPend={a,b}; const du=Math.hypot(b.x-a.x,b.y-a.y); $("#lenP").textContent=`찍은 두 점: 종이 위 ${(du*PT_MM).toFixed(1)}mm. 도면에 적힌 실제 치수를 넣어 주세요.`; $("#lenIn").value=""; $("#lenDlg").hidden=false; setTimeout(()=>$("#lenIn").focus(),50); }
+$("#lenX").onclick=()=>{ $("#lenDlg").hidden=true; calPend=null; S.first=null; draw(); };
+$("#lenOk").onclick=()=>{ const v=parseFloat($("#lenIn").value); if(!(v>0)||!calPend) return toast("길이를 mm로 넣어 주세요");
+  const {a,b}=calPend, du=Math.hypot(b.x-a.x,b.y-a.y); if(du<1e-6) return;
+  S.items=S.items.filter(x=>x.t!=="cal"); S.items.push({t:"cal",a,b,mm:v});
+  saveScale(v/du,"치수 "+Math.round(v).toLocaleString()+"mm로 맞춤"); $("#lenDlg").hidden=true; calPend=null; S.first=null; toast("눈금을 맞췄어요. 이제 거리·선 간격을 재 보세요",3000); setMode("dist"); };
+
+/* ---------- 도구 ---------- */
+const HINT={view:"한 손가락으로 끌어 이동, 두 손가락으로 확대해요.",cal:"길이를 아는 두 점을 차례로 찍어요. 손가락 위 십자선이 찍힐 자리예요.",dist:"두 점을 차례로 찍으면 거리가 나와요.",gap:"첫 번째 선을 찍고, 다음 선(또는 점)을 찍으면 수직 간격이 나와요."};
+function setMode(m,fromDlg){
+  if(m==="cal"&&!fromDlg){ $("#calN").value=S.mmPerU&&S.scSrc.startsWith("축척")?S.scSrc.slice(5):""; $("#calDlg").hidden=false; return; }
+  S.mode=m; S.first=null; document.querySelectorAll("#tools [data-m]").forEach(b=>b.classList.toggle("on",b.dataset.m===m)); $("#hint").textContent=HINT[m]; draw();
+}
+$("#tools").onclick=e=>{ const b=e.target.closest("[data-m]"); if(b){ if(!S.pdf) return EMB?null:openDlg(); setMode(b.dataset.m); } };
+$("#snapBtn").onclick=()=>{ S.snap=!S.snap; $("#snapBtn").classList.toggle("on",S.snap); toast(S.snap?"스냅 켬: 선 끝·교차점·선 위에 붙어요":"스냅 끔: 찍은 자리 그대로 재요"); };
+$("#undoBtn").onclick=()=>{ if(S.first){ S.first=null; } else S.items.pop(); draw(); };
+$("#clrBtn").onclick=()=>{ S.items=S.items.filter(x=>x.t==="cal"); S.first=null; draw(); toast("잰 값을 지웠어요 (눈금은 남겨 둬요)"); };
+
+function place(h){
+  const m=S.mode; if(m==="view") return;
+  if(m==="gap"&&!S.first){ if(h.seg<0) return toast("선 위를 눌러 주세요. 첫 번째는 선이어야 해요"); S.first={...h}; draw(); return; }
+  if(!S.first){ S.first={...h}; draw(); return; }
+  const a=S.first;
+  if(m==="cal"){ askLen(a,{x:h.x,y:h.y}); return; }
+  if(m==="dist"){ S.items.push({t:"dist",a:{x:a.x,y:a.y},b:{x:h.x,y:h.y}}); }
+  if(m==="gap"){ const s=S.segs, ax=s[4*a.seg],ay=s[4*a.seg+1],bx=s[4*a.seg+2],by=s[4*a.seg+3], dx=bx-ax,dy=by-ay,ll=dx*dx+dy*dy;
+    const t=((h.x-ax)*dx+(h.y-ay)*dy)/ll, f={x:ax+t*dx,y:ay+t*dy};
+    let par=false; if(h.seg>=0&&h.seg!==a.seg){ const ex=s[4*h.seg+2]-s[4*h.seg],ey=s[4*h.seg+3]-s[4*h.seg+1]; const ang=Math.abs(Math.atan2(dx*ey-dy*ex,dx*ex+dy*ey)); par=Math.min(ang,Math.PI-ang)<0.035; }
+    S.items.push({t:"gap",a:f,b:{x:h.x,y:h.y},line:[ax,ay,bx,by],par}); }
+  S.first=null; draw();
+}
+
+/* ---------- 보기 변환 ---------- */
+function applyView(){ $("#world").style.transform=`translate(${S.T.x}px,${S.T.y}px) scale(${S.Z/S.B})`; }
+const toU=(sx,sy)=>({x:(sx-S.T.x)/S.Z,y:(sy-S.T.y)/S.Z});
+const toS=(ux,uy)=>({x:ux*S.Z+S.T.x,y:uy*S.Z+S.T.y});
+function zoomAt(sx,sy,f){ const Z=Math.max(0.05,Math.min(S.Z*f,400)); const k=Z/S.Z; S.T.x=sx-(sx-S.T.x)*k; S.T.y=sy-(sy-S.T.y)*k; S.Z=Z; }
+
+/* 확대했을 때 보이는 부분만 화면 해상도로 다시 그린다 */
+let detT=null;
+function scheduleDetail(){ clearTimeout(detT); $("#detail").style.visibility="hidden"; S.detailOK=false; if(S.renderTask){ try{S.renderTask.cancel();}catch(e){} S.renderTask=null; } detT=setTimeout(renderDetail,220); }
+async function renderDetail(){
+  if(!S.page) return; const c=$("#detail");
+  if(S.Z*dpr<=S.B*1.05) return;
+  const ctx=c.getContext("2d"); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle="#D3D6D2"; ctx.fillRect(0,0,c.width,c.height);
+  const pw=S.w*S.Z*dpr, ph=S.h*S.Z*dpr; ctx.fillStyle="#fff"; ctx.fillRect(S.T.x*dpr,S.T.y*dpr,pw,ph);
+  const task=S.page.render({canvasContext:ctx,viewport:S.page.getViewport({scale:S.Z*dpr}),transform:[1,0,0,1,S.T.x*dpr,S.T.y*dpr]}); S.renderTask=task;
+  try{ await task.promise; if(S.renderTask===task){ c.style.visibility="visible"; S.detailOK=true; S.renderTask=null; } }catch(e){}
+}
+
+/* ---------- 그리기 ---------- */
+function draw(){
+  const c=$("#ov"), x=c.getContext("2d"); x.setTransform(dpr,0,0,dpr,0,0); x.clearRect(0,0,c.width,c.height);
+  if(!S.page) return;
+  for(const it of S.items) drawItem(x,it);
+  // 그리는 중인 선
+  const cur=S.hit;
+  if(S.first&&S.mode!=="view"){
+    const a=toS(S.first.x,S.first.y);
+    if(S.mode==="gap"&&S.first.seg>=0){ const s=S.segs, p1=toS(s[4*S.first.seg],s[4*S.first.seg+1]), p2=toS(s[4*S.first.seg+2],s[4*S.first.seg+3]); x.strokeStyle="rgba(227,25,55,.85)"; x.lineWidth=4; x.beginPath(); x.moveTo(p1.x,p1.y); x.lineTo(p2.x,p2.y); x.stroke(); }
+    else{ x.fillStyle="#E31937"; x.beginPath(); x.arc(a.x,a.y,5,0,7); x.fill(); }
+    if(cur){ let it=null;
+      if(S.mode==="gap"&&S.first.seg>=0){ const s=S.segs, ax=s[4*S.first.seg],ay=s[4*S.first.seg+1],dx=s[4*S.first.seg+2]-ax,dy=s[4*S.first.seg+3]-ay,t=((cur.x-ax)*dx+(cur.y-ay)*dy)/(dx*dx+dy*dy); it={t:"gap",a:{x:ax+t*dx,y:ay+t*dy},b:cur,line:[ax,ay,ax+dx,ay+dy],ghost:1}; }
+      else it={t:S.mode==="cal"?"cal":"dist",a:S.first,b:cur,ghost:1};
+      drawItem(x,it); }
+  }
+  if(cur&&S.mode==="gap"&&cur.seg>=0){ const s=S.segs, p1=toS(s[4*cur.seg],s[4*cur.seg+1]), p2=toS(s[4*cur.seg+2],s[4*cur.seg+3]); x.strokeStyle="rgba(14,165,233,.8)"; x.lineWidth=4; x.beginPath(); x.moveTo(p1.x,p1.y); x.lineTo(p2.x,p2.y); x.stroke(); }
+  if(cur&&S.mode!=="view") marker(x,toS(cur.x,cur.y),cur.type,1);
+}
+function drawItem(x,it){
+  const a=toS(it.a.x,it.a.y), b=toS(it.b.x,it.b.y), du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y);
+  const col=it.t==="cal"?"#0EA5E9":"#E31937";
+  x.save(); x.globalAlpha=it.ghost?0.75:1;
+  if(it.t==="gap"&&it.line){ // 연장선
+    const p1=toS(it.line[0],it.line[1]), p2=toS(it.line[2],it.line[3]); x.setLineDash([5,4]); x.strokeStyle=col; x.lineWidth=1.2;
+    const near=Math.hypot(a.x-p1.x,a.y-p1.y)<Math.hypot(a.x-p2.x,a.y-p2.y)?p1:p2; x.beginPath(); x.moveTo(near.x,near.y); x.lineTo(a.x,a.y); x.stroke(); x.setLineDash([]); }
+  x.strokeStyle=col; x.lineWidth=2.2; x.beginPath(); x.moveTo(a.x,a.y); x.lineTo(b.x,b.y); x.stroke();
+  // 양 끝 짧은 가로 표시
+  const L=Math.hypot(b.x-a.x,b.y-a.y)||1, nx=-(b.y-a.y)/L*7, ny=(b.x-a.x)/L*7;
+  for(const p of [a,b]){ x.beginPath(); x.moveTo(p.x-nx,p.y-ny); x.lineTo(p.x+nx,p.y+ny); x.stroke(); }
+  const t=it.t==="cal"?`기준 ${Math.round(it.mm||du*S.mmPerU).toLocaleString()} mm`:label(du)+(it.par?" · 평행":"");
+  x.font="700 13px Pretendard,-apple-system,sans-serif"; const tw=x.measureText(t).width+14, VW=x.canvas.width/dpr, VH=x.canvas.height/dpr;
+  const mx=Math.max(tw/2+4,Math.min(VW-tw/2-4,(a.x+b.x)/2)), my=Math.max(28,Math.min(VH-4,(a.y+b.y)/2));   // 글씨가 화면 밖으로 나가지 않게
+  x.fillStyle=col; roundRect(x,mx-tw/2,my-24,tw,21,8); x.fill(); x.fillStyle="#fff"; x.textAlign="center"; x.textBaseline="middle"; x.fillText(t,mx,my-13.5);
+  x.restore();
+}
+function roundRect(x,a,b,w,h,r){ x.beginPath(); x.moveTo(a+r,b); x.arcTo(a+w,b,a+w,b+h,r); x.arcTo(a+w,b+h,a,b+h,r); x.arcTo(a,b+h,a,b,r); x.arcTo(a,b,a+w,b,r); x.closePath(); }
+function marker(x,p,type,k){
+  x.save(); x.lineWidth=2*k; x.strokeStyle=type==="free"?"#1E2226":"#0EA5E9"; const s=7*k;
+  if(type==="end"){ x.strokeRect(p.x-s,p.y-s,2*s,2*s); }
+  else if(type==="int"){ x.beginPath(); x.moveTo(p.x-s,p.y-s); x.lineTo(p.x+s,p.y+s); x.moveTo(p.x+s,p.y-s); x.lineTo(p.x-s,p.y+s); x.stroke(); }
+  else if(type==="on"){ x.beginPath(); x.arc(p.x,p.y,s*0.8,0,7); x.stroke(); }
+  if(type==="free"){ x.beginPath(); x.moveTo(p.x-12*k,p.y); x.lineTo(p.x+12*k,p.y); x.moveTo(p.x,p.y-12*k); x.lineTo(p.x,p.y+12*k); x.stroke(); }
+  else { x.globalAlpha=.6; x.lineWidth=1; x.beginPath(); x.moveTo(p.x-14*k,p.y); x.lineTo(p.x-s-2,p.y); x.moveTo(p.x+s+2,p.y); x.lineTo(p.x+14*k,p.y); x.stroke(); }
+  x.restore();
+}
+/* 돋보기: 손가락에 가려진 자리를 크게 보여 준다 */
+function loupe(sp,show){
+  const L=$("#loupe"); if(!show||!S.page){ L.hidden=true; return; }
+  const st=$("#stage"), W=st.clientWidth; L.hidden=false;
+  const left=sp.x<W/2?W-148:16; L.style.left=left+"px"; L.style.top="12px";
+  const c=$("#lp"); if(c.width!==132*dpr){ c.width=c.height=132*dpr; c.style.width=c.style.height="132px"; }
+  const x=c.getContext("2d"), M=3; x.setTransform(1,0,0,1,0,0); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height);
+  const half=66/M;
+  if(S.detailOK){ const d=$("#detail"); x.drawImage(d,(sp.x-half)*dpr,(sp.y-half)*dpr,2*half*dpr,2*half*dpr,0,0,c.width,c.height); }
+  else{ const u=toU(sp.x,sp.y), hu=half/S.Z*S.B; x.drawImage($("#base"),u.x*S.B-hu,u.y*S.B-hu,2*hu,2*hu,0,0,c.width,c.height); }
+  x.setTransform(dpr,0,0,dpr,0,0);
+  // 이미 그린 측정선·고른 선도 돋보기에
+  x.save(); x.translate(66,66); x.scale(M,M); x.translate(-sp.x,-sp.y); x.lineWidth=1; x.restore();
+  const h=S.hit; if(h){ const p=toS(h.x,h.y); marker(x,{x:66+(p.x-sp.x)*M,y:66+(p.y-sp.y)*M},h.type,1.3); }
+}
+
+/* ---------- 손가락·마우스 ---------- */
+const P=new Map(); let g=null; const LIFT=72;
+const stage=$("#stage");
+const pos=e=>{ const r=stage.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; };
+stage.addEventListener("pointerdown",e=>{
+  if(!S.page) return; try{ stage.setPointerCapture(e.pointerId); }catch(x){} const p=pos(e); P.set(e.pointerId,p);
+  if(P.size===2){ const [a,b]=[...P.values()]; g={k:"pinch",d0:Math.hypot(a.x-b.x,a.y-b.y),c0:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},Z0:S.Z,T0:{...S.T}}; S.hit=null; loupe(null,false); draw(); scheduleDetail(); return; }
+  if(P.size>2) return;
+  const aim=S.mode!=="view"&&e.pointerType!=="mouse";
+  g={k:aim?"aim":"pan",s:p,T0:{...S.T},moved:false,mouse:e.pointerType==="mouse"};
+  if(aim) aimAt(p);
+});
+stage.addEventListener("pointermove",e=>{
+  if(!S.page) return; const p=pos(e);
+  if(!P.has(e.pointerId)){ if(e.pointerType==="mouse"&&S.mode!=="view"){ const u=toU(p.x,p.y); S.hit=pick(u.x,u.y); draw(); } return; }
+  P.set(e.pointerId,p);
+  if(!g) return;
+  if(g.k==="pinch"&&P.size>=2){ const [a,b]=[...P.values()], d=Math.hypot(a.x-b.x,a.y-b.y), c={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    const Z=Math.max(0.05,Math.min(g.Z0*d/g.d0,400)); S.T.x=c.x-(g.c0.x-g.T0.x)*Z/g.Z0; S.T.y=c.y-(g.c0.y-g.T0.y)*Z/g.Z0; S.Z=Z; applyView(); scheduleDetail(); draw(); return; }
+  if(g.k==="pan"){ const dx=p.x-g.s.x, dy=p.y-g.s.y; if(Math.abs(dx)+Math.abs(dy)>4) g.moved=true; if(g.moved){ S.T.x=g.T0.x+dx; S.T.y=g.T0.y+dy; applyView(); scheduleDetail(); }
+    if(g.mouse&&S.mode!=="view"){ const u=toU(p.x,p.y); S.hit=pick(u.x,u.y); } draw(); return; }
+  if(g.k==="aim") aimAt(p);
+});
+function aimAt(p){ const sp={x:p.x,y:p.y-LIFT}; const u=toU(sp.x,sp.y); S.hit=pick(u.x,u.y); draw(); loupe(sp,true);
+  const x=$("#ov").getContext("2d"); x.save(); x.setTransform(dpr,0,0,dpr,0,0); x.strokeStyle="rgba(30,34,38,.35)"; x.setLineDash([3,3]); x.beginPath(); x.moveTo(p.x,p.y); x.lineTo(sp.x,sp.y+10); x.stroke(); x.restore(); }
+function up(e){
+  if(!P.has(e.pointerId)) return; P.delete(e.pointerId);
+  if(!g) return;
+  if(g.k==="pinch"){ if(P.size===0) g=null; else { const q=[...P.values()][0]; g={k:"pan",s:q,T0:{...S.T},moved:true}; } return; }
+  if(g.k==="aim"&&e.type==="pointerup"&&S.hit) place(S.hit);
+  if(g.k==="pan"&&g.mouse&&!g.moved&&S.mode!=="view"){ const p=pos(e), u=toU(p.x,p.y); S.hit=pick(u.x,u.y); place(S.hit); }
+  if(g.k==="aim"){ S.hit=null; loupe(null,false); draw(); }
+  g=null;
+}
+stage.addEventListener("pointerup",up); stage.addEventListener("pointercancel",up);
+stage.addEventListener("wheel",e=>{ if(!S.page) return; e.preventDefault(); const p=pos(e); zoomAt(p.x,p.y,Math.exp(-e.deltaY*0.0015)); applyView(); scheduleDetail(); draw(); },{passive:false});
+document.addEventListener("gesturestart",e=>e.preventDefault());
+
+layout();
+if(EMB){ try{ parent.ptMeasureReady(); }catch(e){} }
+</script>
+</body>
+</html>
