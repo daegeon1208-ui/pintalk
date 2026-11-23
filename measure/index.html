@@ -563,13 +563,13 @@ function drawItem(x,it){
   const t=it.t==="cal"?`기준 ${Math.round(it.mm||du*S.mmPerU).toLocaleString()} mm`:label(du)+(it.par?" · 평행":"");
   x.font="700 13px Pretendard,-apple-system,sans-serif"; const tw=x.measureText(t).width+14, VW=x.canvas.width/dpr, VH=x.canvas.height/dpr;
   const mx=Math.max(tw/2+4,Math.min(VW-tw/2-4,(a.x+b.x)/2)), my=Math.max(28,Math.min(VH-4,(a.y+b.y)/2));   // 글씨가 화면 밖으로 나가지 않게
-  if(!it.ghost&&S.sel!==it&&(L<tw*0.9||!zoomedIn())){ x.restore(); return; }   // 4.55 작게 보일 땐 글자 숨김 (확대하면 나옴)
+  if(!it.ghost&&S.sel!==it&&(L<tw*0.6||!zoomedIn())){ x.restore(); return; }   // 4.55 작게 보일 땐 글자 숨김 (확대하면 나옴)
   if(!it.ghost) S.lab.push({it,x:mx-tw/2,y:my-24,w:tw,h:21});
   x.fillStyle=col; roundRect(x,mx-tw/2,my-24,tw,21,8); x.fill(); x.fillStyle="#fff"; x.textAlign="center"; x.textBaseline="middle"; x.fillText(t,mx,my-13.5);
   x.restore();
 }
 /* 4.55 도면 전체가 보일 만큼 작게 보면 잰 값 글자를 숨긴다 (선·면은 그대로) */
-function zoomedIn(){ const st=$("#stage"); return Math.max(S.w*S.Z/st.clientWidth,S.h*S.Z/st.clientHeight)>=1.5; }
+function zoomedIn(){ const st=$("#stage"); return Math.max(S.w*S.Z/st.clientWidth,S.h*S.Z/st.clientHeight)>=1.15; }
 function drawArea(x,P,ghost,it){
   const Q=P.map(p=>toS(p.x,p.y)); x.save();
   x.beginPath(); Q.forEach((q,i)=>i?x.lineTo(q.x,q.y):x.moveTo(q.x,q.y)); if(Q.length>2) x.closePath();
@@ -580,7 +580,7 @@ function drawArea(x,P,ghost,it){
     x.font="700 13px Pretendard,-apple-system,sans-serif"; const tw=x.measureText(t).width+14, VW=x.canvas.width/dpr, VH=x.canvas.height/dpr;
     const mx=Math.max(tw/2+4,Math.min(VW-tw/2-4,cx)), my=Math.max(14,Math.min(VH-14,cy));
     let bw=0, bh=0; if(it&&!ghost&&S.sel!==it){ const xs=Q.map(q=>q.x), ys=Q.map(q=>q.y); bw=Math.max(...xs)-Math.min(...xs); bh=Math.max(...ys)-Math.min(...ys); }
-    if(it&&!ghost&&S.sel!==it&&(bw<tw*0.8||bh<26||!zoomedIn())){ x.restore(); return; }
+    if(it&&!ghost&&S.sel!==it&&(bw<tw*0.5||bh<16||!zoomedIn())){ x.restore(); return; }
     if(it) S.lab.push({it,x:mx-tw/2,y:my-10.5,w:tw,h:21});
     x.globalAlpha=ghost?.8:1; x.fillStyle="#E31937"; roundRect(x,mx-tw/2,my-10.5,tw,21,8); x.fill(); x.fillStyle="#fff"; x.textAlign="center"; x.textBaseline="middle"; x.fillText(t,mx,my); }
   x.restore();

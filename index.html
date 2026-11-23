@@ -69,6 +69,12 @@ header{position:relative}
 #pinTip p.tdn{margin-top:5px;color:#15803D;-webkit-line-clamp:2}
 #pinTip p.tno{color:#9CA3AF}
 #pinTip small{display:block;margin-top:5px;color:#6B7280;font-size:12px}
+/* 4.56 휴대폰: 핀을 누르면 간단 정보 카드, '수정'으로 핀 창 */
+#pinTip.tap{pointer-events:auto;width:250px}
+#pinTip.tap img{height:90px}
+#pinTip .tbt{display:flex;gap:6px;margin-top:9px}
+#pinTip .tbt button{flex:1;border:0;border-radius:10px;padding:9px 6px;font:inherit;font-size:13.5px;font-weight:800;background:#F1F1EF;color:#1F2937}
+#pinTip .tbt button.pri{background:#E31937;color:#fff;flex:1.6}
 /* 4.38 핀 겹침: 멀리서는 점, 조금 확대하면 번호 동그라미, 더 확대하면 핀 */
 .pin.dot{width:12px;height:12px;margin:-6px 0 0 -6px}
 .pin.dot::before{border-radius:50%;transform:none;border-width:2px}
@@ -163,7 +169,7 @@ header{position:relative}
 @keyframes pinGlow{0%,100%{box-shadow:0 0 0 0 rgba(227,25,55,.55),0 4px 14px rgba(227,25,55,.5)}50%{box-shadow:0 0 0 12px rgba(227,25,55,0),0 0 26px 8px rgba(248,113,113,.75)}}
 .modebar button.cancel{background:#374151;color:#fff}
 #shapeLayer{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible}
-.modebar{position:absolute;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom) + 92px);display:flex;gap:6px;justify-content:center;flex-wrap:wrap;pointer-events:none}
+.modebar{position:absolute;left:8px;right:8px;bottom:30px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;pointer-events:none}
 .modebar>*{pointer-events:auto}
 .modebar button{padding:9px 14px;border-radius:20px;background:rgba(255,255,255,.95);font-weight:600;font-size:14px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .modebar button.on{background:var(--accent);color:#fff}
@@ -1276,7 +1282,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.55";
+const APP_VER = "4.56";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -2563,19 +2569,19 @@ function loadMeas(){ V.meas=[]; try{ const a=JSON.parse(localStorage.getItem("me
 $("#measTog").onclick=()=>{ V.measOn=!V.measOn; try{ localStorage.setItem("measure-show",V.measOn?"1":"0"); }catch(e){} $("#measTog").classList.toggle("on",V.measOn); if(V.page) apply(); toast(V.measOn?"잰 치수를 보여요":"잰 치수를 숨겼어요"); };
 function measSvg(){
   const N=q=>scr([q.x/V.pw,q.y/V.ph]), ink="#1E2226"; let h="";
-  const vp=$("#vp"), zoomed=Math.max(V.pw*V.k/vp.clientWidth,V.ph*V.k/vp.clientHeight)>=1.5;   // 4.55 도면 전체가 보일 만큼 작으면 글자 숨김
+  const vp=$("#vp"), zoomed=Math.max(V.pw*V.k/vp.clientWidth,V.ph*V.k/vp.clientHeight)>=1.15;   // 4.55 도면 전체가 보일 만큼 작으면 글자 숨김
   const tw=t=>{ let w=14; for(const ch of String(t)) w+=ch.charCodeAt(0)>255?12.5:6.8; return w; };
   const tag=(t,x,y)=>{ const w=tw(t); return `<g><rect x="${x-w/2}" y="${y-10.5}" width="${w}" height="21" rx="8" fill="${ink}" fill-opacity=".9"/><text x="${x}" y="${y+0.5}" fill="#fff" font-size="12.5" font-weight="700" text-anchor="middle" dominant-baseline="middle">${esc(t)}</text></g>`; };
   for(const it of V.meas){ if(!it||!it.t) continue;
     if(it.t==="area"&&it.pts&&it.pts.length>2){ const Q=it.pts.map(N); let cx=0,cy=0; Q.forEach(([x,y])=>{cx+=x;cy+=y;}); cx/=Q.length; cy/=Q.length;
-      const xs=Q.map(q=>q[0]), ys=Q.map(q=>q[1]), big=zoomed&&Math.max(...xs)-Math.min(...xs)>=tw(it.txt||"")*0.8&&Math.max(...ys)-Math.min(...ys)>=26;   // 4.55 작게 보일 땐 글자 숨김
+      const xs=Q.map(q=>q[0]), ys=Q.map(q=>q[1]), big=zoomed&&Math.max(...xs)-Math.min(...xs)>=tw(it.txt||"")*0.5&&Math.max(...ys)-Math.min(...ys)>=16;   // 4.55 작게 보일 땐 글자 숨김
       h+=`<polygon points="${Q.map(q=>q.join(",")).join(" ")}" fill="${ink}" fill-opacity=".08" stroke="${ink}" stroke-width="1.8" stroke-linejoin="round"/>`+(big?tag(it.txt||"",cx,cy):""); continue; }
     if(!it.a||!it.b) continue;
     const [ax,ay]=N(it.a),[bx,by]=N(it.b), L=Math.hypot(bx-ax,by-ay)||1, nx=-(by-ay)/L*6, ny=(bx-ax)/L*6, col=it.t==="cal"?"#0EA5E9":ink;
     if(it.t==="gap"&&it.line){ const p1=N({x:it.line[0],y:it.line[1]}), p2=N({x:it.line[2],y:it.line[3]}), nr=Math.hypot(ax-p1[0],ay-p1[1])<Math.hypot(ax-p2[0],ay-p2[1])?p1:p2;
       h+=`<line x1="${nr[0]}" y1="${nr[1]}" x2="${ax}" y2="${ay}" stroke="${col}" stroke-width="1.2" stroke-dasharray="5 4"/>`; }
     h+=`<path d="M${ax},${ay}L${bx},${by}M${ax-nx},${ay-ny}L${ax+nx},${ay+ny}M${bx-nx},${by-ny}L${bx+nx},${by+ny}" stroke="${col}" stroke-width="1.8" fill="none"/>`;
-    if(zoomed&&L>=tw(it.txt||"")*0.9) h+=tag(it.txt||"",(ax+bx)/2,(ay+by)/2-13); }
+    if(zoomed&&L>=tw(it.txt||"")*0.6) h+=tag(it.txt||"",(ax+bx)/2,(ay+by)/2-13); }
   return h;
 }
 async function showPage(n){
@@ -2872,15 +2878,21 @@ const tipUrl=x=>{ let u=tipUrls.get(x); if(!u||u.d!==x.data){ if(u) URL.revokeOb
 function placeTip(){
   const p=V.hov&&V.pins.find(q=>q.id===V.hov);
   if(!p||p.page!==V.pageNo||!visPins().includes(p)){ setHov(null); return; }
+  const im=V.tapTip&&pinTip.querySelector("img"); if(im&&!im.hidden&&pinTip.offsetHeight>vp.clientHeight-30) im.hidden=true;   /* 화면이 낮으면 사진 빼고 버튼이 보이게 */
   const W=vp.clientWidth, H=vp.clientHeight, w=pinTip.offsetWidth, h=pinTip.offsetHeight;
   const x=V.tx+p.nx*V.pw*V.k, y=V.ty+p.ny*V.ph*V.k-24;
   let l=x+28; if(l+w>W-8) l=x-28-w; l=Math.max(8,l);
-  const t=Math.max(8,Math.min(H-h-8,y-h/2));
+  const t=Math.max(8,Math.min(H-h-(V.tapTip?24:8),y-h/2));   /* 아래 ▲ 손잡이에 버튼이 가리지 않게 */
   pinTip.style.left=l+"px"; pinTip.style.top=t+"px";
 }
+function tapTip(p){ setHov(null); V.tapTip=true; V.tipT=Date.now(); setHov(p); }
+pinTip.addEventListener("click",e=>{ if(!V.tapTip) return; e.stopPropagation(); if(Date.now()-V.tipT<450) return;   /* 핀을 누른 손가락의 click이 카드에 떨어지는 것 무시 */ const id=V.hov, b=e.target.closest("button");
+  if(b&&b.dataset.x!=null){ setHov(null); return; } setHov(null); if(id) openPin(id); });
+["pointerdown","pointerup","touchstart","touchend"].forEach(t=>pinTip.addEventListener(t,e=>e.stopPropagation()));
 function setHov(p){
   const id=p?p.id:null;
   if(id===V.hov) return;
+  if(!p) V.tapTip=false;
   V.hov=id;
   pinLayer.querySelectorAll(".pin.hov").forEach(el=>el.classList.remove("hov"));
   if(!p){ pinTip.hidden=true; return; }
@@ -2895,7 +2907,9 @@ function setHov(p){
   pinTip.style.setProperty("--pc",colorOf(p));
   pinTip.innerHTML=`${ph?'<img alt="">':""}<b>${esc(`${p.team?teamName(p.team)+" ":""}${memo?"기록 ":""}${p.no}번 ${kindLabel(p)}`)}</b><div class="tst"><i>${st}</i>${who?" · "+esc(who):""}</div>`+
     (tx?`<p>${esc(tx)}</p>`:`<p class="tno">내용 없음</p>`)+(dt?`<p class="tdn">조치: ${esc(dt)}</p>`:"")+
-    (nc||list.length>1?`<small>${[list.length>1?`사진 ${list.length}장`:"",nc?`댓글 ${nc}개`:""].filter(Boolean).join(" · ")}</small>`:"");
+    (nc||list.length>1?`<small>${[list.length>1?`사진 ${list.length}장`:"",nc?`댓글 ${nc}개`:""].filter(Boolean).join(" · ")}</small>`:"")+
+    (V.tapTip?`<div class="tbt"><button data-x>닫기</button><button class="pri">수정 · 댓글 · 호출</button></div>`:"");
+  pinTip.classList.toggle("tap",!!V.tapTip);
   pinTip.hidden=false; placeTip();
   if(ph){ const show=()=>{ const im=pinTip.querySelector("img"); if(im&&V.hov===id&&ph.data){ im.onload=placeTip; im.src=tipUrl(ph); } };
     if(ph.data) show(); else ensurePhoto(p,ph,false).then(ok=>{ if(ok) show(); }); }
@@ -2906,8 +2920,8 @@ vp.addEventListener("pointermove",e=>{
   if(e.buttons||ptrs.size||V.mode!=="view"||!V.page){ setHov(null); return; }
   setHov(pinAt(rel(e)));
 });
-vp.addEventListener("pointerleave",()=>setHov(null));
-vp.addEventListener("pointerdown",()=>setHov(null),true);
+vp.addEventListener("pointerleave",e=>{ if(e.pointerType==="mouse"&&!V.tapTip) setHov(null); });
+vp.addEventListener("pointerdown",e=>{ V.lastPT=e.pointerType; if(!V.tapTip) setHov(null); },true);
 /* 확대했을 때 보이는 부분만 선명하게 다시 그린다 */
 let detailTimer=null;
 function scheduleDetail(){clearTimeout(detailTimer);detailTimer=setTimeout(renderDetail,220);}
@@ -3137,7 +3151,11 @@ function onTap(p){
     V.pending={pin,temp:true,orig:{nx,ny,shape:null}}; setMode("move"); drawPins(); return; }
   if(V.mode==="move"){ if(inside) movePin(nx,ny); return; }   // 누를 때마다 위치만 바뀌고, 고정은 버튼으로
   // 이미 있는 핀을 눌렀는지 (핀 머리 부분까지 넉넉하게)
-  const best=pinAt(p); if(best) openPin(best.id);
+  const best=pinAt(p);
+  if(!best){ if(V.tapTip) setHov(null); return; }
+  if(V.lastPT==="mouse") openPin(best.id);   // 컴퓨터(마우스)는 바로 핀 창
+  else if(V.tapTip&&V.hov===best.id){ setHov(null); openPin(best.id); }   // 한 번 더 누르면 핀 창
+  else tapTip(best);
 }
 function pdfPoint(nx,ny){   // 원본 PDF 좌표 (내보내기에서 핀을 정확히 찍기 위함)
   const v=V.page.getViewport({scale:1}); const [x,y]=v.convertToPdfPoint(nx*V.pw,ny*V.ph); return {px:x,py:y};
@@ -3266,7 +3284,7 @@ $("#pgMid").addEventListener("click",async()=>{
 let urls=[];
 function freeUrls(){urls.forEach(u=>URL.revokeObjectURL(u));urls=[];}
 const photoUrl=ph=>{const u=URL.createObjectURL(new Blob([ph.data],{type:ph.type||"image/jpeg"}));urls.push(u);return u;};
-async function openPin(id){
+async function openPin(id){ if(V.hov) setHov(null);
   const p=V.pins.find(q=>q.id===id); if(!p) return;
   flushSave();   // 다른 핀 창이 열려 있었으면 그 내용부터 저장
   V.sel=id; drawPins();
