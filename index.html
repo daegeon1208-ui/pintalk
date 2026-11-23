@@ -416,6 +416,7 @@ header #backBtn{background:none;padding-left:4px}
 header .hbtn.ico{width:34px;height:34px;padding:0;display:grid;place-items:center;position:relative;font-weight:800;flex:none}
 header .hbtn.ico svg{width:19px;height:19px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .nbadge{position:absolute;right:-3px;top:-3px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--open);color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--accent);font-variant-numeric:tabular-nums}
+#measFrame{position:fixed;inset:0;z-index:60;width:100%;height:100%;border:0;background:#E4E6E3}
 header .hbtn.mode{font-size:13px;padding:6px 10px;background:#F59E0B;color:#1B2B4B;font-weight:800}
 header .hbtn.mode.admin{background:rgba(255,255,255,.08);color:#fff;font-weight:600}
 header .cloud span{max-width:84px;overflow:hidden;text-overflow:ellipsis}
@@ -1007,6 +1008,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
   <header>
     <button class="hbtn" id="backBtn">‹ 목록</button>
     <h1 id="vTitle" title="눌러서 도면 정보"></h1><span class="sync" id="syncTxt" role="status" hidden><i></i><b id="syncLab"></b></span>
+    <button class="hbtn ico" id="measBtn" aria-label="길이 재기" title="길이 재기"><svg viewBox="0 0 24 24"><path d="M3 16.5 16.5 3 21 7.5 7.5 21z"/><path d="M7 12.5l1.8 1.8M10 9.5l2.6 2.6M13 6.5l1.8 1.8"/></svg></button>
   </header>
   <div class="pgbar" id="pager" hidden><button id="prevPg" aria-label="이전 쪽">‹</button><button class="pgmid" id="pgMid"><b id="pgTxt"></b><small id="pgNum"></small></button><button id="nextPg" aria-label="다음 쪽">›</button></div>
   <div id="fPanel">
@@ -1268,7 +1270,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.43";
+const APP_VER = "4.44";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -2537,6 +2539,17 @@ async function openDrawing(id,pageNo){
   await showPage(Math.min(pageNo||1,d.pages));
   syncPins();
 }
+/* 4.44 측정: 지금 보던 도면·쪽을 측정 화면(measure/)에 넘겨 연다. 도면·핀은 건드리지 않는다 */
+function safeInsets(){ const d=document.createElement("div"); d.style.cssText="position:fixed;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)"; document.body.appendChild(d); const c=getComputedStyle(d), o={sat:c.paddingTop,sar:c.paddingRight,sab:c.paddingBottom,sal:c.paddingLeft}; d.remove(); return o; }
+$("#measBtn").onclick=async()=>{
+  if(!V.drawing||!V.pdf||$("#measFrame")) return;
+  const d=V.drawing, f=await dbGet("files",d.id); if(!f){ toast("도면 파일이 없습니다"); return; }
+  const fr=document.createElement("iframe"); fr.id="measFrame"; fr.title="길이 재기";
+  window.ptMeasureReady=()=>{ try{ const w=fr.contentWindow, r=w.document.documentElement.style, si=safeInsets(); for(const k in si) r.setProperty("--"+k,si[k]);
+    w.ptMeasureLoad(f.data.slice(0),d.name||"도면","p:"+d.id,d.pageNames,V.pageNo||1); }catch(e){ console.error(e); toast("측정 화면을 열지 못했어요"); ptMeasureClose(); } };
+  fr.src="measure/?embed=1"; document.body.appendChild(fr);
+};
+window.ptMeasureClose=()=>{ const fr=$("#measFrame"); if(fr){ fr.src="about:blank"; fr.remove(); } };
 async function showPage(n){
   if(V.draft) V.draft.pts=[];
   V.pageNo=n; updatePager();
@@ -3196,7 +3209,7 @@ $("#modeBar").addEventListener("click",e=>{
 $("#vTitle").addEventListener("click",()=>{ if(V.drawing) showInfo(V.drawing); });
 $("#addBtn").addEventListener("click",()=>{ pinButton().catch(e=>toast("저장하지 못했습니다: "+e.message,4000)); });
 
-$("#backBtn").addEventListener("click",()=>{
+$("#backBtn").addEventListener("click",()=>{ ptMeasureClose();
   setMode("view"); $("#viewer").hidden=true; $("#home").hidden=false;
   if(V.renderTask){try{V.renderTask.cancel();}catch(e){}} V.page=null;
   if(V.pdf){V.pdf.destroy();V.pdf=null;}
