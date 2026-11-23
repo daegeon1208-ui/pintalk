@@ -18,8 +18,13 @@ header button,header select{border:0;border-radius:10px;background:rgba(255,255,
 header select option{color:#000}
 #info{position:fixed;left:0;right:0;z-index:4;padding:6px max(12px,var(--sal));font-size:12.5px;color:var(--sub);background:rgba(228,230,227,.92);border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center}
 #info b{color:var(--ink)}
-#info .sc{margin-left:auto;font-weight:700;color:var(--ink);white-space:nowrap}
-#info .sc.no{color:var(--red)}
+#info #lineInfo{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#info .ichip{border:1px solid var(--line);background:#fff;border-radius:999px;font:inherit;font-size:12.5px;font-weight:700;padding:4px 10px;color:var(--ink);white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+#info .ichip svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#info .ichip.snap{margin-left:auto;color:var(--sub)}
+#info .ichip.snap.on{background:var(--snap);border-color:var(--snap);color:#fff}
+#info .ichip.sc.no{color:var(--red);border-color:var(--red)}
+#info .ichip.sc.on{background:var(--ink);border-color:var(--ink);color:#fff}
 #stage{position:fixed;left:0;right:0;bottom:0;overflow:hidden;touch-action:none;background:#D3D6D2}
 #world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
 #world canvas{display:block;background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.18)}
@@ -83,7 +88,7 @@ header select option{color:#000}
   <button id="lsBtn">목록</button>
   <button id="openBtn">도면 열기</button>
 </header>
-<div id="info"><span id="lineInfo">도면을 열어 주세요</span><span class="sc no" id="scInfo"></span></div>
+<div id="info"><span id="lineInfo">도면을 열어 주세요</span><button class="ichip snap on" id="snapBtn" hidden>스냅</button><button class="ichip sc no" id="scInfo" hidden></button></div>
 <div id="stage">
   <div id="world"><canvas id="base"></canvas></div>
   <canvas id="detail"></canvas>
@@ -94,13 +99,11 @@ header select option{color:#000}
 <div id="bar">
   <div id="tools">
     <button data-m="view" class="on"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>이동</button>
-    <button data-m="cal"><svg viewBox="0 0 24 24"><path d="M3 17 17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg>눈금</button>
     <button data-m="dist"><svg viewBox="0 0 24 24"><path d="M4 12h16M4 8v8M20 8v8M7 9l-3 3 3 3M17 9l3 3-3 3"/></svg>거리</button>
     <button data-m="area"><svg viewBox="0 0 24 24"><path d="M4 7 13 3l7 7-4 10H6z" fill="currentColor" fill-opacity=".18"/></svg>면적</button>
     <button data-m="gap"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 19h18M12 5v14M9 8l3-3 3 3M9 16l3 3 3-3"/></svg>선 간격</button>
-    <button class="snap on" id="snapBtn"><svg viewBox="0 0 24 24"><path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 7h4M14 7h4"/></svg>스냅</button>
   </div>
-  <div id="sub"><span id="hint">두 손가락으로 확대·이동해요.</span><button id="areaOk" hidden style="background:var(--red);color:#fff;border-color:var(--red)">면적 완료</button><button id="ptDel" hidden style="color:var(--red)">점 지우기</button><button id="undoBtn" class="ic" aria-label="되돌리기" title="되돌리기"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button id="redoBtn" class="ic" aria-label="다시 하기" title="다시 하기"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button><button id="clrBtn">지우기</button></div>
+  <div id="sub"><span id="hint"></span><button id="areaOk" hidden style="background:var(--red);color:#fff;border-color:var(--red)">면적 완료</button><button id="ptDel" hidden style="color:var(--red)">점 지우기</button><button id="undoBtn" class="ic" aria-label="되돌리기" title="되돌리기"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button id="redoBtn" class="ic" aria-label="다시 하기" title="다시 하기"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button><button id="clrBtn">지우기</button></div>
 </div>
 <div id="dock" hidden><div id="dockCap"></div><div class="dk">
   <button id="dkL"></button>
@@ -137,6 +140,7 @@ header select option{color:#000}
   <div class="row" id="itCal" hidden><span style="font-weight:700;white-space:nowrap">실제 길이</span><input id="calMm" type="number" inputmode="decimal"><span style="font-weight:700">mm</span></div>
   <div class="row" id="itLen" hidden><span style="font-weight:700;white-space:nowrap">길이</span><input id="lenMm" type="number" inputmode="decimal"><span style="font-weight:700">mm</span></div>
   <div class="row" id="itFix" hidden><span style="font-weight:700;white-space:nowrap">기준</span><select id="lenFix" style="flex:1;min-width:0;font:inherit;padding:8px;border-radius:10px;border:1px solid #D1D5DB;background:#fff"><option value="a">A점 고정 (처음 찍은 점)</option><option value="b">B점 고정 (나중 찍은 점)</option><option value="m">가운데 고정 (양쪽으로)</option></select></div>
+  <div class="row" id="itMemoR"><span style="font-weight:700;white-space:nowrap">메모</span><input id="itMemo" type="text" maxlength="60" placeholder="예: 101호 욕실 방수턱" style="flex:1;min-width:0"></div>
   <p id="itVol" style="font-weight:700;color:var(--ink)"></p>
   <div class="btns"><button id="itDel" style="color:var(--red)">삭제</button><button id="itMove">점 옮기기</button><button class="pri" id="itOk">확인</button></div>
 </div></div>
@@ -202,8 +206,8 @@ function listItems(){
   $("#lsSum").innerHTML=A.length?`<div class="lssum"><small>면적 합계 (${A.length}개)</small><b>${S.mmPerU?f2(sa)+" m²":"눈금 없음"}</b></div><div class="lssum"><small>부피 합계</small><b>${sv?f2(sv)+" m³":"-"}</b></div>`:"";
   const row=(it,no,cls,t1,t2)=>`<button class="lsrow" data-i="${S.items.indexOf(it)}"><span class="no ${cls}">${no}</span><span style="flex:1;min-width:0"><b>${t1}</b><small>${t2}</small></span><span style="color:var(--sub)">›</span></button>`;
   let h=A.map((it,i)=>{ const m=S.mmPerU?areaM2(it.pts):0, per=S.mmPerU?polyLen(it.pts,true)*S.mmPerU/1000:0;
-    return row(it,i+1,"","면적 "+(i+1)+" · "+(S.mmPerU?f2(m)+" m²":"눈금 없음"), (it.depth>0&&S.mmPerU?`깊이 ${+(it.depth/1000).toFixed(3)} m · 부피 ${f2(m*it.depth/1000)} m³ · `:"깊이 없음 · ")+(S.mmPerU?`둘레 ${per.toFixed(2)} m`:"")); }).join("");
-  h+=O.map((it,i)=>row(it,KIND[it.t].slice(0,1),it.t==="cal"?"c":"d",KIND[it.t]+" · "+itemTxt(it),it.t==="cal"?"눈금 기준선":it.t==="gap"?"선에서 수직 간격":"두 점 사이")).join("");
+    return row(it,i+1,"","면적 "+(i+1)+" · "+(S.mmPerU?f2(m)+" m²":"눈금 없음"), (it.memo?"메모: "+esc(it.memo)+" · ":"")+(it.depth>0&&S.mmPerU?`깊이 ${+(it.depth/1000).toFixed(3)} m · 부피 ${f2(m*it.depth/1000)} m³ · `:"깊이 없음 · ")+(S.mmPerU?`둘레 ${per.toFixed(2)} m`:"")); }).join("");
+  h+=O.map((it,i)=>row(it,KIND[it.t].slice(0,1),it.t==="cal"?"c":"d",KIND[it.t]+" · "+esc(itemTxt({...it,memo:""})),(it.memo?"메모: "+esc(it.memo):it.t==="cal"?"눈금 기준선":it.t==="gap"?"선에서 수직 간격":"두 점 사이"))).join("");
   $("#lsList").innerHTML=h||`<p>아직 잰 값이 없어요. 아래 도구로 재 보세요.</p>`;
 }
 $("#lsList").onclick=e=>{ const b=e.target.closest("[data-i]"); if(!b) return; const it=S.items[+b.dataset.i]; if(!it) return;
@@ -271,7 +275,7 @@ async function openPage(n){
   toast("선 읽는 중…",30000);
   const t0=performance.now(); await extract(S.page);
   const n2=S.nseg;
-  $("#lineInfo").innerHTML=n2?`선 <b>${n2.toLocaleString()}</b>개 읽음 · 스냅 됨`:`선 정보가 없는 도면(스캔·이미지)이라 <b>스냅이 안 돼요</b>`;
+  $("#lineInfo").innerHTML=n2?`선 <b>${n2.toLocaleString()}</b>개`:`선 정보가 없는 도면(스캔·이미지)이라 <b>스냅이 안 돼요</b>`; showScale();
   $("#toast").hidden=true;
   if(!n2) toast("이 도면은 선 정보가 없어 손으로 찍어서 재야 해요",3500);
   console.log("segs",n2,"ms",Math.round(performance.now()-t0));
@@ -377,8 +381,12 @@ const scKey=()=>"measure-scale:"+S.key+":"+S.pn;
 function loadScale(){ S.mmPerU=0; S.scSrc=""; try{ const o=JSON.parse(localStorage.getItem(LSP+scKey())||"null"); if(o&&o.k>0){ S.mmPerU=o.k; S.scSrc=o.src||""; } }catch(e){} showScale(); }
 function saveScale(k,src){ S.mmPerU=k; S.scSrc=src; try{ localStorage.setItem(LSP+scKey(),JSON.stringify({k,src})); }catch(e){} showScale(); draw(); }
 function showScale(){ const e=$("#scInfo");
-  if(!S.mmPerU){ e.textContent=S.pdf?"눈금 없음":""; e.className="sc no"; return; }
-  const N=S.mmPerU/PT_MM; e.textContent=`약 1/${N>=10?Math.round(N):N.toFixed(1)}`+(S.scSrc?` · ${S.scSrc}`:""); e.className="sc"; }
+  const ic='<svg viewBox="0 0 24 24"><path d="M3 17 17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg>';
+  e.hidden=!S.pdf; $("#snapBtn").hidden=!S.pdf||!S.nseg; const on=S.mode==="cal"?" on":"";
+  if(!S.mmPerU){ e.innerHTML=ic+"눈금 맞추기"; e.className="ichip sc no"+on; return; }
+  const N=S.mmPerU/PT_MM; e.innerHTML=ic+`눈금 1/${N>=10?Math.round(N):N.toFixed(1)}`; e.title=S.scSrc||""; e.className="ichip sc"+on; }
+/* 4.61 눈금은 위 정보줄의 눈금 칩으로 (자주 안 고치니 아래 도구에서 뺌) */
+$("#scInfo").onclick=()=>{ if(!S.pdf) return; if(S.mode==="cal") setMode("view"); else setMode("cal"); };
 const fmt=mm=>{ const a=Math.abs(mm); return (a>=100?Math.round(mm).toLocaleString():a>=10?mm.toFixed(1):mm.toFixed(2))+" mm"; };
 const label=du=>S.mmPerU?fmt(du*S.mmPerU):`종이 ${(du*PT_MM).toFixed(1)}mm · 눈금 없음`;
 
@@ -402,7 +410,7 @@ $("#lenOk").onclick=()=>{ const v=parseFloat($("#lenIn").value); if(!(v>0)||!cal
   saveScale(v/du,"치수 "+Math.round(v).toLocaleString()+"mm로 맞춤"); $("#lenDlg").hidden=true; calPend=null; S.first=null; toast("눈금을 맞췄어요. 이제 거리·선 간격·면적을 재 보세요",3000); setMode("view"); askAll(); };
 
 /* ---------- 도구 ---------- */
-const HINT={view:"한 손가락으로 끌어 이동, 두 손가락으로 확대해요.",cal:"길이를 아는 두 점을 차례로 찍어요. 손가락 위 십자선이 찍힐 자리예요.",dist:"두 점을 차례로 찍으면 거리가 나와요.",gap:"첫 번째 선을 찍고, 다음 선(또는 점)을 찍으면 수직 간격이 나와요.",area:"모서리를 차례로 찍고, 첫 점을 다시 찍으면 면적이 나와요."};
+const HINT={view:"",cal:"길이를 아는 두 점을 차례로 찍어요. 손가락 위 십자선이 찍힐 자리예요.",dist:"두 점을 차례로 찍으면 거리가 나와요.",gap:"첫 번째 선을 찍고, 다음 선(또는 점)을 찍으면 수직 간격이 나와요.",area:"모서리를 차례로 찍고, 첫 점을 다시 찍으면 면적이 나와요."};
 /* 면적: 신발끈 공식 (도면 단위² → m²) */
 const polyArea=P=>{ let a=0; for(let i=0;i<P.length;i++){ const p=P[i],q=P[(i+1)%P.length]; a+=p.x*q.y-q.x*p.y; } return Math.abs(a)/2; };
 const polyLen=(P,close)=>{ let L=0; for(let i=0;i<P.length-(close?0:1);i++){ const p=P[i],q=P[(i+1)%P.length]; L+=Math.hypot(q.x-p.x,q.y-p.y); } return L; };
@@ -442,7 +450,7 @@ const KIND={dist:"거리",gap:"선 간격",area:"면적",cal:"눈금 기준"};
 let edIt=null;
 function labAt(p){ for(let i=S.lab.length-1;i>=0;i--){ const l=S.lab[i]; if(p.x>=l.x-6&&p.x<=l.x+l.w+6&&p.y>=l.y-8&&p.y<=l.y+l.h+8) return l.it; } return null; }
 function openItem(it){ edIt=it; S.sel=null; areaBtn(); setHint();
-  $("#itT").textContent=KIND[it.t]||"측정"; $("#itDep").hidden=it.t!=="area"; $("#itCal").hidden=it.t!=="cal"; $("#itLen").hidden=$("#itFix").hidden=!(it.t==="dist"&&S.mmPerU); $("#itVol").textContent="";
+  $("#itT").textContent=KIND[it.t]||"측정"; $("#itDep").hidden=it.t!=="area"; $("#itCal").hidden=it.t!=="cal"; $("#itLen").hidden=$("#itFix").hidden=!(it.t==="dist"&&S.mmPerU); $("#itVol").textContent=""; $("#itMemo").value=it.memo||"";
   if(it.t==="area"){ const per=polyLen(it.pts,true);
     $("#itV").textContent=S.mmPerU?f2(areaM2(it.pts))+" m²":"눈금 없음";
     $("#itP").textContent=S.mmPerU?`둘레 ${(per*S.mmPerU/1000).toFixed(2)} m · 점 ${it.pts.length}개. 깊이(두께)를 넣으면 부피를 구해요.`:"눈금을 먼저 맞춰 주세요.";
@@ -456,6 +464,7 @@ function openItem(it){ edIt=it; S.sel=null; areaBtn(); setHint();
 function volTxt(){ const d=parseFloat($("#depIn").value); $("#itVol").textContent=edIt&&edIt.t==="area"&&S.mmPerU&&d>0?`부피 ${f2(areaM2(edIt.pts)*d/1000)} m³ (${f2(areaM2(edIt.pts))} m² × ${+(d/1000).toFixed(3)} m)`:""; }
 $("#depIn").oninput=volTxt;
 $("#itOk").onclick=()=>{ const it=edIt; if(!it) return;
+  { const m=$("#itMemo").value.trim(); if(m) it.memo=m; else delete it.memo; }
   if(it.t==="area"){ const d=parseFloat($("#depIn").value); it.depth=d>0?d:0; }
   if(it.t==="dist"&&S.mmPerU){ const v=parseFloat($("#lenMm").value), du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y);   /* 4.59 길이 넣어 선 길이 바꾸기 */
     if(v>0&&du>1e-9&&Math.abs(v-du*S.mmPerU)>=0.5){ const nu=v/S.mmPerU, ux=(it.b.x-it.a.x)/du, uy=(it.b.y-it.a.y)/du, f=$("#lenFix").value;
@@ -478,10 +487,10 @@ function movePt(it,i,h,live){
   if(it.t==="cal"&&!live) calFix(it); }
 function setMode(m,fromDlg){
   if(m==="cal"&&!fromDlg){ $("#calN").value=S.mmPerU&&S.scSrc.startsWith("축척")?S.scSrc.slice(5):""; $("#calDlg").hidden=false; return; }
-  S.mode=m; S.first=null; S.poly=[]; S.sel=null; areaBtn(); document.querySelectorAll("#tools [data-m]").forEach(b=>b.classList.toggle("on",b.dataset.m===m)); setHint(); draw();
+  S.mode=m; S.first=null; S.poly=[]; S.sel=null; areaBtn(); document.querySelectorAll("#tools [data-m]").forEach(b=>b.classList.toggle("on",b.dataset.m===m)); showScale(); setHint(); draw();
 }
 $("#tools").onclick=e=>{ const b=e.target.closest("[data-m]"); if(b){ if(!S.pdf) return EMB?null:openDlg(); setMode(b.dataset.m); } };
-$("#snapBtn").onclick=()=>{ S.snap=!S.snap; $("#snapBtn").classList.toggle("on",S.snap); toast(S.snap?"스냅 켬: 선 끝·교차점·선 위에 붙어요":"스냅 끔: 찍은 자리 그대로 재요"); };
+$("#snapBtn").onclick=()=>{ S.snap=!S.snap; $("#snapBtn").classList.toggle("on",S.snap); $("#snapBtn").textContent=S.snap?"스냅":"스냅 끔"; toast(S.snap?"스냅 켬: 선 끝·교차점·선 위에 붙어요":"스냅 끔: 찍은 자리 그대로 재요"); };
 /* 4.53 되돌리기·다시 하기: 잰 값이 바뀔 때마다(손을 뗀 뒤) 기록해 두고 앞뒤로 옮긴다 */
 const HIS={list:["[]"],i:0};
 function commit(){ const j=JSON.stringify(S.items); if(j===HIS.list[HIS.i]) return; HIS.list=HIS.list.slice(0,HIS.i+1); HIS.list.push(j); if(HIS.list.length>60) HIS.list.shift(); HIS.i=HIS.list.length-1; }
@@ -529,10 +538,12 @@ async function renderDetail(){
 /* 4.50 잰 값은 도면·쪽마다 이 휴대폰에 저장 (핀 화면에서도 켜고 끄며 본다). 글자(txt)도 같이 적어 둔다 */
 const itKey=(k,n)=>"measure-items:"+(k||S.key)+":"+(n||S.pn);
 function loadItems(){ try{ const a=JSON.parse(localStorage.getItem(LSP+itKey())||"[]"); return Array.isArray(a)?a.map(it=>{ const o={...it}; delete o.txt; return o; }):[]; }catch(e){ return []; } }
-function itemTxt(it){ if(it.t==="area") return areaLabel(it.pts,it.depth); const du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y);
-  return it.t==="cal"?`기준 ${Math.round(it.mm||du*S.mmPerU).toLocaleString()} mm`:label(du)+(it.par?" · 평행":""); }
+/* 4.61 메모: 잰 값 글자 뒤에 붙여 보여 준다 (길면 줄여서) */
+const memoSfx=it=>it&&it.memo?" · "+(it.memo.length>18?it.memo.slice(0,17)+"…":it.memo):"";
+function itemTxt(it){ if(it.t==="area") return areaLabel(it.pts,it.depth)+memoSfx(it); const du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y);
+  return (it.t==="cal"?`기준 ${Math.round(it.mm||du*S.mmPerU).toLocaleString()} mm`:label(du)+(it.par?" · 평행":""))+memoSfx(it); }
 let svT=null;
-function saveItems(){ if(!S.key||!S.page) return; if(!g&&!S.sel) commit(); histBtns(); try{ const a=S.items.map(it=>({...it,txt:itemTxt(it)})); if(a.length) localStorage.setItem(LSP+itKey(),JSON.stringify(a)); else localStorage.removeItem(LSP+itKey()); }catch(e){} }
+function saveItems(){ if(!S.key||!S.page) return; if(!g&&!S.sel) commit(); histBtns(); try{ const a=S.items.map(it=>({...it,txt:itemTxt(it),tb:itemTxt({...it,memo:""})})); if(a.length) localStorage.setItem(LSP+itKey(),JSON.stringify(a)); else localStorage.removeItem(LSP+itKey()); }catch(e){} }
 function draw(){
   const c=$("#ov"), x=c.getContext("2d"); x.setTransform(dpr,0,0,dpr,0,0); x.clearRect(0,0,c.width,c.height);
   if(!S.page) return;
@@ -577,10 +588,10 @@ function drawItem(x,it){
   // 양 끝 짧은 가로 표시
   const L=Math.hypot(b.x-a.x,b.y-a.y)||1, nx=-(b.y-a.y)/L*7, ny=(b.x-a.x)/L*7;
   for(const p of [a,b]){ x.beginPath(); x.moveTo(p.x-nx,p.y-ny); x.lineTo(p.x+nx,p.y+ny); x.stroke(); }
-  const t=it.t==="cal"?`기준 ${Math.round(it.mm||du*S.mmPerU).toLocaleString()} mm`:label(du)+(it.par?" · 평행":"");
+  const t=(it.t==="cal"?`기준 ${Math.round(it.mm||du*S.mmPerU).toLocaleString()} mm`:label(du)+(it.par?" · 평행":""))+memoSfx(it);
   x.font="700 13px Pretendard,-apple-system,sans-serif"; const tw=x.measureText(t).width+14, VW=x.canvas.width/dpr, VH=x.canvas.height/dpr;
   const mx=Math.max(tw/2+4,Math.min(VW-tw/2-4,(a.x+b.x)/2)), my=Math.max(28,Math.min(VH-4,(a.y+b.y)/2));   // 글씨가 화면 밖으로 나가지 않게
-  if(!it.ghost&&S.sel!==it&&(L<tw*0.6||!zoomedIn())){ x.restore(); return; }   // 4.55 작게 보일 땐 글자 숨김 (확대하면 나옴)
+  if(!it.ghost&&S.sel!==it&&(L<(tw-x.measureText(memoSfx(it)).width)*0.6||!zoomedIn())){ x.restore(); return; }   // 4.55 작게 보일 땐 글자 숨김 (확대하면 나옴)
   if(!it.ghost) S.lab.push({it,x:mx-tw/2,y:my-24,w:tw,h:21});
   x.fillStyle=col; roundRect(x,mx-tw/2,my-24,tw,21,8); x.fill(); x.fillStyle="#fff"; x.textAlign="center"; x.textBaseline="middle"; x.fillText(t,mx,my-13.5);
   x.restore();
@@ -593,11 +604,11 @@ function drawArea(x,P,ghost,it){
   x.fillStyle="rgba(227,25,55,"+(ghost?.10:.16)+")"; if(Q.length>2) x.fill();
   x.strokeStyle="#E31937"; x.lineWidth=2.2; if(ghost) x.setLineDash([6,4]); x.stroke(); x.setLineDash([]);
   x.fillStyle="#E31937"; for(const q of Q){ x.beginPath(); x.arc(q.x,q.y,3.5,0,7); x.fill(); }
-  if(P.length>=3){ const t=areaLabel(P,it&&it.depth); let cx=0,cy=0; for(const q of Q){ cx+=q.x; cy+=q.y; } cx/=Q.length; cy/=Q.length;
+  if(P.length>=3){ const t=areaLabel(P,it&&it.depth)+memoSfx(it); let cx=0,cy=0; for(const q of Q){ cx+=q.x; cy+=q.y; } cx/=Q.length; cy/=Q.length;
     x.font="700 13px Pretendard,-apple-system,sans-serif"; const tw=x.measureText(t).width+14, VW=x.canvas.width/dpr, VH=x.canvas.height/dpr;
     const mx=Math.max(tw/2+4,Math.min(VW-tw/2-4,cx)), my=Math.max(14,Math.min(VH-14,cy));
     let bw=0, bh=0; if(it&&!ghost&&S.sel!==it){ const xs=Q.map(q=>q.x), ys=Q.map(q=>q.y); bw=Math.max(...xs)-Math.min(...xs); bh=Math.max(...ys)-Math.min(...ys); }
-    if(it&&!ghost&&S.sel!==it&&(bw<tw*0.5||bh<16||!zoomedIn())){ x.restore(); return; }
+    if(it&&!ghost&&S.sel!==it&&(bw<(tw-x.measureText(memoSfx(it)).width)*0.5||bh<16||!zoomedIn())){ x.restore(); return; }
     if(it) S.lab.push({it,x:mx-tw/2,y:my-10.5,w:tw,h:21});
     x.globalAlpha=ghost?.8:1; x.fillStyle="#E31937"; roundRect(x,mx-tw/2,my-10.5,tw,21,8); x.fill(); x.fillStyle="#fff"; x.textAlign="center"; x.textBaseline="middle"; x.fillText(t,mx,my); }
   x.restore();
