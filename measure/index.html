@@ -35,6 +35,18 @@ header select option{color:#000}
 #sub{display:flex;gap:6px;margin-top:7px;align-items:center}
 #hint{flex:1;font-size:12.5px;color:var(--sub);min-width:0}
 #sub button{border:1px solid var(--line);background:#fff;border-radius:10px;font:inherit;font-size:12.5px;font-weight:700;padding:6px 10px;color:var(--ink)}
+/* 4.51 완료 독 (시안 C: 핀톡 독 모양) */
+#dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 14px);z-index:6;display:flex;flex-direction:column;align-items:center;gap:8px}
+#dock[hidden]{display:none}
+#dockCap{font-size:12.5px;color:#fff;background:rgba(30,34,38,.82);padding:5px 12px;border-radius:12px;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+#dock .dk{display:grid;grid-template-columns:112px 64px 112px;align-items:center;background:#3A3A37;border-radius:36px;padding:6px;box-shadow:0 8px 22px rgba(0,0,0,.28)}
+#dock .dk button{border:0;background:none;color:#fff;font:inherit;font-size:14.5px;font-weight:700;display:flex;gap:6px;align-items:center;justify-content:center;height:56px;padding:0}
+#dock .dk button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+#dock .dk button.vis-off{visibility:hidden}
+#dock #dkOk{width:60px;height:60px;justify-self:center;border-radius:50%;background:var(--red);box-shadow:0 3px 7px rgba(0,0,0,.45),inset 0 2px 0 rgba(255,255,255,.22),inset 0 -3px 0 rgba(0,0,0,.16)}
+#dock #dkOk svg{width:30px;height:30px;stroke-width:3}
+#dock #dkOk:disabled{background:#6B6B66;box-shadow:none}
+#bar.dockOn #tools,#bar.dockOn #sub{visibility:hidden}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:130px;z-index:9;background:rgba(30,34,38,.92);color:#fff;padding:9px 14px;border-radius:12px;font-size:13.5px;max-width:90vw;text-align:center}
 #toast[hidden]{display:none}
 .dlg{position:fixed;inset:0;z-index:8;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
@@ -81,6 +93,11 @@ header select option{color:#000}
   </div>
   <div id="sub"><span id="hint">두 손가락으로 확대·이동해요.</span><button id="areaOk" hidden style="background:var(--red);color:#fff;border-color:var(--red)">면적 완료</button><button id="ptDel" hidden style="color:var(--red)">점 지우기</button><button id="undoBtn">되돌리기</button><button id="clrBtn">지우기</button></div>
 </div>
+<div id="dock" hidden><div id="dockCap"></div><div class="dk">
+  <button id="dkL"></button>
+  <button id="dkOk" aria-label="완료"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+  <button id="dkR"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>취소</button>
+</div></div>
 <div id="toast" hidden></div>
 
 <div class="dlg" id="openDlg" hidden><div class="box">
@@ -358,8 +375,21 @@ const areaLabel=(P,dep)=>{ const A=polyArea(P);
   if(dep>0) return `${f2(m2)} m² × ${+(dep/1000).toFixed(3)} m = ${f2(m2*dep/1000)} m³`;
   return f2(m2)+" m² · 둘레 "+per.toFixed(2)+" m"; };
 function areaDone(){ if(S.poly.length<3) return toast("점을 3개 이상 찍어 주세요"); S.items.push({t:"area",pts:S.poly.map(p=>({x:p.x,y:p.y}))}); S.poly=[]; areaBtn(); draw(); }
-function areaBtn(){ const b=$("#areaOk"); b.textContent=S.sel?"완료":"면적 완료"; b.hidden=!(S.sel||(S.mode==="area"&&S.poly.length>=3));
-  if(!S.sel||S.sel.t!=="area") S.selPt=null; $("#ptDel").hidden=S.selPt==null; }
+const IC_UNDO='<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>', IC_DEL='<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>';
+function areaBtn(){ $("#areaOk").hidden=true; $("#ptDel").hidden=true;
+  if(!S.sel||S.sel.t!=="area") S.selPt=null;
+  const drawing=S.mode==="area"&&S.poly.length>0, on=!!S.sel||drawing;
+  $("#dock").hidden=!on; $("#bar").classList.toggle("dockOn",on); $("#toast").style.bottom=($("#bar").offsetHeight+(on?64:14))+"px"; if(!on) return;
+  const L=$("#dkL"), ok=$("#dkOk");
+  if(S.sel){ const n=S.sel.t==="area"; L.innerHTML=IC_DEL+"점 지우기"; L.classList.toggle("vis-off",!(n&&S.selPt!=null)); ok.disabled=false;
+    $("#dockCap").textContent=n?(S.selPt!=null?"고른 점을 지우거나, 끌어 옮겨요":"점을 끌어 옮기고 ＋로 점 추가, 점을 눌러 고르기"):"흰 점을 끌어 옮겨요"; }
+  else { L.innerHTML=IC_UNDO+"되돌리기"; L.classList.remove("vis-off"); ok.disabled=S.poly.length<3;
+    $("#dockCap").textContent=`면적 그리는 중 · 점 ${S.poly.length}개`+(S.poly.length<3?" · 3개 이상 찍어요":" · 첫 점을 찍어도 완료"); }
+}
+$("#dkOk").onclick=()=>{ if(S.sel){ S.sel=null; S.selOrig=null; areaBtn(); setHint(); draw(); } else areaDone(); };
+$("#dkL").onclick=()=>{ if(S.sel) $("#ptDel").onclick(); else if(S.poly.length){ S.poly.pop(); areaBtn(); draw(); } };
+$("#dkR").onclick=()=>{ if(S.sel){ const it=S.sel; if(S.selOrig){ for(const k of Object.keys(it)) delete it[k]; Object.assign(it,S.selOrig); if(it.t==="cal") calFix(it); } S.sel=null; S.selOrig=null; toast("옮기기를 취소했어요"); }
+  else { S.poly=[]; } areaBtn(); setHint(); draw(); };
 $("#areaOk").onclick=()=>{ if(S.sel){ S.sel=null; areaBtn(); setHint(); draw(); } else areaDone(); };
 /* 면적 점 지우기: 흰 점을 톡 누르면 고르고, '점 지우기' */
 $("#ptDel").onclick=()=>{ const it=S.sel; if(!it||it.t!=="area"||S.selPt==null) return;
@@ -390,7 +420,7 @@ $("#itOk").onclick=()=>{ const it=edIt; if(!it) return;
   if(it.t==="cal"){ const v=parseFloat($("#calMm").value); if(v>0&&v!==it.mm){ it.mm=v; calFix(it); setTimeout(askAll,50); } }
   $("#itDlg").hidden=true; edIt=null; draw(); };
 $("#itDel").onclick=()=>{ S.items=S.items.filter(x=>x!==edIt); $("#itDlg").hidden=true; if(edIt&&edIt.t==="cal") toast("기준선을 지웠어요. 맞춘 눈금은 그대로예요"); edIt=null; draw(); };
-$("#itMove").onclick=()=>{ S.sel=edIt; edIt=null; $("#itDlg").hidden=true; S.first=null; S.poly=[]; areaBtn(); setHint(); draw(); };
+$("#itMove").onclick=()=>{ S.selOrig=JSON.parse(JSON.stringify(edIt)); S.sel=edIt; edIt=null; $("#itDlg").hidden=true; S.first=null; S.poly=[]; areaBtn(); setHint(); draw(); };
 function calFix(it){ const du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y); if(du>1e-6) saveScale(it.mm/du,"치수 "+Math.round(it.mm).toLocaleString()+"mm로 맞춤"); }
 function setHint(){ $("#hint").textContent=S.sel?(S.sel.t==="area"?"점을 끌어 옮기고, ＋로 점 추가, 점을 눌러 고르면 지우기.":"흰 점이나 그 아래를 끌면 점이 손가락 위로 따라와요. 다 되면 '완료'."):HINT[S.mode]; }
 /* 점 하나 옮긴 뒤 다시 계산 */
