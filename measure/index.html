@@ -38,7 +38,7 @@ header select option{color:#000}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:130px;z-index:9;background:rgba(30,34,38,.92);color:#fff;padding:9px 14px;border-radius:12px;font-size:13.5px;max-width:90vw;text-align:center}
 #toast[hidden]{display:none}
 .dlg{position:fixed;inset:0;z-index:8;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
-.dlg[hidden]{display:none}
+.dlg[hidden],.dlg [hidden]{display:none!important}
 .dlg .box{width:100%;max-width:520px;background:#fff;border-radius:20px 20px 0 0;padding:16px 16px calc(var(--sab) + 16px);max-height:80vh;overflow:auto}
 .dlg h2{margin:0 0 10px;font-size:17px}
 .dlg p{margin:4px 0 10px;color:var(--sub);font-size:13.5px}
@@ -103,6 +103,16 @@ header select option{color:#000}
   <div class="btns"><button id="calX">닫기</button></div>
 </div></div>
 
+<div class="dlg" id="itDlg" hidden><div class="box">
+  <h2 id="itT"></h2>
+  <div id="itV" style="font-size:24px;font-weight:800;margin:2px 0 4px"></div>
+  <p id="itP"></p>
+  <div class="row" id="itDep" hidden><span style="font-weight:700;white-space:nowrap">깊이</span><input id="depIn" type="number" inputmode="decimal" placeholder="예: 200"><span style="font-weight:700">mm</span></div>
+  <div class="row" id="itCal" hidden><span style="font-weight:700;white-space:nowrap">실제 길이</span><input id="calMm" type="number" inputmode="decimal"><span style="font-weight:700">mm</span></div>
+  <p id="itVol" style="font-weight:700;color:var(--ink)"></p>
+  <div class="btns"><button id="itDel" style="color:var(--red)">삭제</button><button id="itMove">점 옮기기</button><button class="pri" id="itOk">확인</button></div>
+</div></div>
+
 <div class="dlg" id="lenDlg" hidden><div class="box">
   <h2>두 점 사이 실제 길이</h2>
   <p id="lenP"></p>
@@ -118,7 +128,7 @@ const $=s=>document.querySelector(s);
 const PT_MM=25.4/72;                 // PDF 1pt = 0.3528mm (종이 위)
 const S={pdf:null,page:null,pn:1,key:"",name:"",w:0,h:0,B:1,Z:1,T:{x:0,y:0},
   segs:null,nseg:0,pts:null,grid:new Map(),C:16,mode:"view",snap:true,mmPerU:0,scSrc:"",
-  items:[],first:null,poly:[],cursor:null,hit:null,renderTask:null,detailOK:false};
+  items:[],first:null,poly:[],lab:[],sel:null,cursor:null,hit:null,renderTask:null,detailOK:false};
 let dpr=Math.min(window.devicePixelRatio||1,3);
 
 /* ---------- 화면 크기 ---------- */
@@ -187,7 +197,7 @@ async function loadPdf(buf,name,key,pageNames,start){
 $("#pg").onchange=e=>openPage(+e.target.value);
 
 async function openPage(n){
-  S.pn=n; S.items=[]; S.first=null; S.poly=[]; S.hit=null; S.detailOK=false;
+  S.pn=n; S.items=[]; S.first=null; S.poly=[]; S.sel=null; S.hit=null; S.detailOK=false;
   S.page=await S.pdf.getPage(n);
   const vp=S.page.getViewport({scale:1}); S.w=vp.width; S.h=vp.height;
   // 처음 화면: 도면 전체가 보이게
@@ -324,16 +334,52 @@ const HINT={view:"한 손가락으로 끌어 이동, 두 손가락으로 확대�
 /* 면적: 신발끈 공식 (도면 단위² → m²) */
 const polyArea=P=>{ let a=0; for(let i=0;i<P.length;i++){ const p=P[i],q=P[(i+1)%P.length]; a+=p.x*q.y-q.x*p.y; } return Math.abs(a)/2; };
 const polyLen=(P,close)=>{ let L=0; for(let i=0;i<P.length-(close?0:1);i++){ const p=P[i],q=P[(i+1)%P.length]; L+=Math.hypot(q.x-p.x,q.y-p.y); } return L; };
-const areaLabel=P=>{ const A=polyArea(P);
+const areaM2=P=>polyArea(P)*S.mmPerU*S.mmPerU/1e6;
+const f2=v=>v>=100?v.toFixed(1):v.toFixed(2);
+const areaLabel=(P,dep)=>{ const A=polyArea(P);
   if(!S.mmPerU) return `종이 ${(A*PT_MM*PT_MM/100).toFixed(1)}cm² · 눈금 없음`;
-  const m2=A*S.mmPerU*S.mmPerU/1e6, per=polyLen(P,true)*S.mmPerU/1000;
-  return (m2>=100?m2.toFixed(1):m2.toFixed(2))+" m² · 둘레 "+per.toFixed(2)+" m"; };
+  const m2=areaM2(P), per=polyLen(P,true)*S.mmPerU/1000;
+  if(dep>0) return `${f2(m2)} m² × ${+(dep/1000).toFixed(3)} m = ${f2(m2*dep/1000)} m³`;
+  return f2(m2)+" m² · 둘레 "+per.toFixed(2)+" m"; };
 function areaDone(){ if(S.poly.length<3) return toast("점을 3개 이상 찍어 주세요"); S.items.push({t:"area",pts:S.poly.map(p=>({x:p.x,y:p.y}))}); S.poly=[]; areaBtn(); draw(); }
-function areaBtn(){ $("#areaOk").hidden=!(S.mode==="area"&&S.poly.length>=3); }
-$("#areaOk").onclick=areaDone;
+function areaBtn(){ const b=$("#areaOk"); b.textContent=S.sel?"완료":"면적 완료"; b.hidden=!(S.sel||(S.mode==="area"&&S.poly.length>=3)); }
+$("#areaOk").onclick=()=>{ if(S.sel){ S.sel=null; areaBtn(); setHint(); draw(); } else areaDone(); };
+/* 잰 값 편집: 글자를 누르면 창, '점 옮기기'로 점을 끌어 옮긴다 */
+const selPts=it=>it.t==="area"?it.pts:it.t==="gap"?[it.b]:[it.a,it.b];
+const KIND={dist:"거리",gap:"선 간격",area:"면적",cal:"눈금 기준"};
+let edIt=null;
+function labAt(p){ for(let i=S.lab.length-1;i>=0;i--){ const l=S.lab[i]; if(p.x>=l.x-6&&p.x<=l.x+l.w+6&&p.y>=l.y-8&&p.y<=l.y+l.h+8) return l.it; } return null; }
+function openItem(it){ edIt=it; S.sel=null; areaBtn(); setHint();
+  $("#itT").textContent=KIND[it.t]||"측정"; $("#itDep").hidden=it.t!=="area"; $("#itCal").hidden=it.t!=="cal"; $("#itVol").textContent="";
+  if(it.t==="area"){ const per=polyLen(it.pts,true);
+    $("#itV").textContent=S.mmPerU?f2(areaM2(it.pts))+" m²":"눈금 없음";
+    $("#itP").textContent=S.mmPerU?`둘레 ${(per*S.mmPerU/1000).toFixed(2)} m · 점 ${it.pts.length}개. 깊이(두께)를 넣으면 부피를 구해요.`:"눈금을 먼저 맞춰 주세요.";
+    $("#depIn").value=it.depth||""; volTxt(); }
+  else { const du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y);
+    $("#itV").textContent=it.t==="cal"?Math.round(it.mm).toLocaleString()+" mm":label(du);
+    $("#itP").textContent=it.t==="cal"?"실제 길이를 바꾸면 눈금도 다시 맞춰요.":it.t==="gap"?"점 옮기기로 두 번째 점을 옮길 수 있어요.":"점 옮기기로 양 끝을 옮길 수 있어요.";
+    if(it.t==="cal") $("#calMm").value=Math.round(it.mm); }
+  $("#itDlg").hidden=false; draw(); }
+function volTxt(){ const d=parseFloat($("#depIn").value); $("#itVol").textContent=edIt&&edIt.t==="area"&&S.mmPerU&&d>0?`부피 ${f2(areaM2(edIt.pts)*d/1000)} m³ (${f2(areaM2(edIt.pts))} m² × ${+(d/1000).toFixed(3)} m)`:""; }
+$("#depIn").oninput=volTxt;
+$("#itOk").onclick=()=>{ const it=edIt; if(!it) return;
+  if(it.t==="area"){ const d=parseFloat($("#depIn").value); it.depth=d>0?d:0; }
+  if(it.t==="cal"){ const v=parseFloat($("#calMm").value); if(v>0&&v!==it.mm){ it.mm=v; calFix(it); } }
+  $("#itDlg").hidden=true; edIt=null; draw(); };
+$("#itDel").onclick=()=>{ S.items=S.items.filter(x=>x!==edIt); $("#itDlg").hidden=true; if(edIt&&edIt.t==="cal") toast("기준선을 지웠어요. 맞춘 눈금은 그대로예요"); edIt=null; draw(); };
+$("#itMove").onclick=()=>{ S.sel=edIt; edIt=null; $("#itDlg").hidden=true; S.first=null; S.poly=[]; areaBtn(); setHint(); draw(); };
+function calFix(it){ const du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y); if(du>1e-6) saveScale(it.mm/du,"치수 "+Math.round(it.mm).toLocaleString()+"mm로 맞춤"); }
+function setHint(){ $("#hint").textContent=S.sel?"흰 점을 끌어 옮겨요. 다 되면 '완료'를 눌러요.":HINT[S.mode]; }
+/* 점 하나 옮긴 뒤 다시 계산 */
+function movePt(it,i,h){
+  if(it.t==="area"){ it.pts[i]={x:h.x,y:h.y}; return; }
+  if(it.t==="gap"){ const [ax,ay,bx,by]=it.line, dx=bx-ax,dy=by-ay,ll=dx*dx+dy*dy,t=((h.x-ax)*dx+(h.y-ay)*dy)/ll; it.b={x:h.x,y:h.y}; it.a={x:ax+t*dx,y:ay+t*dy};
+    let par=false; if(h.seg>=0){ const s=S.segs, ex=s[4*h.seg+2]-s[4*h.seg],ey=s[4*h.seg+3]-s[4*h.seg+1], ang=Math.abs(Math.atan2(dx*ey-dy*ex,dx*ex+dy*ey)); par=Math.min(ang,Math.PI-ang)<0.035; } it.par=par; return; }
+  if(i===0) it.a={x:h.x,y:h.y}; else it.b={x:h.x,y:h.y};
+  if(it.t==="cal") calFix(it); }
 function setMode(m,fromDlg){
   if(m==="cal"&&!fromDlg){ $("#calN").value=S.mmPerU&&S.scSrc.startsWith("축척")?S.scSrc.slice(5):""; $("#calDlg").hidden=false; return; }
-  S.mode=m; S.first=null; S.poly=[]; areaBtn(); document.querySelectorAll("#tools [data-m]").forEach(b=>b.classList.toggle("on",b.dataset.m===m)); $("#hint").textContent=HINT[m]; draw();
+  S.mode=m; S.first=null; S.poly=[]; S.sel=null; areaBtn(); document.querySelectorAll("#tools [data-m]").forEach(b=>b.classList.toggle("on",b.dataset.m===m)); setHint(); draw();
 }
 $("#tools").onclick=e=>{ const b=e.target.closest("[data-m]"); if(b){ if(!S.pdf) return EMB?null:openDlg(); setMode(b.dataset.m); } };
 $("#snapBtn").onclick=()=>{ S.snap=!S.snap; $("#snapBtn").classList.toggle("on",S.snap); toast(S.snap?"스냅 켬: 선 끝·교차점·선 위에 붙어요":"스냅 끔: 찍은 자리 그대로 재요"); };
@@ -378,7 +424,9 @@ async function renderDetail(){
 function draw(){
   const c=$("#ov"), x=c.getContext("2d"); x.setTransform(dpr,0,0,dpr,0,0); x.clearRect(0,0,c.width,c.height);
   if(!S.page) return;
-  for(const it of S.items) it.t==="area"?drawArea(x,it.pts,false):drawItem(x,it);
+  S.lab=[];
+  for(const it of S.items) it.t==="area"?drawArea(x,it.pts,false,it):drawItem(x,it);
+  if(S.sel){ for(const q of selPts(S.sel)){ const h=toS(q.x,q.y); x.save(); x.fillStyle="#fff"; x.strokeStyle="#E31937"; x.lineWidth=3; x.beginPath(); x.arc(h.x,h.y,10,0,7); x.fill(); x.stroke(); x.restore(); } }
   // 그리는 중인 선
   const cur=S.hit;
   if(S.mode==="area"&&S.poly.length){ const P=cur?[...S.poly,{x:cur.x,y:cur.y}]:S.poly; drawArea(x,P,true);
@@ -409,18 +457,20 @@ function drawItem(x,it){
   const t=it.t==="cal"?`기준 ${Math.round(it.mm||du*S.mmPerU).toLocaleString()} mm`:label(du)+(it.par?" · 평행":"");
   x.font="700 13px Pretendard,-apple-system,sans-serif"; const tw=x.measureText(t).width+14, VW=x.canvas.width/dpr, VH=x.canvas.height/dpr;
   const mx=Math.max(tw/2+4,Math.min(VW-tw/2-4,(a.x+b.x)/2)), my=Math.max(28,Math.min(VH-4,(a.y+b.y)/2));   // 글씨가 화면 밖으로 나가지 않게
+  if(!it.ghost) S.lab.push({it,x:mx-tw/2,y:my-24,w:tw,h:21});
   x.fillStyle=col; roundRect(x,mx-tw/2,my-24,tw,21,8); x.fill(); x.fillStyle="#fff"; x.textAlign="center"; x.textBaseline="middle"; x.fillText(t,mx,my-13.5);
   x.restore();
 }
-function drawArea(x,P,ghost){
+function drawArea(x,P,ghost,it){
   const Q=P.map(p=>toS(p.x,p.y)); x.save();
   x.beginPath(); Q.forEach((q,i)=>i?x.lineTo(q.x,q.y):x.moveTo(q.x,q.y)); if(Q.length>2) x.closePath();
   x.fillStyle="rgba(227,25,55,"+(ghost?.10:.16)+")"; if(Q.length>2) x.fill();
   x.strokeStyle="#E31937"; x.lineWidth=2.2; if(ghost) x.setLineDash([6,4]); x.stroke(); x.setLineDash([]);
   x.fillStyle="#E31937"; for(const q of Q){ x.beginPath(); x.arc(q.x,q.y,3.5,0,7); x.fill(); }
-  if(P.length>=3){ const t=areaLabel(P); let cx=0,cy=0; for(const q of Q){ cx+=q.x; cy+=q.y; } cx/=Q.length; cy/=Q.length;
+  if(P.length>=3){ const t=areaLabel(P,it&&it.depth); let cx=0,cy=0; for(const q of Q){ cx+=q.x; cy+=q.y; } cx/=Q.length; cy/=Q.length;
     x.font="700 13px Pretendard,-apple-system,sans-serif"; const tw=x.measureText(t).width+14, VW=x.canvas.width/dpr, VH=x.canvas.height/dpr;
     const mx=Math.max(tw/2+4,Math.min(VW-tw/2-4,cx)), my=Math.max(14,Math.min(VH-14,cy));
+    if(it) S.lab.push({it,x:mx-tw/2,y:my-10.5,w:tw,h:21});
     x.globalAlpha=ghost?.8:1; x.fillStyle="#E31937"; roundRect(x,mx-tw/2,my-10.5,tw,21,8); x.fill(); x.fillStyle="#fff"; x.textAlign="center"; x.textBaseline="middle"; x.fillText(t,mx,my); }
   x.restore();
 }
@@ -458,8 +508,13 @@ stage.addEventListener("pointerdown",e=>{
   if(!S.page) return; try{ stage.setPointerCapture(e.pointerId); }catch(x){} const p=pos(e); P.set(e.pointerId,p);
   if(P.size===2){ const [a,b]=[...P.values()]; g={k:"pinch",d0:Math.hypot(a.x-b.x,a.y-b.y),c0:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},Z0:S.Z,T0:{...S.T}}; S.hit=null; loupe(null,false); draw(); scheduleDetail(); return; }
   if(P.size>2) return;
-  const aim=S.mode!=="view"&&e.pointerType!=="mouse";
-  g={k:aim?"aim":"pan",s:p,T0:{...S.T},moved:false,mouse:e.pointerType==="mouse"};
+  const mouse=e.pointerType==="mouse";
+  if(S.sel){ let bi=-1, bd=30; selPts(S.sel).forEach((q,i)=>{ const h=toS(q.x,q.y), d=Math.hypot(h.x-p.x,h.y-p.y); if(d<bd){ bd=d; bi=i; } });
+    if(bi>=0){ const h=toS(selPts(S.sel)[bi].x,selPts(S.sel)[bi].y); g={k:"edit",i:bi,off:{x:h.x-p.x,y:h.y-p.y},mouse}; editAim(p); return; } }
+  if(!S.first&&!S.poly.length){ const it=labAt(p); if(it){ g={k:"label",it,s:p,T0:{...S.T},moved:false,mouse}; return; } }
+  if(S.sel){ g={k:"pan",s:p,T0:{...S.T},moved:false,mouse,noPlace:true}; return; }
+  const aim=S.mode!=="view"&&!mouse;
+  g={k:aim?"aim":"pan",s:p,T0:{...S.T},moved:false,mouse};
   if(aim) aimAt(p);
 });
 stage.addEventListener("pointermove",e=>{
@@ -472,15 +527,20 @@ stage.addEventListener("pointermove",e=>{
   if(g.k==="pan"){ const dx=p.x-g.s.x, dy=p.y-g.s.y; if(Math.abs(dx)+Math.abs(dy)>4) g.moved=true; if(g.moved){ S.T.x=g.T0.x+dx; S.T.y=g.T0.y+dy; applyView(); scheduleDetail(); }
     if(g.mouse&&S.mode!=="view"){ const u=toU(p.x,p.y); S.hit=pick(u.x,u.y); } draw(); return; }
   if(g.k==="aim") aimAt(p);
+  if(g.k==="edit") editAim(p);
+  if(g.k==="label"&&Math.abs(p.x-g.s.x)+Math.abs(p.y-g.s.y)>6){ g.k="pan"; g.moved=true; g.noPlace=true; }
 });
+function editAim(p){ const sp={x:p.x+g.off.x,y:p.y+g.off.y}, u=toU(sp.x,sp.y); S.hit=snapAt(u.x,u.y); draw(); if(!g.mouse) loupe(sp,true); }
 function aimAt(p){ const sp={x:p.x,y:p.y-LIFT}; const u=toU(sp.x,sp.y); S.hit=pick(u.x,u.y); draw(); loupe(sp,true);
   const x=$("#ov").getContext("2d"); x.save(); x.setTransform(dpr,0,0,dpr,0,0); x.strokeStyle="rgba(30,34,38,.35)"; x.setLineDash([3,3]); x.beginPath(); x.moveTo(p.x,p.y); x.lineTo(sp.x,sp.y+10); x.stroke(); x.restore(); }
 function up(e){
   if(!P.has(e.pointerId)) return; P.delete(e.pointerId);
   if(!g) return;
   if(g.k==="pinch"){ if(P.size===0) g=null; else { const q=[...P.values()][0]; g={k:"pan",s:q,T0:{...S.T},moved:true}; } return; }
+  if(g.k==="edit"){ if(e.type==="pointerup"&&S.hit&&S.sel) movePt(S.sel,g.i,S.hit); S.hit=null; loupe(null,false); draw(); g=null; return; }
+  if(g.k==="label"){ if(e.type==="pointerup") openItem(g.it); g=null; return; }
   if(g.k==="aim"&&e.type==="pointerup"&&S.hit) place(S.hit);
-  if(g.k==="pan"&&g.mouse&&!g.moved&&S.mode!=="view"){ const p=pos(e), u=toU(p.x,p.y); S.hit=pick(u.x,u.y); place(S.hit); }
+  if(g.k==="pan"&&g.mouse&&!g.moved&&S.mode!=="view"&&!g.noPlace){ const p=pos(e), u=toU(p.x,p.y); S.hit=pick(u.x,u.y); place(S.hit); }
   if(g.k==="aim"){ S.hit=null; loupe(null,false); draw(); }
   g=null;
 }
