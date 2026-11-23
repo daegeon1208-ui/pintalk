@@ -127,7 +127,7 @@ header select option{color:#000}
   <p>화면 거리를 실제 치수로 바꾸는 기준이에요. 한 번 맞추면 이 도면·이 쪽에서 계속 써요.</p>
   <button class="opt" id="calPts"><b>① 길이를 아는 두 점 찍기 (권장)</b><small>치수선 양 끝이나 기둥 중심 두 개를 찍고 실제 길이를 넣어요</small></button>
   <div class="sec">② 축척으로 맞추기</div>
-  <div class="row"><span style="font-weight:700">1 /</span><input id="calN" type="number" inputmode="decimal" placeholder="100"><button class="opt" id="calNGo" style="flex:0 0 auto;width:auto;margin:0;background:var(--ink);color:#fff;text-align:center">적용</button></div>
+  <div class="row"><span style="font-weight:700">1 /</span><input id="calN" type="number" step="0.001" inputmode="decimal" placeholder="100"><button class="opt" id="calNGo" style="flex:0 0 auto;width:auto;margin:0;background:var(--ink);color:#fff;text-align:center">적용</button></div>
   <p>도면을 원래 종이 크기 그대로 PDF로 뽑았을 때만 맞아요. 크기를 바꿔 뽑았으면 ①을 쓰세요.</p>
   <div class="btns"><button id="calX">닫기</button></div>
 </div></div>
@@ -380,11 +380,13 @@ const LSP=(()=>{ try{ return parent!==window&&parent.PINTALK_TRY?"try:":""; }cat
 const scKey=()=>"measure-scale:"+S.key+":"+S.pn;
 function loadScale(){ S.mmPerU=0; S.scSrc=""; try{ const o=JSON.parse(localStorage.getItem(LSP+scKey())||"null"); if(o&&o.k>0){ S.mmPerU=o.k; S.scSrc=o.src||""; } }catch(e){} showScale(); }
 function saveScale(k,src){ S.mmPerU=k; S.scSrc=src; try{ localStorage.setItem(LSP+scKey(),JSON.stringify({k,src})); }catch(e){} showScale(); draw(); }
+/* 4.62 축척은 소수점 셋째 자리까지 (끝의 0은 뺌) */
+const fmtN=N=>(+N.toFixed(3)).toLocaleString(undefined,{maximumFractionDigits:3});
 function showScale(){ const e=$("#scInfo");
   const ic='<svg viewBox="0 0 24 24"><path d="M3 17 17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg>';
   e.hidden=!S.pdf; $("#snapBtn").hidden=!S.pdf||!S.nseg; const on=S.mode==="cal"?" on":"";
   if(!S.mmPerU){ e.innerHTML=ic+"눈금 맞추기"; e.className="ichip sc no"+on; return; }
-  const N=S.mmPerU/PT_MM; e.innerHTML=ic+`눈금 1/${N>=10?Math.round(N):N.toFixed(1)}`; e.title=S.scSrc||""; e.className="ichip sc"+on; }
+  const N=S.mmPerU/PT_MM; e.innerHTML=ic+`눈금 1/${fmtN(N)}`; e.title=S.scSrc||""; e.className="ichip sc"+on; }
 /* 4.61 눈금은 위 정보줄의 눈금 칩으로 (자주 안 고치니 아래 도구에서 뺌) */
 $("#scInfo").onclick=()=>{ if(!S.pdf) return; if(S.mode==="cal") setMode("view"); else setMode("cal"); };
 const fmt=mm=>{ const a=Math.abs(mm); return (a>=100?Math.round(mm).toLocaleString():a>=10?mm.toFixed(1):mm.toFixed(2))+" mm"; };
@@ -392,10 +394,10 @@ const label=du=>S.mmPerU?fmt(du*S.mmPerU):`종이 ${(du*PT_MM).toFixed(1)}mm · 
 
 $("#calX").onclick=()=>$("#calDlg").hidden=true;
 $("#calPts").onclick=()=>{ $("#calDlg").hidden=true; setMode("cal",true); };
-$("#calNGo").onclick=()=>{ const N=parseFloat($("#calN").value); if(!(N>0)) return toast("축척 숫자를 넣어 주세요"); $("#calDlg").hidden=true; saveScale(N*PT_MM,"축척 1/"+N); toast(`축척 1/${N}로 맞췄어요`); setMode("view"); askAll(); };
+$("#calNGo").onclick=()=>{ const N=parseFloat($("#calN").value); if(!(N>0)) return toast("축척 숫자를 넣어 주세요"); $("#calDlg").hidden=true; saveScale(N*PT_MM,"축척 1/"+N); toast(`축척 1/${fmtN(N)}로 맞췄어요`); setMode("view"); askAll(); };
 /* 4.50 눈금을 맞추면 다른 쪽에도 쓸지 묻는다. 적용한 뒤에도 쪽마다 '눈금'으로 따로 고칠 수 있다 */
 function askAll(){ if(!S.pdf||S.pdf.numPages<2||!S.mmPerU) return;
-  $("#allP").textContent=`이 도면은 ${S.pdf.numPages}쪽이에요. 지금 맞춘 눈금(약 1/${Math.round(S.mmPerU/PT_MM)})을 다른 쪽에도 똑같이 쓸까요? 축척이 다른 쪽은 나중에 그 쪽에서 '눈금'으로 따로 고칠 수 있어요.`;
+  $("#allP").textContent=`이 도면은 ${S.pdf.numPages}쪽이에요. 지금 맞춘 눈금(1/${fmtN(S.mmPerU/PT_MM)})을 다른 쪽에도 똑같이 쓸까요? 축척이 다른 쪽은 나중에 그 쪽에서 '눈금'으로 따로 고칠 수 있어요.`;
   $("#allDlg").hidden=false; }
 $("#allNo").onclick=()=>{ $("#allDlg").hidden=true; };
 $("#allYes").onclick=()=>{ $("#allDlg").hidden=true; let n=0;
@@ -486,7 +488,7 @@ function movePt(it,i,h,live){
   if(i===0) it.a={x:h.x,y:h.y}; else it.b={x:h.x,y:h.y};
   if(it.t==="cal"&&!live) calFix(it); }
 function setMode(m,fromDlg){
-  if(m==="cal"&&!fromDlg){ $("#calN").value=S.mmPerU&&S.scSrc.startsWith("축척")?S.scSrc.slice(5):""; $("#calDlg").hidden=false; return; }
+  if(m==="cal"&&!fromDlg){ $("#calN").value=S.mmPerU?+(S.mmPerU/PT_MM).toFixed(3):""; $("#calDlg").hidden=false; return; }
   S.mode=m; S.first=null; S.poly=[]; S.sel=null; areaBtn(); document.querySelectorAll("#tools [data-m]").forEach(b=>b.classList.toggle("on",b.dataset.m===m)); showScale(); setHint(); draw();
 }
 $("#tools").onclick=e=>{ const b=e.target.closest("[data-m]"); if(b){ if(!S.pdf) return EMB?null:openDlg(); setMode(b.dataset.m); } };
