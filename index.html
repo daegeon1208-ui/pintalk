@@ -1270,7 +1270,7 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.44";
+const APP_VER = "4.45";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -2724,7 +2724,8 @@ function colorsOfPeople(pins){
 let colorOf=()=>PALETTE[0];
 const hexRgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
 const scr=([nx,ny])=>[V.tx+nx*V.pw*V.k, V.ty+ny*V.ph*V.k];
-const cloudPx=()=>Math.max(9,CLOUD_K*Math.max(V.pw,V.ph)*V.k);   // 화면에서 너무 작아지지 않게 9px 이상
+const CLOUD_PX=26;   // 4.45 화면에서 호 하나 길이: 확대·축소와 상관없이 늘 같은 크기
+const cloudPx=()=>CLOUD_PX;
 function drawShapes(){
   colorOf=colorsOf(V.pins.filter(q=>q.id!=="temp"));
   const svg=$("#shapeLayer"); let h="";
@@ -2771,7 +2772,7 @@ function traceShape(ctx,sh,P){   // 캔버스에 도형 경로 (스케치는 열
 }
 /* 4.43 구름 핀(도면식 리비전 구름): 사각형처럼 두 모서리로 저장하고, 네 변을 고른 호로 이어 그린다 */
 const isBox=k=>k==="rect"||k==="cloud";
-const CLOUD_K=0.012;   // 호 하나 길이 = 도면 긴 변의 1.2%
+const CLOUD_K=0.02;   // PDF·사진대지 그림에서 호 하나 길이 = 도면 긴 변의 2%
 function cloudParts(P,chord){   // P: 화면처럼 y가 아래로 커지는 좌표의 네 꼭짓점 → [[시작,끝,호길이]...] (시계 방향)
   let a=0; for(let i=0;i<P.length;i++){ const q=P[i],r=P[(i+1)%P.length]; a+=q[0]*r[1]-r[0]*q[1]; } if(a<0) P=P.slice().reverse();
   const out=[];
