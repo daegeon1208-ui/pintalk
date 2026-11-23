@@ -35,6 +35,9 @@ header select option{color:#000}
 #sub{display:flex;gap:6px;margin-top:7px;align-items:center}
 #hint{flex:1;font-size:12.5px;color:var(--sub);min-width:0}
 #sub button{border:1px solid var(--line);background:#fff;border-radius:10px;font:inherit;font-size:12.5px;font-weight:700;padding:6px 10px;color:var(--ink)}
+#sub button.ic{padding:5px 9px;display:grid;place-items:center}
+#sub button.ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#sub button.ic:disabled{opacity:.35}
 /* 4.51 완료 독 (시안 C: 핀톡 독 모양) */
 #dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 14px);z-index:6;display:flex;flex-direction:column;align-items:center;gap:8px}
 #dock[hidden]{display:none}
@@ -97,7 +100,7 @@ header select option{color:#000}
     <button data-m="gap"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 19h18M12 5v14M9 8l3-3 3 3M9 16l3 3 3-3"/></svg>선 간격</button>
     <button class="snap on" id="snapBtn"><svg viewBox="0 0 24 24"><path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 7h4M14 7h4"/></svg>스냅</button>
   </div>
-  <div id="sub"><span id="hint">두 손가락으로 확대·이동해요.</span><button id="areaOk" hidden style="background:var(--red);color:#fff;border-color:var(--red)">면적 완료</button><button id="ptDel" hidden style="color:var(--red)">점 지우기</button><button id="undoBtn">되돌리기</button><button id="clrBtn">지우기</button></div>
+  <div id="sub"><span id="hint">두 손가락으로 확대·이동해요.</span><button id="areaOk" hidden style="background:var(--red);color:#fff;border-color:var(--red)">면적 완료</button><button id="ptDel" hidden style="color:var(--red)">점 지우기</button><button id="undoBtn" class="ic" aria-label="되돌리기" title="되돌리기"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button id="redoBtn" class="ic" aria-label="다시 하기" title="다시 하기"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button><button id="clrBtn">지우기</button></div>
 </div>
 <div id="dock" hidden><div id="dockCap"></div><div class="dk">
   <button id="dkL"></button>
@@ -250,7 +253,7 @@ async function loadPdf(buf,name,key,pageNames,start){
 $("#pg").onchange=e=>openPage(+e.target.value);
 
 async function openPage(n){
-  S.pn=n; S.items=loadItems(); S.first=null; S.poly=[]; S.sel=null; S.hit=null; S.detailOK=false;
+  S.pn=n; S.items=loadItems(); HIS.list=[JSON.stringify(S.items)]; HIS.i=0; S.first=null; S.poly=[]; S.sel=null; S.hit=null; S.detailOK=false;
   S.page=await S.pdf.getPage(n);
   const vp=S.page.getViewport({scale:1}); S.w=vp.width; S.h=vp.height;
   // 처음 화면: 도면 전체가 보이게
@@ -470,7 +473,13 @@ function setMode(m,fromDlg){
 }
 $("#tools").onclick=e=>{ const b=e.target.closest("[data-m]"); if(b){ if(!S.pdf) return EMB?null:openDlg(); setMode(b.dataset.m); } };
 $("#snapBtn").onclick=()=>{ S.snap=!S.snap; $("#snapBtn").classList.toggle("on",S.snap); toast(S.snap?"스냅 켬: 선 끝·교차점·선 위에 붙어요":"스냅 끔: 찍은 자리 그대로 재요"); };
-$("#undoBtn").onclick=()=>{ if(S.poly.length){ S.poly.pop(); areaBtn(); } else if(S.first){ S.first=null; } else S.items.pop(); draw(); };
+/* 4.53 되돌리기·다시 하기: 잰 값이 바뀔 때마다(손을 뗀 뒤) 기록해 두고 앞뒤로 옮긴다 */
+const HIS={list:["[]"],i:0};
+function commit(){ const j=JSON.stringify(S.items); if(j===HIS.list[HIS.i]) return; HIS.list=HIS.list.slice(0,HIS.i+1); HIS.list.push(j); if(HIS.list.length>60) HIS.list.shift(); HIS.i=HIS.list.length-1; }
+function histBtns(){ $("#undoBtn").disabled=!(S.poly.length||S.first||HIS.i>0); $("#redoBtn").disabled=!(HIS.i<HIS.list.length-1); }
+function restore(){ S.items=JSON.parse(HIS.list[HIS.i]); S.sel=null; S.selOrig=null; areaBtn(); setHint(); draw(); }
+$("#undoBtn").onclick=()=>{ if(S.poly.length){ S.poly.pop(); areaBtn(); draw(); } else if(S.first){ S.first=null; draw(); } else { commit(); if(HIS.i>0){ HIS.i--; restore(); } } histBtns(); };
+$("#redoBtn").onclick=()=>{ commit(); if(HIS.i<HIS.list.length-1){ HIS.i++; restore(); } histBtns(); };
 $("#clrBtn").onclick=()=>{ S.items=S.items.filter(x=>x.t==="cal"); S.first=null; S.poly=[]; areaBtn(); draw(); toast("이 쪽의 잰 값을 지웠어요 (눈금은 남겨 둬요)"); };
 
 function place(h){
@@ -514,7 +523,7 @@ function loadItems(){ try{ const a=JSON.parse(localStorage.getItem(LSP+itKey())|
 function itemTxt(it){ if(it.t==="area") return areaLabel(it.pts,it.depth); const du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y);
   return it.t==="cal"?`기준 ${Math.round(it.mm||du*S.mmPerU).toLocaleString()} mm`:label(du)+(it.par?" · 평행":""); }
 let svT=null;
-function saveItems(){ if(!S.key||!S.page) return; try{ const a=S.items.map(it=>({...it,txt:itemTxt(it)})); if(a.length) localStorage.setItem(LSP+itKey(),JSON.stringify(a)); else localStorage.removeItem(LSP+itKey()); }catch(e){} }
+function saveItems(){ if(!S.key||!S.page) return; if(!g&&!S.sel) commit(); histBtns(); try{ const a=S.items.map(it=>({...it,txt:itemTxt(it)})); if(a.length) localStorage.setItem(LSP+itKey(),JSON.stringify(a)); else localStorage.removeItem(LSP+itKey()); }catch(e){} }
 function draw(){
   const c=$("#ov"), x=c.getContext("2d"); x.setTransform(dpr,0,0,dpr,0,0); x.clearRect(0,0,c.width,c.height);
   if(!S.page) return;
