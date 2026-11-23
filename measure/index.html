@@ -135,6 +135,8 @@ header select option{color:#000}
   <p id="itP"></p>
   <div class="row" id="itDep" hidden><span style="font-weight:700;white-space:nowrap">깊이</span><input id="depIn" type="number" inputmode="decimal" placeholder="예: 200"><span style="font-weight:700">mm</span></div>
   <div class="row" id="itCal" hidden><span style="font-weight:700;white-space:nowrap">실제 길이</span><input id="calMm" type="number" inputmode="decimal"><span style="font-weight:700">mm</span></div>
+  <div class="row" id="itLen" hidden><span style="font-weight:700;white-space:nowrap">길이</span><input id="lenMm" type="number" inputmode="decimal"><span style="font-weight:700">mm</span></div>
+  <div class="row" id="itFix" hidden><span style="font-weight:700;white-space:nowrap">기준</span><select id="lenFix" style="flex:1;min-width:0;font:inherit;padding:8px;border-radius:10px;border:1px solid #D1D5DB;background:#fff"><option value="a">처음 찍은 점 고정</option><option value="b">나중 찍은 점 고정</option><option value="m">가운데 고정 (양쪽으로)</option></select></div>
   <p id="itVol" style="font-weight:700;color:var(--ink)"></p>
   <div class="btns"><button id="itDel" style="color:var(--red)">삭제</button><button id="itMove">점 옮기기</button><button class="pri" id="itOk">확인</button></div>
 </div></div>
@@ -440,7 +442,7 @@ const KIND={dist:"거리",gap:"선 간격",area:"면적",cal:"눈금 기준"};
 let edIt=null;
 function labAt(p){ for(let i=S.lab.length-1;i>=0;i--){ const l=S.lab[i]; if(p.x>=l.x-6&&p.x<=l.x+l.w+6&&p.y>=l.y-8&&p.y<=l.y+l.h+8) return l.it; } return null; }
 function openItem(it){ edIt=it; S.sel=null; areaBtn(); setHint();
-  $("#itT").textContent=KIND[it.t]||"측정"; $("#itDep").hidden=it.t!=="area"; $("#itCal").hidden=it.t!=="cal"; $("#itVol").textContent="";
+  $("#itT").textContent=KIND[it.t]||"측정"; $("#itDep").hidden=it.t!=="area"; $("#itCal").hidden=it.t!=="cal"; $("#itLen").hidden=$("#itFix").hidden=!(it.t==="dist"&&S.mmPerU); $("#itVol").textContent="";
   if(it.t==="area"){ const per=polyLen(it.pts,true);
     $("#itV").textContent=S.mmPerU?f2(areaM2(it.pts))+" m²":"눈금 없음";
     $("#itP").textContent=S.mmPerU?`둘레 ${(per*S.mmPerU/1000).toFixed(2)} m · 점 ${it.pts.length}개. 깊이(두께)를 넣으면 부피를 구해요.`:"눈금을 먼저 맞춰 주세요.";
@@ -448,12 +450,19 @@ function openItem(it){ edIt=it; S.sel=null; areaBtn(); setHint();
   else { const du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y);
     $("#itV").textContent=it.t==="cal"?Math.round(it.mm).toLocaleString()+" mm":label(du);
     $("#itP").textContent=it.t==="cal"?"실제 길이를 바꾸면 눈금도 다시 맞춰요.":it.t==="gap"?"점 옮기기로 두 번째 점을 옮길 수 있어요.":"점 옮기기로 양 끝을 옮길 수 있어요.";
-    if(it.t==="cal") $("#calMm").value=Math.round(it.mm); }
+    if(it.t==="cal") $("#calMm").value=Math.round(it.mm);
+    if(it.t==="dist"&&S.mmPerU){ $("#lenMm").value=Math.round(du*S.mmPerU); $("#itP").textContent="길이를 넣으면 그 길이로 선을 늘이거나 줄여요. 점 옮기기로 양 끝을 옮길 수도 있어요."; } }
   $("#itDlg").hidden=false; draw(); }
 function volTxt(){ const d=parseFloat($("#depIn").value); $("#itVol").textContent=edIt&&edIt.t==="area"&&S.mmPerU&&d>0?`부피 ${f2(areaM2(edIt.pts)*d/1000)} m³ (${f2(areaM2(edIt.pts))} m² × ${+(d/1000).toFixed(3)} m)`:""; }
 $("#depIn").oninput=volTxt;
 $("#itOk").onclick=()=>{ const it=edIt; if(!it) return;
   if(it.t==="area"){ const d=parseFloat($("#depIn").value); it.depth=d>0?d:0; }
+  if(it.t==="dist"&&S.mmPerU){ const v=parseFloat($("#lenMm").value), du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y);   /* 4.59 길이 넣어 선 길이 바꾸기 */
+    if(v>0&&du>1e-9&&Math.abs(v-du*S.mmPerU)>=0.5){ const nu=v/S.mmPerU, ux=(it.b.x-it.a.x)/du, uy=(it.b.y-it.a.y)/du, f=$("#lenFix").value;
+      if(f==="a") it.b={x:it.a.x+ux*nu,y:it.a.y+uy*nu};
+      else if(f==="b") it.a={x:it.b.x-ux*nu,y:it.b.y-uy*nu};
+      else { const cx=(it.a.x+it.b.x)/2, cy=(it.a.y+it.b.y)/2; it.a={x:cx-ux*nu/2,y:cy-uy*nu/2}; it.b={x:cx+ux*nu/2,y:cy+uy*nu/2}; }
+      toast("길이를 "+Math.round(v).toLocaleString()+" mm로 바꿨어요"); } }
   if(it.t==="cal"){ const v=parseFloat($("#calMm").value); if(v>0&&v!==it.mm){ it.mm=v; calFix(it); setTimeout(askAll,50); } }
   $("#itDlg").hidden=true; edIt=null; draw(); };
 $("#itDel").onclick=()=>{ S.items=S.items.filter(x=>x!==edIt); $("#itDlg").hidden=true; if(edIt&&edIt.t==="cal") toast("기준선을 지웠어요. 맞춘 눈금은 그대로예요"); edIt=null; draw(); };
