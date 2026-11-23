@@ -591,6 +591,7 @@ function marker(x,p,type,k){
   if(type==="end"){ x.strokeRect(p.x-s,p.y-s,2*s,2*s); }
   else if(type==="int"){ x.beginPath(); x.moveTo(p.x-s,p.y-s); x.lineTo(p.x+s,p.y+s); x.moveTo(p.x+s,p.y-s); x.lineTo(p.x-s,p.y+s); x.stroke(); }
   else if(type==="on"){ x.beginPath(); x.arc(p.x,p.y,s*0.8,0,7); x.stroke(); }
+  else if(type==="dir"){ x.beginPath(); x.moveTo(p.x,p.y-s); x.lineTo(p.x+s,p.y); x.lineTo(p.x,p.y+s); x.lineTo(p.x-s,p.y); x.closePath(); x.stroke(); }
   else if(type==="perp"){ x.beginPath(); x.moveTo(p.x-s,p.y+s); x.lineTo(p.x+s,p.y+s); x.moveTo(p.x-s,p.y+s); x.lineTo(p.x-s,p.y-s); x.moveTo(p.x-s,p.y); x.lineTo(p.x,p.y); x.lineTo(p.x,p.y+s); x.stroke(); }
   if(type==="free"){ x.beginPath(); x.moveTo(p.x-12*k,p.y); x.lineTo(p.x+12*k,p.y); x.moveTo(p.x,p.y-12*k); x.lineTo(p.x,p.y+12*k); x.stroke(); }
   else { x.globalAlpha=.6; x.lineWidth=1; x.beginPath(); x.moveTo(p.x-14*k,p.y); x.lineTo(p.x-s-2,p.y); x.moveTo(p.x+s+2,p.y); x.lineTo(p.x+14*k,p.y); x.stroke(); }
@@ -653,8 +654,39 @@ stage.addEventListener("pointermove",e=>{
 function editAim(p){
   if(!g.moved){ if(Math.hypot(p.x-g.s.x,p.y-g.s.y)<6) return; g.moved=true; }
   const sp={x:p.x+g.off.x,y:p.y+g.off.y}, u=toU(sp.x,sp.y); S.hit=snapAt(u.x,u.y);
+  const dl=S.snap?dirSnap(u):null;
   if(S.sel) movePt(S.sel,g.i,S.hit,true);
-  draw(); if(!g.mouse){ loupe(sp,true); const x=$("#ov").getContext("2d"); x.save(); x.setTransform(dpr,0,0,dpr,0,0); x.strokeStyle="rgba(30,34,38,.35)"; x.setLineDash([3,3]); x.beginPath(); x.moveTo(p.x,p.y); x.lineTo(sp.x,sp.y+10); x.stroke(); x.restore(); } }
+  draw(); if(dl) dirLines(dl); if(!g.mouse){ loupe(sp,true); const x=$("#ov").getContext("2d"); x.save(); x.setTransform(dpr,0,0,dpr,0,0); x.strokeStyle="rgba(30,34,38,.35)"; x.setLineDash([3,3]); x.beginPath(); x.moveTo(p.x,p.y); x.lineTo(sp.x,sp.y+10); x.stroke(); x.restore(); } }
+/* 4.57 원래 선 방향 스냅: 고치는 점이 원래 선(면적은 이웃 변)의 연장선 가까이 오면 그 위에 붙이고 점선으로 보여 준다 */
+function dirGuides(){
+  const it=S.sel, o=g&&g.orig; if(!it||!o||g.mid) return [];
+  const L=[], add=(f,a,b)=>{ const dx=b.x-a.x, dy=b.y-a.y, l=Math.hypot(dx,dy); if(l>1e-9) L.push({p:f,d:{x:dx/l,y:dy/l}}); };
+  if(it.t==="dist"||it.t==="cal"){ const f=g.i===0?it.b:it.a; add(f,o.a,o.b); }
+  else if(it.t==="area"&&o.pts&&o.pts.length===it.pts.length&&it.pts.length>=3){ const n=it.pts.length, i=g.i, pv=(i+n-1)%n, nx=(i+1)%n;
+    add(it.pts[pv],o.pts[pv],o.pts[i]); add(it.pts[nx],o.pts[nx],o.pts[i]); }
+  return L;
+}
+function dirSnap(u){
+  const G=dirGuides(); if(!G.length) return null;
+  const h=S.hit; if(h&&(h.type==="end"||h.type==="int"||h.type==="perp")){ /* 이미 끝점·교차점에 붙었고 그게 연장선 위면 그대로 */
+    const on=G.filter(l=>Math.abs((h.x-l.p.x)*l.d.y-(h.y-l.p.y)*l.d.x)*S.Z<3); if(on.length) return on; }
+  const tol=14/S.Z, near=G.map(l=>({l,dist:Math.abs((u.x-l.p.x)*l.d.y-(u.y-l.p.y)*l.d.x)})).filter(o=>o.dist<tol).sort((a,b)=>a.dist-b.dist);
+  if(!near.length) return null;
+  if(near.length>=2){ const A=near[0].l, B=near[1].l, den=A.d.x*B.d.y-A.d.y*B.d.x;
+    if(Math.abs(den)>0.05){ const t=((B.p.x-A.p.x)*B.d.y-(B.p.y-A.p.y)*B.d.x)/den; S.hit={x:A.p.x+t*A.d.x,y:A.p.y+t*A.d.y,type:"dir",seg:-1}; return [A,B]; } }
+  const l=near[0].l, t=(u.x-l.p.x)*l.d.x+(u.y-l.p.y)*l.d.y; let q={x:l.p.x+t*l.d.x,y:l.p.y+t*l.d.y}, type="dir";
+  /* 연장선이 도면 선과 만나는 자리 가까이면 그 교차점에 붙인다 (길이를 벽까지 맞추기 좋게) */
+  if(h&&h.seg>=0){ const sg=S.segs, ax=sg[4*h.seg],ay=sg[4*h.seg+1],ex=sg[4*h.seg+2]-ax,ey=sg[4*h.seg+3]-ay, den=l.d.x*ey-l.d.y*ex;
+    if(Math.abs(den)>1e-9){ const s2=((ax-l.p.x)*ey-(ay-l.p.y)*ex)/den, ix=l.p.x+s2*l.d.x, iy=l.p.y+s2*l.d.y, w=((ix-ax)*ex+(iy-ay)*ey)/(ex*ex+ey*ey);
+      if(w>=-0.02&&w<=1.02&&Math.hypot(ix-u.x,iy-u.y)<24/S.Z){ q={x:ix,y:iy}; type="int"; } } }
+  S.hit={x:q.x,y:q.y,type,seg:-1}; return [l];
+}
+function dirLines(L){
+  const c=$("#ov").getContext("2d"), VW=c.canvas.width/dpr, VH=c.canvas.height/dpr, R=Math.hypot(VW,VH)*2;
+  c.save(); c.setTransform(dpr,0,0,dpr,0,0); c.strokeStyle="#0EA5E9"; c.lineWidth=1.5; c.setLineDash([7,5]); c.globalAlpha=.9;
+  for(const l of L){ const a=toS(l.p.x,l.p.y); c.beginPath(); c.moveTo(a.x-l.d.x*R,a.y-l.d.y*R); c.lineTo(a.x+l.d.x*R,a.y+l.d.y*R); c.stroke(); }
+  c.restore();
+}
 function aimAt(p){ const sp={x:p.x,y:p.y-LIFT}; const u=toU(sp.x,sp.y); S.hit=pick(u.x,u.y); draw(); loupe(sp,true);
   const x=$("#ov").getContext("2d"); x.save(); x.setTransform(dpr,0,0,dpr,0,0); x.strokeStyle="rgba(30,34,38,.35)"; x.setLineDash([3,3]); x.beginPath(); x.moveTo(p.x,p.y); x.lineTo(sp.x,sp.y+10); x.stroke(); x.restore(); }
 function up(e){
