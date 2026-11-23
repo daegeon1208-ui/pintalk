@@ -369,14 +369,14 @@ $("#itOk").onclick=()=>{ const it=edIt; if(!it) return;
 $("#itDel").onclick=()=>{ S.items=S.items.filter(x=>x!==edIt); $("#itDlg").hidden=true; if(edIt&&edIt.t==="cal") toast("기준선을 지웠어요. 맞춘 눈금은 그대로예요"); edIt=null; draw(); };
 $("#itMove").onclick=()=>{ S.sel=edIt; edIt=null; $("#itDlg").hidden=true; S.first=null; S.poly=[]; areaBtn(); setHint(); draw(); };
 function calFix(it){ const du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y); if(du>1e-6) saveScale(it.mm/du,"치수 "+Math.round(it.mm).toLocaleString()+"mm로 맞춤"); }
-function setHint(){ $("#hint").textContent=S.sel?"흰 점을 끌어 옮겨요. 다 되면 '완료'를 눌러요.":HINT[S.mode]; }
+function setHint(){ $("#hint").textContent=S.sel?"흰 점이나 그 아래를 끌면 점이 손가락 위로 따라와요. 다 되면 '완료'.":HINT[S.mode]; }
 /* 점 하나 옮긴 뒤 다시 계산 */
-function movePt(it,i,h){
+function movePt(it,i,h,live){
   if(it.t==="area"){ it.pts[i]={x:h.x,y:h.y}; return; }
   if(it.t==="gap"){ const [ax,ay,bx,by]=it.line, dx=bx-ax,dy=by-ay,ll=dx*dx+dy*dy,t=((h.x-ax)*dx+(h.y-ay)*dy)/ll; it.b={x:h.x,y:h.y}; it.a={x:ax+t*dx,y:ay+t*dy};
     let par=false; if(h.seg>=0){ const s=S.segs, ex=s[4*h.seg+2]-s[4*h.seg],ey=s[4*h.seg+3]-s[4*h.seg+1], ang=Math.abs(Math.atan2(dx*ey-dy*ex,dx*ex+dy*ey)); par=Math.min(ang,Math.PI-ang)<0.035; } it.par=par; return; }
   if(i===0) it.a={x:h.x,y:h.y}; else it.b={x:h.x,y:h.y};
-  if(it.t==="cal") calFix(it); }
+  if(it.t==="cal"&&!live) calFix(it); }
 function setMode(m,fromDlg){
   if(m==="cal"&&!fromDlg){ $("#calN").value=S.mmPerU&&S.scSrc.startsWith("축척")?S.scSrc.slice(5):""; $("#calDlg").hidden=false; return; }
   S.mode=m; S.first=null; S.poly=[]; S.sel=null; areaBtn(); document.querySelectorAll("#tools [data-m]").forEach(b=>b.classList.toggle("on",b.dataset.m===m)); setHint(); draw();
@@ -509,8 +509,12 @@ stage.addEventListener("pointerdown",e=>{
   if(P.size===2){ const [a,b]=[...P.values()]; g={k:"pinch",d0:Math.hypot(a.x-b.x,a.y-b.y),c0:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},Z0:S.Z,T0:{...S.T}}; S.hit=null; loupe(null,false); draw(); scheduleDetail(); return; }
   if(P.size>2) return;
   const mouse=e.pointerType==="mouse";
-  if(S.sel){ let bi=-1, bd=30; selPts(S.sel).forEach((q,i)=>{ const h=toS(q.x,q.y), d=Math.hypot(h.x-p.x,h.y-p.y); if(d<bd){ bd=d; bi=i; } });
-    if(bi>=0){ const h=toS(selPts(S.sel)[bi].x,selPts(S.sel)[bi].y); g={k:"edit",i:bi,off:{x:h.x-p.x,y:h.y-p.y},mouse}; editAim(p); return; } }
+  if(S.sel){ /* 흰 점 바로 위나, 흰 점 아래(손가락 들어 올린 자리)를 잡는다 */
+    const lift=mouse?0:LIFT; let bi=-1, bd=32, below=false;
+    selPts(S.sel).forEach((q,i)=>{ const h=toS(q.x,q.y), d=Math.hypot(h.x-p.x,h.y-p.y), d2=Math.hypot(h.x-p.x,h.y+lift-p.y); if(d<bd){ bd=d; bi=i; below=false; } if(lift&&d2<bd){ bd=d2; bi=i; below=true; } });
+    if(bi>=0){ const q=selPts(S.sel)[bi], h=toS(q.x,q.y);
+      g={k:"edit",i:bi,s:p,moved:false,mouse,orig:JSON.parse(JSON.stringify(S.sel)),off:below||mouse?{x:h.x-p.x,y:h.y-p.y}:{x:0,y:-LIFT}};
+      if(!mouse) loupe(h,true); return; } }
   if(!S.first&&!S.poly.length){ const it=labAt(p); if(it){ g={k:"label",it,s:p,T0:{...S.T},moved:false,mouse}; return; } }
   if(S.sel){ g={k:"pan",s:p,T0:{...S.T},moved:false,mouse,noPlace:true}; return; }
   const aim=S.mode!=="view"&&!mouse;
@@ -530,14 +534,21 @@ stage.addEventListener("pointermove",e=>{
   if(g.k==="edit") editAim(p);
   if(g.k==="label"&&Math.abs(p.x-g.s.x)+Math.abs(p.y-g.s.y)>6){ g.k="pan"; g.moved=true; g.noPlace=true; }
 });
-function editAim(p){ const sp={x:p.x+g.off.x,y:p.y+g.off.y}, u=toU(sp.x,sp.y); S.hit=snapAt(u.x,u.y); draw(); if(!g.mouse) loupe(sp,true); }
+/* 점 옮기기: 움직이는 동안 값이 바로 바뀌고, 점은 손가락 위에 떠서 따라온다 */
+function editAim(p){
+  if(!g.moved){ if(Math.hypot(p.x-g.s.x,p.y-g.s.y)<6) return; g.moved=true; }
+  const sp={x:p.x+g.off.x,y:p.y+g.off.y}, u=toU(sp.x,sp.y); S.hit=snapAt(u.x,u.y);
+  if(S.sel) movePt(S.sel,g.i,S.hit,true);
+  draw(); if(!g.mouse){ loupe(sp,true); const x=$("#ov").getContext("2d"); x.save(); x.setTransform(dpr,0,0,dpr,0,0); x.strokeStyle="rgba(30,34,38,.35)"; x.setLineDash([3,3]); x.beginPath(); x.moveTo(p.x,p.y); x.lineTo(sp.x,sp.y+10); x.stroke(); x.restore(); } }
 function aimAt(p){ const sp={x:p.x,y:p.y-LIFT}; const u=toU(sp.x,sp.y); S.hit=pick(u.x,u.y); draw(); loupe(sp,true);
   const x=$("#ov").getContext("2d"); x.save(); x.setTransform(dpr,0,0,dpr,0,0); x.strokeStyle="rgba(30,34,38,.35)"; x.setLineDash([3,3]); x.beginPath(); x.moveTo(p.x,p.y); x.lineTo(sp.x,sp.y+10); x.stroke(); x.restore(); }
 function up(e){
   if(!P.has(e.pointerId)) return; P.delete(e.pointerId);
   if(!g) return;
   if(g.k==="pinch"){ if(P.size===0) g=null; else { const q=[...P.values()][0]; g={k:"pan",s:q,T0:{...S.T},moved:true}; } return; }
-  if(g.k==="edit"){ if(e.type==="pointerup"&&S.hit&&S.sel) movePt(S.sel,g.i,S.hit); S.hit=null; loupe(null,false); draw(); g=null; return; }
+  if(g.k==="edit"){ const it=S.sel;
+    if(it&&g.moved){ if(e.type==="pointerup"){ if(it.t==="cal") calFix(it); } else { for(const k of Object.keys(it)) delete it[k]; Object.assign(it,g.orig); } }
+    S.hit=null; loupe(null,false); draw(); g=null; return; }
   if(g.k==="label"){ if(e.type==="pointerup") openItem(g.it); g=null; return; }
   if(g.k==="aim"&&e.type==="pointerup"&&S.hit) place(S.hit);
   if(g.k==="pan"&&g.mouse&&!g.moved&&S.mode!=="view"&&!g.noPlace){ const p=pos(e), u=toU(p.x,p.y); S.hit=pick(u.x,u.y); place(S.hit); }
