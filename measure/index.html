@@ -113,6 +113,12 @@ header select option{color:#000}
   <div class="btns"><button id="itDel" style="color:var(--red)">삭제</button><button id="itMove">점 옮기기</button><button class="pri" id="itOk">확인</button></div>
 </div></div>
 
+<div class="dlg" id="allDlg" hidden><div class="box">
+  <h2>다른 쪽에도 같은 눈금을 쓸까요?</h2>
+  <p id="allP"></p>
+  <div class="btns"><button id="allNo">이 쪽만</button><button class="pri" id="allYes">모든 쪽에 적용</button></div>
+</div></div>
+
 <div class="dlg" id="lenDlg" hidden><div class="box">
   <h2>두 점 사이 실제 길이</h2>
   <p id="lenP"></p>
@@ -147,7 +153,7 @@ function toast(t,ms){ const e=$("#toast"); e.textContent=t; e.hidden=false; clea
 /* ---------- 도면 열기 ---------- */
 /* 핀톡 도면 화면 안에서 열릴 때(embed): 지금 보던 도면·쪽을 받아서 연다 */
 const EMB=new URLSearchParams(location.search).has("embed")&&parent!==window;
-if(EMB){ $("#openBtn").textContent="닫기"; $("#openBtn").onclick=()=>{ try{ parent.ptMeasureClose(); }catch(e){} };
+if(EMB){ $("#openBtn").textContent="닫기"; $("#openBtn").onclick=()=>{ saveItems(); try{ parent.ptMeasureClose(); }catch(e){} };
   $("#openBtn2").hidden=true; $("#emptyTx").textContent="도면을 불러오는 중…"; }
 else $("#openBtn").onclick=openDlg;
 $("#openBtn2").onclick=openDlg;
@@ -197,7 +203,7 @@ async function loadPdf(buf,name,key,pageNames,start){
 $("#pg").onchange=e=>openPage(+e.target.value);
 
 async function openPage(n){
-  S.pn=n; S.items=[]; S.first=null; S.poly=[]; S.sel=null; S.hit=null; S.detailOK=false;
+  S.pn=n; S.items=loadItems(); S.first=null; S.poly=[]; S.sel=null; S.hit=null; S.detailOK=false;
   S.page=await S.pdf.getPage(n);
   const vp=S.page.getViewport({scale:1}); S.w=vp.width; S.h=vp.height;
   // 처음 화면: 도면 전체가 보이게
@@ -309,9 +315,11 @@ function inter(a,b){
 }
 
 /* ---------- 눈금 ---------- */
+/* 체험판 안에서 열리면 체험판 저장 이름("try:")을 같이 쓴다 */
+const LSP=(()=>{ try{ return parent!==window&&parent.PINTALK_TRY?"try:":""; }catch(e){ return ""; } })();
 const scKey=()=>"measure-scale:"+S.key+":"+S.pn;
-function loadScale(){ S.mmPerU=0; S.scSrc=""; try{ const o=JSON.parse(localStorage.getItem(scKey())||"null"); if(o&&o.k>0){ S.mmPerU=o.k; S.scSrc=o.src||""; } }catch(e){} showScale(); }
-function saveScale(k,src){ S.mmPerU=k; S.scSrc=src; try{ localStorage.setItem(scKey(),JSON.stringify({k,src})); }catch(e){} showScale(); draw(); }
+function loadScale(){ S.mmPerU=0; S.scSrc=""; try{ const o=JSON.parse(localStorage.getItem(LSP+scKey())||"null"); if(o&&o.k>0){ S.mmPerU=o.k; S.scSrc=o.src||""; } }catch(e){} showScale(); }
+function saveScale(k,src){ S.mmPerU=k; S.scSrc=src; try{ localStorage.setItem(LSP+scKey(),JSON.stringify({k,src})); }catch(e){} showScale(); draw(); }
 function showScale(){ const e=$("#scInfo");
   if(!S.mmPerU){ e.textContent=S.pdf?"눈금 없음":""; e.className="sc no"; return; }
   const N=S.mmPerU/PT_MM; e.textContent=`약 1/${N>=10?Math.round(N):N.toFixed(1)}`+(S.scSrc?` · ${S.scSrc}`:""); e.className="sc"; }
@@ -320,14 +328,22 @@ const label=du=>S.mmPerU?fmt(du*S.mmPerU):`종이 ${(du*PT_MM).toFixed(1)}mm · 
 
 $("#calX").onclick=()=>$("#calDlg").hidden=true;
 $("#calPts").onclick=()=>{ $("#calDlg").hidden=true; setMode("cal",true); };
-$("#calNGo").onclick=()=>{ const N=parseFloat($("#calN").value); if(!(N>0)) return toast("축척 숫자를 넣어 주세요"); $("#calDlg").hidden=true; saveScale(N*PT_MM,"축척 1/"+N); toast(`축척 1/${N}로 맞췄어요`); setMode("dist"); };
+$("#calNGo").onclick=()=>{ const N=parseFloat($("#calN").value); if(!(N>0)) return toast("축척 숫자를 넣어 주세요"); $("#calDlg").hidden=true; saveScale(N*PT_MM,"축척 1/"+N); toast(`축척 1/${N}로 맞췄어요`); setMode("dist"); askAll(); };
+/* 4.50 눈금을 맞추면 다른 쪽에도 쓸지 묻는다. 적용한 뒤에도 쪽마다 '눈금'으로 따로 고칠 수 있다 */
+function askAll(){ if(!S.pdf||S.pdf.numPages<2||!S.mmPerU) return;
+  $("#allP").textContent=`이 도면은 ${S.pdf.numPages}쪽이에요. 지금 맞춘 눈금(약 1/${Math.round(S.mmPerU/PT_MM)})을 다른 쪽에도 똑같이 쓸까요? 축척이 다른 쪽은 나중에 그 쪽에서 '눈금'으로 따로 고칠 수 있어요.`;
+  $("#allDlg").hidden=false; }
+$("#allNo").onclick=()=>{ $("#allDlg").hidden=true; };
+$("#allYes").onclick=()=>{ $("#allDlg").hidden=true; let n=0;
+  for(let i=1;i<=S.pdf.numPages;i++){ if(i===S.pn) continue; try{ localStorage.setItem(LSP+"measure-scale:"+S.key+":"+i,JSON.stringify({k:S.mmPerU,src:S.pn+"쪽 눈금과 같게"})); n++; }catch(e){} }
+  toast(`다른 ${n}쪽에도 같은 눈금을 적용했어요`); };
 let calPend=null;
 function askLen(a,b){ calPend={a,b}; const du=Math.hypot(b.x-a.x,b.y-a.y); $("#lenP").textContent=`찍은 두 점: 종이 위 ${(du*PT_MM).toFixed(1)}mm. 도면에 적힌 실제 치수를 넣어 주세요.`; $("#lenIn").value=""; $("#lenDlg").hidden=false; setTimeout(()=>$("#lenIn").focus(),50); }
 $("#lenX").onclick=()=>{ $("#lenDlg").hidden=true; calPend=null; S.first=null; draw(); };
 $("#lenOk").onclick=()=>{ const v=parseFloat($("#lenIn").value); if(!(v>0)||!calPend) return toast("길이를 mm로 넣어 주세요");
   const {a,b}=calPend, du=Math.hypot(b.x-a.x,b.y-a.y); if(du<1e-6) return;
   S.items=S.items.filter(x=>x.t!=="cal"); S.items.push({t:"cal",a,b,mm:v});
-  saveScale(v/du,"치수 "+Math.round(v).toLocaleString()+"mm로 맞춤"); $("#lenDlg").hidden=true; calPend=null; S.first=null; toast("눈금을 맞췄어요. 이제 거리·선 간격을 재 보세요",3000); setMode("dist"); };
+  saveScale(v/du,"치수 "+Math.round(v).toLocaleString()+"mm로 맞춤"); $("#lenDlg").hidden=true; calPend=null; S.first=null; toast("눈금을 맞췄어요. 이제 거리·선 간격을 재 보세요",3000); setMode("dist"); askAll(); };
 
 /* ---------- 도구 ---------- */
 const HINT={view:"한 손가락으로 끌어 이동, 두 손가락으로 확대해요.",cal:"길이를 아는 두 점을 차례로 찍어요. 손가락 위 십자선이 찍힐 자리예요.",dist:"두 점을 차례로 찍으면 거리가 나와요.",gap:"첫 번째 선을 찍고, 다음 선(또는 점)을 찍으면 수직 간격이 나와요.",area:"모서리를 차례로 찍고, 첫 점을 다시 찍으면 면적이 나와요."};
@@ -371,7 +387,7 @@ function volTxt(){ const d=parseFloat($("#depIn").value); $("#itVol").textConten
 $("#depIn").oninput=volTxt;
 $("#itOk").onclick=()=>{ const it=edIt; if(!it) return;
   if(it.t==="area"){ const d=parseFloat($("#depIn").value); it.depth=d>0?d:0; }
-  if(it.t==="cal"){ const v=parseFloat($("#calMm").value); if(v>0&&v!==it.mm){ it.mm=v; calFix(it); } }
+  if(it.t==="cal"){ const v=parseFloat($("#calMm").value); if(v>0&&v!==it.mm){ it.mm=v; calFix(it); setTimeout(askAll,50); } }
   $("#itDlg").hidden=true; edIt=null; draw(); };
 $("#itDel").onclick=()=>{ S.items=S.items.filter(x=>x!==edIt); $("#itDlg").hidden=true; if(edIt&&edIt.t==="cal") toast("기준선을 지웠어요. 맞춘 눈금은 그대로예요"); edIt=null; draw(); };
 $("#itMove").onclick=()=>{ S.sel=edIt; edIt=null; $("#itDlg").hidden=true; S.first=null; S.poly=[]; areaBtn(); setHint(); draw(); };
@@ -391,7 +407,7 @@ function setMode(m,fromDlg){
 $("#tools").onclick=e=>{ const b=e.target.closest("[data-m]"); if(b){ if(!S.pdf) return EMB?null:openDlg(); setMode(b.dataset.m); } };
 $("#snapBtn").onclick=()=>{ S.snap=!S.snap; $("#snapBtn").classList.toggle("on",S.snap); toast(S.snap?"스냅 켬: 선 끝·교차점·선 위에 붙어요":"스냅 끔: 찍은 자리 그대로 재요"); };
 $("#undoBtn").onclick=()=>{ if(S.poly.length){ S.poly.pop(); areaBtn(); } else if(S.first){ S.first=null; } else S.items.pop(); draw(); };
-$("#clrBtn").onclick=()=>{ S.items=S.items.filter(x=>x.t==="cal"); S.first=null; S.poly=[]; areaBtn(); draw(); toast("잰 값을 지웠어요 (눈금은 남겨 둬요)"); };
+$("#clrBtn").onclick=()=>{ S.items=S.items.filter(x=>x.t==="cal"); S.first=null; S.poly=[]; areaBtn(); draw(); toast("이 쪽의 잰 값을 지웠어요 (눈금은 남겨 둬요)"); };
 
 function place(h){
   const m=S.mode; if(m==="view") return;
@@ -428,9 +444,17 @@ async function renderDetail(){
 }
 
 /* ---------- 그리기 ---------- */
+/* 4.50 잰 값은 도면·쪽마다 이 휴대폰에 저장 (핀 화면에서도 켜고 끄며 본다). 글자(txt)도 같이 적어 둔다 */
+const itKey=(k,n)=>"measure-items:"+(k||S.key)+":"+(n||S.pn);
+function loadItems(){ try{ const a=JSON.parse(localStorage.getItem(LSP+itKey())||"[]"); return Array.isArray(a)?a.map(it=>{ const o={...it}; delete o.txt; return o; }):[]; }catch(e){ return []; } }
+function itemTxt(it){ if(it.t==="area") return areaLabel(it.pts,it.depth); const du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y);
+  return it.t==="cal"?`기준 ${Math.round(it.mm||du*S.mmPerU).toLocaleString()} mm`:label(du)+(it.par?" · 평행":""); }
+let svT=null;
+function saveItems(){ if(!S.key||!S.page) return; try{ const a=S.items.map(it=>({...it,txt:itemTxt(it)})); if(a.length) localStorage.setItem(LSP+itKey(),JSON.stringify(a)); else localStorage.removeItem(LSP+itKey()); }catch(e){} }
 function draw(){
   const c=$("#ov"), x=c.getContext("2d"); x.setTransform(dpr,0,0,dpr,0,0); x.clearRect(0,0,c.width,c.height);
   if(!S.page) return;
+  clearTimeout(svT); svT=setTimeout(saveItems,250);
   S.lab=[];
   for(const it of S.items) it.t==="area"?drawArea(x,it.pts,false,it):drawItem(x,it);
   if(S.sel){
