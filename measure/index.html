@@ -136,7 +136,7 @@ header select option{color:#000}
   <div class="row" id="itDep" hidden><span style="font-weight:700;white-space:nowrap">깊이</span><input id="depIn" type="number" inputmode="decimal" placeholder="예: 200"><span style="font-weight:700">mm</span></div>
   <div class="row" id="itCal" hidden><span style="font-weight:700;white-space:nowrap">실제 길이</span><input id="calMm" type="number" inputmode="decimal"><span style="font-weight:700">mm</span></div>
   <div class="row" id="itLen" hidden><span style="font-weight:700;white-space:nowrap">길이</span><input id="lenMm" type="number" inputmode="decimal"><span style="font-weight:700">mm</span></div>
-  <div class="row" id="itFix" hidden><span style="font-weight:700;white-space:nowrap">기준</span><select id="lenFix" style="flex:1;min-width:0;font:inherit;padding:8px;border-radius:10px;border:1px solid #D1D5DB;background:#fff"><option value="a">처음 찍은 점 고정</option><option value="b">나중 찍은 점 고정</option><option value="m">가운데 고정 (양쪽으로)</option></select></div>
+  <div class="row" id="itFix" hidden><span style="font-weight:700;white-space:nowrap">기준</span><select id="lenFix" style="flex:1;min-width:0;font:inherit;padding:8px;border-radius:10px;border:1px solid #D1D5DB;background:#fff"><option value="a">A점 고정 (처음 찍은 점)</option><option value="b">B점 고정 (나중 찍은 점)</option><option value="m">가운데 고정 (양쪽으로)</option></select></div>
   <p id="itVol" style="font-weight:700;color:var(--ink)"></p>
   <div class="btns"><button id="itDel" style="color:var(--red)">삭제</button><button id="itMove">점 옮기기</button><button class="pri" id="itOk">확인</button></div>
 </div></div>
@@ -451,7 +451,7 @@ function openItem(it){ edIt=it; S.sel=null; areaBtn(); setHint();
     $("#itV").textContent=it.t==="cal"?Math.round(it.mm).toLocaleString()+" mm":label(du);
     $("#itP").textContent=it.t==="cal"?"실제 길이를 바꾸면 눈금도 다시 맞춰요.":it.t==="gap"?"점 옮기기로 두 번째 점을 옮길 수 있어요.":"점 옮기기로 양 끝을 옮길 수 있어요.";
     if(it.t==="cal") $("#calMm").value=Math.round(it.mm);
-    if(it.t==="dist"&&S.mmPerU){ $("#lenMm").value=Math.round(du*S.mmPerU); $("#itP").textContent="길이를 넣으면 그 길이로 선을 늘이거나 줄여요. 점 옮기기로 양 끝을 옮길 수도 있어요."; } }
+    if(it.t==="dist"&&S.mmPerU){ $("#lenMm").value=Math.round(du*S.mmPerU); $("#itP").textContent="길이를 넣으면 그 길이로 선을 늘이거나 줄여요. 도면에 A·B로 두 끝을 표시했어요."; } }
   $("#itDlg").hidden=false; draw(); }
 function volTxt(){ const d=parseFloat($("#depIn").value); $("#itVol").textContent=edIt&&edIt.t==="area"&&S.mmPerU&&d>0?`부피 ${f2(areaM2(edIt.pts)*d/1000)} m³ (${f2(areaM2(edIt.pts))} m² × ${+(d/1000).toFixed(3)} m)`:""; }
 $("#depIn").oninput=volTxt;
@@ -557,7 +557,15 @@ function draw(){
   }
   if(cur&&S.mode==="gap"&&cur.seg>=0){ const s=S.segs, p1=toS(s[4*cur.seg],s[4*cur.seg+1]), p2=toS(s[4*cur.seg+2],s[4*cur.seg+3]); x.strokeStyle="rgba(14,165,233,.8)"; x.lineWidth=4; x.beginPath(); x.moveTo(p1.x,p1.y); x.lineTo(p2.x,p2.y); x.stroke(); }
   if(cur&&S.mode!=="view") marker(x,toS(cur.x,cur.y),cur.type,1);
+  if(edIt&&edIt.t==="dist"&&!$("#itDlg").hidden) endTags(x,edIt);
 }
+/* 4.60 거리 창이 열려 있으면 두 끝에 A(처음 찍은 점)·B(나중 찍은 점) 표시 */
+function endTags(x,it){ const a=toS(it.a.x,it.a.y), b=toS(it.b.x,it.b.y), L=Math.hypot(b.x-a.x,b.y-a.y)||1, ux=(b.x-a.x)/L, uy=(b.y-a.y)/L;
+  x.save(); x.font="800 13px Pretendard,-apple-system,sans-serif"; x.textAlign="center"; x.textBaseline="middle";
+  [[a,"A",-1],[b,"B",1]].forEach(([p,t,sg])=>{ const cx=p.x+ux*sg*16, cy=p.y+uy*sg*16;
+    x.fillStyle="#fff"; x.strokeStyle="#1E2226"; x.lineWidth=2; x.beginPath(); x.arc(cx,cy,11,0,7); x.fill(); x.stroke();
+    x.fillStyle="#1E2226"; x.fillText(t,cx,cy+0.5); });
+  x.restore(); }
 function drawItem(x,it){
   const a=toS(it.a.x,it.a.y), b=toS(it.b.x,it.b.y), du=Math.hypot(it.b.x-it.a.x,it.b.y-it.a.y);
   const col=it.t==="cal"?"#0EA5E9":"#E31937";
