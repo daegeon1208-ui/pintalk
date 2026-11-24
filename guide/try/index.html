@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>핀톡 체험판 사용 가이드</title>
+<meta name="theme-color" content="#8E8E88">
+<link rel="icon" href="../../icon-192.png">
+<style>
+@font-face{font-family:"Pretendard";src:url(../../fonts/PretendardVariable.woff2) format("woff2");font-weight:45 920;font-display:swap}
+:root{--ink:#262624;--sub:#6F6F69;--line:#DCDCD8;--bg:#EDEDEB;--card:#fff;--red:#E31937;--gray:#8E8E88;--mark:#F59E0B;--soft:#F5F5F3}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 "Pretendard",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-text-size-adjust:100%}
+header{background:var(--gray);color:#fff;box-shadow:inset 0 -5px 0 var(--red);padding:calc(env(safe-area-inset-top) + 26px) max(18px,env(safe-area-inset-right)) 30px max(18px,env(safe-area-inset-left))}
+header .in{max-width:780px;margin:0 auto;display:flex;gap:16px;align-items:center}
+header img{width:64px;height:64px;border-radius:16px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.2);flex:none}
+header h1{margin:0;font-size:26px;font-weight:800;letter-spacing:-.02em}
+header p{margin:4px 0 0;color:rgba(255,255,255,.85);font-size:15px;line-height:1.5}
+main{max-width:780px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left))}
+.cta{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 6px}
+.cta a{flex:1 1 200px;text-align:center;text-decoration:none;font-weight:700;padding:14px 12px;border-radius:14px;background:var(--red);color:#fff}
+.cta a.sec{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+nav{background:var(--card);border-radius:16px;padding:14px 18px;margin:14px 0}
+nav b{display:block;margin-bottom:6px}
+nav ol{margin:0;padding-left:22px;columns:2;column-gap:24px}
+nav li{break-inside:avoid;font-size:15px}
+nav a{color:var(--ink)}
+@media (max-width:520px){ nav ol{columns:1} }
+section{background:var(--card);border-radius:18px;padding:20px 18px;margin:14px 0;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+section h2{margin:0 0 8px;font-size:21px;display:flex;align-items:center;gap:10px;letter-spacing:-.02em}
+section h2 .n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--gray);color:#fff;font-size:15px;display:grid;place-items:center}
+section h3{font-size:16.5px;margin:18px 0 4px}
+section>p{margin:6px 0}
+.shots{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:14px 0 6px}
+figure{margin:0;flex:0 1 250px;text-align:center}
+figure img{width:100%;max-width:250px;border-radius:20px;border:1px solid var(--line);box-shadow:0 4px 14px rgba(0,0,0,.12);display:block;margin:0 auto}
+figure.doc{flex-basis:360px}
+figure.doc img{max-width:360px;border-radius:6px}
+figure.docv{flex-basis:250px}
+figure.docv img{border-radius:6px}
+figcaption{font-size:13px;color:var(--sub);margin-top:6px}
+ol.marks{list-style:none;padding:0;margin:10px 0 0}
+ol.marks li{position:relative;padding-left:34px;margin:8px 0}
+ol.marks li::before{content:attr(data-n);position:absolute;left:0;top:2px;width:24px;height:24px;border-radius:50%;background:var(--mark);color:#fff;font-weight:800;font-size:13px;display:grid;place-items:center}
+.tip{background:#FEF3C7;border-radius:12px;padding:11px 13px;font-size:14.5px;margin-top:12px;line-height:1.6}
+.tip b{color:#92400E}
+.note{background:var(--soft);border-radius:12px;padding:11px 13px;font-size:14.5px;margin-top:12px;line-height:1.6}
+.steps{margin:6px 0 0;padding-left:22px}
+.steps li{margin:5px 0}
+.team{display:inline-flex;align-items:center;gap:4px;margin-right:8px;white-space:nowrap}
+.team i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.cmp{width:100%;border-collapse:collapse;font-size:14px;margin:10px 0 6px}
+.cmp th,.cmp td{border:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+.cmp th{background:#F0F0EE}
+.cmp td:first-child{color:var(--sub);white-space:nowrap}
+.tbl{overflow-x:auto}
+ul.plain{padding-left:18px;margin:8px 0}
+ul.plain li{margin:6px 0;line-height:1.6}
+dl.faq dt{font-weight:700;margin-top:14px}
+dl.faq dd{margin:4px 0 0;color:#3d3d3a}
+.addr{background:var(--soft);border-radius:10px;padding:8px 12px;font-size:15px;word-break:break-all}
+.os{display:flex;gap:6px;background:#E4E4E1;border-radius:12px;padding:4px;margin:12px 0 4px}
+.os button{flex:1;border:0;background:none;font:inherit;font-weight:700;color:var(--sub);padding:9px 6px;border-radius:9px;cursor:pointer}
+.os button[aria-selected="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.osHint{font-size:13.5px;color:var(--sub);margin:4px 2px 0}
+ol.flow{counter-reset:f;list-style:none;padding:0;margin:12px 0 0}
+ol.flow li{counter-increment:f;position:relative;padding:0 0 14px 40px;line-height:1.6}
+ol.flow li::before{content:counter(f);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;font-weight:800;font-size:14px;display:grid;place-items:center}
+ol.flow li:not(:last-child)::after{content:"";position:absolute;left:13px;top:32px;bottom:2px;width:2px;background:var(--line)}
+ol.flow small{display:block;color:var(--sub);font-size:13.5px;margin-top:2px}
+.gi{width:20px;height:20px;vertical-align:-4px;fill:none;stroke:#2F6FEB;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;background:#EEF3FE;border-radius:6px;padding:2px}
+.gi circle{fill:#2F6FEB;stroke:none}
+footer{text-align:center;color:var(--sub);font-size:13px;padding:10px 16px 30px}
+</style>
+
+</head>
+<body>
+<header><div class="in">
+  <img src="../../icon-192.png" alt="핀톡">
+  <div><h1>핀톡 체험판 사용 가이드</h1>
+  <p>도면 위 그 자리에 핀을 콕. 체험판에서 쓸 수 있는 기능을 견본 도면 화면으로 차례로 보여 드려요.</p></div>
+</div></header>
+<main>
+  <div class="cta">
+    <a href="../../try/">▶ 핀톡 체험판 열기</a>
+  </div>
+  <div class="note"><b>체험판은 이런 점이 달라요.</b> 도면·핀·사진은 <b>이 휴대폰에만</b> 저장되고, 다른 사람과 공유되지 않아요. 개인 도면으로만 쓸 수 있어서 로그인·협업 도면·댓글·알림·핀 호출은 없어요. 가이드의 화면은 모두 체험판의 <b>견본 도면</b>과 예시 사진·예시 업체로 찍었어요.</div>
+  <nav>
+    <b>목차</b>
+    <ol>
+      <li><a href="#s1">핀톡은 이런 앱이에요</a></li>
+      <li><a href="#s2">설치 (홈 화면에 추가)</a></li>
+      <li><a href="#s3">처음 열기</a></li>
+      <li><a href="#s4">도면 목록</a></li>
+      <li><a href="#s5">도면 설정과 쪽 편집</a></li>
+      <li><a href="#s6">도면 화면과 거르기</a></li>
+      <li><a href="#s7">핀 찍기 (점·도형·자유·구름)</a></li>
+      <li><a href="#s8">길이·면적 재기</a></li>
+      <li><a href="#s9">핀 내용과 사진</a></li>
+      <li><a href="#s10">조치완료</a></li>
+      <li><a href="#s11">핀 목록</a></li>
+      <li><a href="#s12">내보내기 (사진대지 PDF)</a></li>
+      <li><a href="#crack">균열 관리 (엑셀)</a></li>
+      <li><a href="#s14">설정</a></li>
+      <li><a href="#s15">따라하기로 연습</a></li>
+      <li><a href="#s16">자주 묻는 질문</a></li>
+    </ol>
+  </nav>
+
+  <section id="s1">
+    <h2><span class="n">1</span>핀톡은 이런 앱이에요</h2>
+    <p>현장 도면(PDF·DWG) 위에 <b>번호 핀</b>을 찍고, 그 자리에 내용·사진을 남기는 앱이에요. 하자뿐 아니라 현장 이슈, 도면 확인 사항, 전달사항까지 위치와 함께 기록해요.</p>
+    <ul class="plain">
+      <li><b>팀별 색 핀</b>: <span class="team"><i style="background:#2563EB"></i>공사</span><span class="team"><i style="background:#EA580C"></i>안전</span><span class="team"><i style="background:#9333EA"></i>품질</span><span class="team"><i style="background:#CA8A04"></i>전기</span><span class="team"><i style="background:#0D9488"></i>설비</span> 팀마다 색과 번호가 따로 매겨져요.</li>
+      <li><b>핀 모양</b>: 점 하나부터 사각형·원형·다각형 구역, 손으로 그리는 자유 선, 도면 수정 구름까지.</li>
+      <li><b>길이·면적 재기</b>: 도면에서 바로 거리·면적·선 간격을 재요.</li>
+      <li><b>사진대지 PDF</b>: 핀 표시 도면, 팀·업체별 현황표, 조치 전·후 사진대지를 한 번에 만들어요.</li>
+      <li><b>균열관리 엑셀</b>: 품질팀 균열 핀으로 「콘크리트 구조물 균열관리 현황」 양식을 채워요.</li>
+      <li><b>신호가 없어도</b>: 인터넷 없이도 핀과 사진이 휴대폰에 저장돼요.</li>
+    </ul>
+  </section>
+
+  <section id="s2">
+    <h2><span class="n">2</span>설치 (홈 화면에 추가)</h2>
+    <p>핀톡은 앱스토어 없이 인터넷 주소로 여는 <b>웹앱</b>이에요. 홈 화면에 추가해 두면 아이콘을 눌러 일반 앱처럼 열려요. 체험판은 <b>홈 화면 아이콘으로 열어 써야</b> 기록이 저절로 지워지지 않아요(16번 참고).</p>
+    <p class="addr">체험판 주소: <b>daegeon1208-ui.github.io/pintalk/try/</b></p>
+    <div class="os" role="tablist">
+      <button type="button" role="tab" data-os="ios">아이폰</button>
+      <button type="button" role="tab" data-os="and">안드로이드</button>
+    </div>
+    <p class="osHint" id="osHint" hidden></p>
+    <div class="osPane" data-pane="ios">
+      <ol class="flow">
+        <li><b>사파리</b>로 위 주소를 열어요.<small>다른 앱 안에서 링크를 눌러 열렸다면, 화면 오른쪽 아래나 ⋯ 메뉴의 <b>Safari로 열기</b>를 먼저 눌러 주세요.</small></li>
+        <li>화면 아래(또는 주소창 옆)의 <b>공유 버튼</b> <svg class="gi" viewBox="0 0 24 24"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v10h14V11h-1"/></svg> 을 눌러요.<small>공유 버튼이 안 보이면 주소창 옆 <b>⋯</b> 를 누른 뒤 <b>공유</b>를 눌러요.</small></li>
+        <li>올라온 목록을 위로 밀어 <b>홈 화면에 추가</b> <svg class="gi" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg> 를 눌러요.<small>목록에 없으면 맨 아래 <b>더 보기</b>나 <b>작업 편집</b>에서 찾을 수 있어요.</small></li>
+        <li>이름이 <b>핀톡 체험</b>인지 보고 오른쪽 위 <b>추가</b>를 눌러요.<small><b>웹 앱으로 열기</b> 스위치가 보이면 켜 둔 채로 추가하세요.</small></li>
+        <li>홈 화면에 생긴 <b>핀톡 아이콘</b>을 눌러 열어요. 다음부터는 이 아이콘으로 열면 돼요.</li>
+      </ol>
+      <div class="tip"><b>아이폰은 처음부터 아이콘으로 여세요.</b> 사파리와 홈 화면 앱은 저장 공간이 따로라서, 사파리에서 만든 기록은 아이콘으로 연 앱에 보이지 않아요.</div>
+    </div>
+    <div class="osPane" data-pane="and">
+      <ol class="flow">
+        <li><b>크롬</b>으로 위 주소를 열어요.<small>다른 앱 안에서 열렸다면 오른쪽 위 ⋮ 메뉴의 <b>다른 브라우저로 열기</b>나 <b>Chrome으로 열기</b>를 먼저 눌러 주세요.</small></li>
+        <li>화면 아래에 <b>앱 설치</b> 안내가 뜨면 바로 <b>설치</b>를 눌러도 돼요. 안 뜨면 다음 단계로.</li>
+        <li>오른쪽 위 <b>점 세 개 버튼</b> <svg class="gi" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg> 를 눌러요.</li>
+        <li><b>홈 화면에 추가</b>를 누르고, 이어서 <b>설치</b>(또는 <b>추가</b>)를 눌러요.<small>메뉴에 <b>앱 설치</b>로 나오기도 해요. 같은 기능이에요.</small></li>
+        <li>홈 화면(또는 앱 목록)에 생긴 <b>핀톡 아이콘</b>을 눌러 열어요.</li>
+      </ol>
+      <div class="tip"><b>삼성 인터넷을 쓴다면</b> 화면 아래 <b>≡</b> → <b>현재 페이지 추가</b> → <b>홈 화면</b>을 눌러요.</div>
+    </div>
+  </section>
+
+  <section id="s3">
+    <h2><span class="n">3</span>처음 열기</h2>
+    <p>체험판은 로그인 없이 바로 열려요. 처음 열면 <b>따라하기</b>를 할지 물어봐요.</p>
+    <div class="shots"><figure><img src="img/01-ask.jpg" alt="체험판 첫 화면" loading="lazy"><figcaption>처음 열었을 때</figcaption></figure></div>
+    <ol class="steps">
+      <li><b>따라하기 시작</b>: 견본 도면으로 핀 찍기부터 내보내기까지 단계별로 직접 눌러 보며 배워요(15번).</li>
+      <li><b>혼자 둘러볼게요</b>: 바로 도면 목록으로 가요. 따라하기는 설정에서 언제든 다시 시작할 수 있어요.</li>
+    </ol>
+  </section>
+
+  <section id="s4">
+    <h2><span class="n">4</span>도면 목록</h2>
+    <div class="shots"><figure><img src="img/02-home.jpg" alt="도면 목록" loading="lazy"><figcaption>도면 목록</figcaption></figure></div>
+    <ol class="marks">
+      <li data-n="1"><b>견본 도면 (연습용)</b>이 미리 들어 있어요. 팀별 예시 핀 12개(조치 전·후 사진 포함)가 찍혀 있어서 바로 둘러볼 수 있어요.</li>
+      <li data-n="2"><b>검색</b>: 도면 이름 일부만 넣어도 찾아요. 카드에는 미조치·완료 핀 수, 쪽 수가 보이고, <b>☆</b>를 누르면 맨 위에 고정돼요.</li>
+      <li data-n="3"><b>⋯</b>: 도면 설정을 열어요(5번).</li>
+      <li data-n="4"><b>⚙ 설정</b>(14번).</li>
+      <li data-n="5"><b>＋ 도면 불러오기</b>: 메일·파일 앱에 받은 <b>PDF</b>나 캐드 <b>DWG</b>를 골라요. DWG는 휴대폰 안에서 PDF로 바꿔 넣어요.</li>
+    </ol>
+  </section>
+
+  <section id="s5">
+    <h2><span class="n">5</span>도면 설정과 쪽 편집</h2>
+    <div class="shots">
+      <figure><img src="img/03-actsheet.jpg" alt="도면 설정" loading="lazy"><figcaption>⋯ 도면 설정</figcaption></figure>
+      <figure><img src="img/04-pages.jpg" alt="쪽 편집" loading="lazy"><figcaption>쪽 편집</figcaption></figure>
+    </div>
+    <ul class="plain">
+      <li><b>공유하기</b>: 핀 표시 도면과 사진대지를 PDF로 만들어 보내요.</li>
+      <li><b>도면 정보</b>: 팀별 핀 수, 최근 바뀐 핀.</li>
+      <li><b>이름 바꾸기 · 쪽 편집 · 도면 복사</b>(핀·사진까지 또는 도면만).</li>
+      <li><b>업체 목록</b>: 이 도면의 핀에 고를 업체를 팀별로 등록·삭제해요.</li>
+      <li><b>삭제</b>: 도면과 핀이 모두 지워지고 되돌릴 수 없어요.</li>
+    </ul>
+    <p><b>쪽 편집</b></p>
+    <ol class="marks">
+      <li data-n="1"><b>작은 도면을 누르면 크게</b> 볼 수 있어요.</li>
+      <li data-n="2"><b>쪽 이름</b>(예: 지하 4층)을 붙이면 도면 화면과 사진대지에 이 이름이 나와요. PDF에 쪽 이름이 들어 있으면 저절로 채워져요.</li>
+      <li data-n="3"><b>다른 PDF·DWG 더하기</b>로 쪽을 합치고, ↑ ↓ 로 순서를, ✕ 로 쪽을 빼요. 핀이 있는 쪽은 뺄 수 없어요.</li>
+    </ol>
+  </section>
+
+  <section id="s6">
+    <h2><span class="n">6</span>도면 화면과 거르기</h2>
+    <p>도면을 누르면 열려요. <b>두 손가락으로 벌리면 확대</b>, <b>한 손가락으로 끌면 이동</b>이에요. 핀을 한 번 누르면 작은 미리보기 카드가 뜨고, 카드를 누르면 핀 창이 열려요.</p>
+    <div class="shots">
+      <figure><img src="img/05-viewer.jpg" alt="도면 화면" loading="lazy"><figcaption>도면 화면</figcaption></figure>
+      <figure><img src="img/06-filter.jpg" alt="거르기" loading="lazy"><figcaption>안전팀·품질팀을 끈 모습</figcaption></figure>
+    </div>
+    <ol class="marks">
+      <li data-n="1"><b>도면 이름(ⓘ)</b>: 누르면 도면 정보가 나와요. 오른쪽 <b>자 모양 버튼</b>은 길이·면적 재기(8번)예요.</li>
+      <li data-n="2"><b>▲ 탭</b>: 누르거나 위로 밀면 <b>팀 · 업체 · 공종</b> 거르기 줄이 펼쳐져요. 팀 버튼을 누를 때마다 그 팀 핀이 보였다 숨었다 하고, 업체·공종 줄에서 <b>전체</b>를 누르면 거르기가 풀려요.</li>
+      <li data-n="3"><b>‹ 쪽 이름 ›</b>: 쪽이 여러 개인 도면을 넘겨요. 아래 작은 칸에 지금 보이는 <b>보기 핀</b> 수가 나와요.</li>
+      <li data-n="4"><b>목록</b>(11번) · <b>핀 버튼</b>(7번) · <b>내보내기</b>(12번).</li>
+    </ol>
+    <div class="note">조치완료 핀은 흐리게 ✓ 로 보여요.</div>
+  </section>
+
+  <section id="s7">
+    <h2><span class="n">7</span>핀 찍기 (점·도형·자유·구름)</h2>
+    <div class="shots">
+      <figure><img src="img/07-addmode.jpg" alt="핀 찍기 시작" loading="lazy"><figcaption>① 핀 버튼을 누른 모습</figcaption></figure>
+      <figure><img src="img/08-temppin.jpg" alt="임시 핀" loading="lazy"><figcaption>② 위치를 누른 모습</figcaption></figure>
+      <figure><img src="img/09-shapes.jpg" alt="도형과 구름 테두리" loading="lazy"><figcaption>③ 원형 + 구름 테두리</figcaption></figure>
+    </div>
+    <ol class="steps">
+      <li>가운데 빨간 <b>핀 버튼</b>을 누르면 핀 찍기가 시작되고, 아래에 <b>● 점 · ◇ 도형 · ✎ 자유</b>가 나와요. 보통은 <b>점</b>이면 돼요.</li>
+      <li>도면에서 위치를 한 번 누르면 빨간 <b>＋ 임시 핀</b>이 놓여요. 다른 곳을 누르면 옮겨지고, 꾹 누르면 끌어서 맞출 수 있어요.</li>
+      <li><b>핀 버튼을 한 번 더</b> 누르면 고정되고 핀 창이 열려요. 그만두려면 <b>취소</b>.</li>
+    </ol>
+    <h3>구역으로 찍기</h3>
+    <ul class="plain">
+      <li><b>도형</b>을 고르면 아래 줄에서 <b>사각형 · 원형 · 다각형</b>을 골라요. 사각형·원형은 끌어서 그리고, 모서리 손잡이로 크기를 맞춰요. 다각형은 꼭짓점을 차례로 누르고 핀 버튼으로 고정해요.</li>
+      <li><b>자유</b>는 한 손가락으로 그려요(두 손가락은 확대·이동). 여러 번 나눠 그려도 되고 <b>되돌리기</b>가 있어요.</li>
+      <li><b>구름 테두리</b> 스위치를 켜면 도형이 도면 수정 구름처럼 그려져요. 자유 그리기는 한 바퀴 돌려 <b>처음 자리 근처에서 닫으면</b> 구름이 되고, 닫지 않은 선은 그냥 선으로 남아요. 스위치는 다음에도 켜진 채로 기억돼요.</li>
+    </ul>
+  </section>
+
+  <section id="s8">
+    <h2><span class="n">8</span>길이·면적 재기</h2>
+    <p>도면 화면 위쪽 <b>자 모양 버튼</b>을 누르면 보던 도면·쪽이 측정 화면으로 열려요. 재는 동안 도면과 핀은 바뀌지 않아요.</p>
+    <div class="shots">
+      <figure><img src="img/15-measure.jpg" alt="측정 화면" loading="lazy"><figcaption>측정 화면 (거리·면적)</figcaption></figure>
+      <figure><img src="img/15b-measview.jpg" alt="잰 치수 표시" loading="lazy"><figcaption>핀 화면에 보이는 잰 치수</figcaption></figure>
+    </div>
+    <ol class="steps">
+      <li>처음 한 번 위쪽 <b>눈금</b> 칩을 눌러 눈금을 맞춰요. 치수선 양 끝처럼 <b>길이를 아는 두 점</b>을 찍고 실제 치수(mm)를 넣는 게 가장 정확해요. 축척(1/50 등)으로 맞출 수도 있고, 소수점 셋째 자리까지 넣을 수 있어요.</li>
+      <li>아래 도구에서 고르세요. <b>거리</b>는 두 점을 차례로, <b>선 간격</b>은 첫 선을 찍은 뒤 다음 선을 찍으면 수직 간격이, <b>면적</b>은 모서리를 차례로 찍고 첫 점을 다시 찍거나 빨간 <b>✓</b>를 누르면 m²와 둘레가 나와요.</li>
+      <li>잰 값(빨간 글자)을 누르면 <b>점 옮기기 · 삭제 · 메모</b>를 할 수 있어요. 거리는 <b>길이 숫자를 넣어</b> 바로 바꿀 수 있고(A점·B점·가운데 중 어디를 고정할지 고름), 점을 옮길 때는 원래 선 방향으로 점선 스냅이 잡혀요. 첫 점은 <b>A</b>, 나중 점은 <b>B</b>로 표시돼요. 면적은 <b>깊이(mm)</b>를 넣으면 부피(m³)도 나와요.</li>
+      <li>캐드에서 뽑은 PDF는 선 끝·교차점·선 위에 <b>스냅</b>이 붙어요(위쪽 스냅 칩으로 켜고 끔). 찍을 때는 손가락 위 십자선과 돋보기를 보고 맞추세요. ↶ ↷ 로 되돌리기·다시 하기, 다 쓰면 <b>닫기</b>.</li>
+    </ol>
+    <div class="note">잰 치수와 눈금은 도면·쪽마다 저장돼요. 핀 화면 위쪽 <b>치수</b> 스위치로 도면 위에 보이거나 숨길 수 있어요.</div>
+  </section>
+
+  <section id="s9">
+    <h2><span class="n">9</span>핀 내용과 사진</h2>
+    <p>핀 창은 위에 도면, 아래에 내용이 보여요. 손잡이를 올리면 크게, 내리면 닫혀요. <b>적는 즉시 저장</b>되고, 창 위 ‹ › 로 다음 핀으로 넘어가요.</p>
+    <div class="shots">
+      <figure><img src="img/10-pinsheet.jpg" alt="핀 창 위쪽" loading="lazy"><figcaption>핀 창 위쪽</figcaption></figure>
+      <figure><img src="img/11-pinsheet2.jpg" alt="핀 창 아래쪽" loading="lazy"><figcaption>핀 창 아래쪽</figcaption></figure>
+      <figure><img src="img/13-photo.jpg" alt="사진 크게 보기" loading="lazy"><figcaption>사진을 눌러 크게 본 모습</figcaption></figure>
+    </div>
+    <ol class="marks">
+      <li data-n="1"><b>조치 전·후 관리 / 기록만(메모·사진)</b>: 조치가 필요 없는 확인 내용·전달사항은 <b>기록만</b>으로 남겨요.</li>
+      <li data-n="2"><b>상태</b>: 처음엔 미조치예요. 조치가 끝나면 조치완료(10번).</li>
+      <li data-n="3"><b>팀</b>: 담당 팀을 고르면 핀 색과 번호가 그 팀 것으로 바뀌어요. <b>품질팀</b>은 업체·공종 대신 <b>종류(균열·재료분리)</b>를 골라요(13번).</li>
+      <li data-n="4"><b>업체 · 공종</b>: 목록에서 고르거나 <b>직접 입력</b>. 업체 목록은 <b>⚙ 목록 편집</b>에서 고쳐요. 체험판에는 예시 업체(네모창호·세모방수·동글골조)가 들어 있어요.</li>
+      <li data-n="5"><b>내용</b>과 <b>사진</b>: <b>촬영</b> 또는 <b>앨범</b>으로 여러 장 넣어요. 컴퓨터에서는 끌어다 놓거나 붙여넣기 해도 돼요.</li>
+    </ol>
+    <p><b>사진 크게 보기</b>: 두 손가락으로 벌리거나 두 번 누르면 확대, 옆으로 밀면 다음 사진이에요. <b>↻ 회전</b>, <b>☆ 대표 사진</b>(사진대지에 들어갈 사진), <b>사진 삭제</b>가 있어요.</p>
+    <div class="note">핀 창 맨 아래 <b>위치 옮기기</b>로 핀 자리를 바꾸고, 찍은 날짜도 고칠 수 있어요. 날짜를 고치면 그 팀 핀 번호가 날짜 순서대로 다시 매겨져요.</div>
+  </section>
+
+  <section id="s10">
+    <h2><span class="n">10</span>조치완료</h2>
+    <div class="shots">
+      <figure><img src="img/12-done.jpg" alt="조치완료" loading="lazy"><figcaption>조치완료로 바꾼 핀</figcaption></figure>
+      <figure><img src="img/12b-done2.jpg" alt="조치 후 사진" loading="lazy"><figcaption>조치 후 사진과 코멘트</figcaption></figure>
+    </div>
+    <ol class="marks">
+      <li data-n="1"><b>조치완료</b>를 누르면 시각이 기록되고 핀이 ✓ 로 바뀌어요.</li>
+      <li data-n="2"><b>조치 후 사진</b>과 <b>조치 후 코멘트</b> 칸이 생겨요. 조치 후 사진을 넣으면 사진대지에 조치 전·후가 나란히 들어가요.</li>
+    </ol>
+  </section>
+
+  <section id="s11">
+    <h2><span class="n">11</span>핀 목록</h2>
+    <div class="shots"><figure><img src="img/14-list.jpg" alt="핀 목록" loading="lazy"><figcaption>목록을 누른 모습</figcaption></figure></div>
+    <ol class="marks">
+      <li data-n="1"><b>팀</b>으로 거르고(여러 팀 가능), <b>내용 검색</b>으로 내용·업체·공종을 찾아요.</li>
+      <li data-n="2"><b>전체 · 미조치 · 조치완료 · 기록</b>으로 나눠 봐요.</li>
+      <li data-n="3">사진, 내용, 조치 코멘트, 업체, 날짜가 보여요. 누르면 도면에서 그 핀으로 이동해요.</li>
+      <li data-n="4"><b>선택</b>: 여러 핀을 골라 날짜·팀·업체·공종을 한꺼번에 바꾸거나, 고른 핀만 사진대지로 만들거나, 지울 수 있어요. 쪽이 여러 개인 도면은 <b>⇄ 다른 쪽으로 옮기기</b>도 있어요.</li>
+    </ol>
+  </section>
+
+  <section id="s12">
+    <h2><span class="n">12</span>내보내기 (사진대지 PDF)</h2>
+    <div class="shots">
+      <figure><img src="img/16-export.jpg" alt="내보내기" loading="lazy"><figcaption>내보내기를 누른 모습</figcaption></figure>
+      <figure><img src="img/17-export2.jpg" alt="PDF 만들기" loading="lazy"><figcaption>PDF 만들기</figcaption></figure>
+    </div>
+    <ol class="marks">
+      <li data-n="1"><b>부분 캡처</b>: 끌어서 고른 부분을 그림으로 만들어요(펜으로 표시 가능). <b>PDF 만들기</b>: 핀 표시 도면 + 사진대지. <b>도면 PDF</b>: 핀 없이 도면만.</li>
+      <li data-n="2"><b>사진대지 양식</b>: <b>내부 관리 현황</b>(현황표와 핀 목록), <b>하자조치요청서</b>(공사팀, 업체별로 묶음), <b>균열관리사진대지</b>(품질팀).</li>
+      <li data-n="3">넣을 <b>팀 · 업체 · 공종</b>, <b>기간</b>, 넣을 핀(전체·미조치만·조치완료만)을 고르고 <b>미리보기</b>로 확인한 뒤 <b>PDF 만들기</b> → <b>보내기</b>로 메일·메신저 등에 보내거나 파일에 저장해요.</li>
+    </ol>
+    <p>만들어지는 PDF는 이렇게 생겼어요(내부 관리 현황).</p>
+    <div class="shots">
+      <figure class="doc"><img src="img/pdf-1.jpg" alt="핀 표시 도면" loading="lazy"><figcaption>첫 쪽: 핀 표시 도면</figcaption></figure>
+      <figure class="docv"><img src="img/pdf-2.jpg" alt="현황표" loading="lazy"><figcaption>현황표와 핀 목록</figcaption></figure>
+      <figure class="docv"><img src="img/pdf-3.jpg" alt="사진대지" loading="lazy"><figcaption>사진대지 (조치 전·후)</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="crack">
+    <h2><span class="n">13</span>균열 관리 (엑셀)</h2>
+    <p>품질팀이 콘크리트 균열을 핀으로 찍어 두면, <b>「콘크리트 구조물 균열관리 현황」 엑셀 양식</b>을 채운 파일이 한 번에 나와요.</p>
+    <div class="shots">
+      <figure><img src="img/18-crack.jpg" alt="균열 칸" loading="lazy"><figcaption>① 핀 창의 균열 칸</figcaption></figure>
+      <figure><img src="img/19-crackphoto.jpg" alt="균열선 버튼" loading="lazy"><figcaption>② 사진 크게 보기</figcaption></figure>
+      <figure><img src="img/20-crackline.jpg" alt="균열선 그리기" loading="lazy"><figcaption>③ 균열선 그리기</figcaption></figure>
+      <figure><img src="img/21-crackexport.jpg" alt="균열 엑셀 내보내기" loading="lazy"><figcaption>④ 엑셀 만들기</figcaption></figure>
+    </div>
+    <ol class="steps">
+      <li>핀 창에서 팀을 <b>품질팀</b>, 종류를 <b>균열</b>로 고르면 <b>균열 칸</b>이 생겨요. 균열폭(mm)·길이(m)·타설일·타설 온도를 넣고 <b>일반균열 · 관통균열 · 누수관통균열</b> 중 하나를 골라요. 원인·관리 방법·보수 방법도 적어요.</li>
+      <li>사진을 크게 열고 <b>✎ 균열선</b>을 눌러요.</li>
+      <li>사진 위에서 균열을 따라 끌면 빨간 선이 그려져요. <b>되돌리기 · 모두 지우기</b>가 있고 <b>완료</b>를 누르면 저장돼요.</li>
+      <li><b>내보내기 → PDF 만들기 → 균열관리사진대지</b>를 고르고 파일 형식을 <b>엑셀 (원본 양식)</b>으로 둬요. <b>조사자 · 확인자</b> 이름을 넣고 <b>엑셀 만들기</b>. 파일 형식을 <b>PDF</b>로 바꾸면 같은 양식이 PDF로 나와요.</li>
+    </ol>
+    <p>엑셀에는 <b>균열관리대장 · 평면도 · 사진대지 · 사진장부</b> 시트가 들어가요. 범례는 모두 빨간색으로, 일반균열은 한 줄, 관통균열은 두 줄, 누수관통균열은 두 줄에 빗금이에요.</p>
+    <div class="shots">
+      <figure class="docv" style="flex-basis:100%"><img src="img/crack-sheet.jpg" alt="균열관리 사진대지" loading="lazy"><figcaption>사진대지 시트</figcaption></figure>
+      <figure class="docv" style="flex-basis:100%"><img src="img/crack-ledger.jpg" alt="균열관리대장" loading="lazy"><figcaption>균열관리대장 시트</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="s14">
+    <h2><span class="n">14</span>설정</h2>
+    <div class="shots">
+      <figure><img src="img/22-settings.jpg" alt="설정" loading="lazy"><figcaption>⚙ 설정</figcaption></figure>
+      <figure><img src="img/23-settings2.jpg" alt="설정 아래쪽" loading="lazy"><figcaption>설정 아래쪽</figcaption></figure>
+    </div>
+    <ul class="plain">
+      <li><b>어플 사용법</b>: 연습 도면으로 따라하기, 이 가이드 열기, 앱 버전.</li>
+      <li><b>내 기본 팀</b>: 새 핀을 찍을 때 먼저 골라지는 팀(<b>마지막에 쓴 팀</b>으로도 둘 수 있어요).</li>
+      <li><b>사진 화질</b>: 저화질 약 0.2MB · 보통 약 0.6MB · 고화질 약 2MB. <b>사진 화질 비교하기</b>로 예시 사진을 견줘 볼 수 있어요.</li>
+      <li><b>내보내기 기본 양식</b>, <b>사진대지에 넣을 사진</b>(대표 사진만 / 사진 전부), <b>휴대폰 저장 공간 보기·정리</b>.</li>
+    </ul>
+  </section>
+
+  <section id="s15">
+    <h2><span class="n">15</span>따라하기로 연습</h2>
+    <p>견본 도면(공동주택 1층 평면도 A-101)을 열고, 테두리가 가리키는 버튼을 직접 눌러 가며 배워요. 핀 찍기부터 목록·내보내기·도면 관리·설정까지 다뤄요.</p>
+    <div class="shots"><figure><img src="img/24-tour.jpg" alt="따라하기" loading="lazy"><figcaption>따라하기 중인 모습</figcaption></figure></div>
+    <p>설정 → <b>▶ 연습 도면으로 따라하기</b>로 언제든 다시 시작해요. 중간에 <b>‹ 이전</b>으로 돌아가거나 <b>그만하기</b>로 끝낼 수 있어요.</p>
+  </section>
+
+  <section id="s16">
+    <h2><span class="n">16</span>자주 묻는 질문</h2>
+    <dl class="faq">
+      <dt>체험판 기록은 어디에 저장되나요? 지워지기도 하나요?</dt>
+      <dd>도면·핀·사진은 <b>이 휴대폰에만</b> 저장돼요. 앱을 지우거나 방문 기록·사이트 데이터를 지우면 함께 지워지고 되살릴 수 없어요. 아이폰은 사파리로만 열면 7일 넘게 안 쓸 때 지워질 수 있으니 <b>홈 화면 아이콘</b>으로 열어 쓰세요(2번).</dd>
+      <dt>다른 사람과 같이 볼 수 있나요?</dt>
+      <dd>체험판은 다른 사람과 공유되지 않고 개인 도면으로만 써요. 결과를 전하고 싶으면 <b>내보내기</b>로 PDF·엑셀을 만들어 보내세요.</dd>
+      <dt>신호가 안 터지는 곳에서도 되나요?</dt>
+      <dd>네. 한 번 열어 둔 체험판은 인터넷이 끊겨도 열리고, 핀과 사진도 휴대폰에 바로 저장돼요.</dd>
+      <dt>핀 번호가 바뀌었어요.</dt>
+      <dd>핀 번호는 도면·팀마다 찍은 날짜 순서로 매겨져요. 앞쪽 핀을 지우거나 찍은 날짜를 고치면 뒤 번호가 당겨지거나 바뀌어요.</dd>
+      <dt>사진을 넣다가 도면 목록으로 돌아갔어요.</dt>
+      <dd>핀이 아주 많은 큰 도면에서는 휴대폰 메모리가 모자라 핀톡이 다시 시작될 수 있어요. 10분 안이면 보던 도면과 핀이 다시 열리니 사진만 한 번 더 넣어 주세요. 자주 그러면 설정 → 사진 화질을 ‘저화질’로 바꿔 보세요.</dd>
+      <dt>잰 길이가 도면 치수와 조금 달라요.</dt>
+      <dd>눈금을 맞출 때 찍은 두 점이 조금만 어긋나도 차이가 생겨요. 되도록 <b>긴 치수선</b>의 양 끝을 확대해서 찍고, 캐드 PDF라면 스냅을 켜 두세요.</dd>
+      <dt>DWG 도면 선이 얇아요.</dt>
+      <dd>DWG는 휴대폰 안에서 PDF로 바꿀 때 모든 선을 얇게 그려요. 선 굵기가 중요하면 캐드에서 PDF로 뽑아 불러오세요.</dd>
+    </dl>
+  </section>
+</main>
+<footer>핀톡 체험판 · 앱 버전 4.64 기준 (2026.11.24)</footer>
+<script>
+/* 열어 본 휴대폰이 아이폰인지 안드로이드인지 보고 맞는 설명을 먼저 보여 준다 */
+(function(){
+  var ua=navigator.userAgent||"", ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1), and=/Android/i.test(ua);
+  var cur=ios?"ios":and?"and":"ios", tabs=document.querySelectorAll("[data-os]"), panes=document.querySelectorAll("[data-pane]");
+  function show(o){ for(var i=0;i<tabs.length;i++) tabs[i].setAttribute("aria-selected",tabs[i].getAttribute("data-os")===o?"true":"false");
+    for(var j=0;j<panes.length;j++) panes[j].hidden=panes[j].getAttribute("data-pane")!==o; }
+  for(var i=0;i<tabs.length;i++) tabs[i].addEventListener("click",function(){ show(this.getAttribute("data-os")); });
+  show(cur);
+  var h=document.getElementById("osHint"), sa=(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone;
+  if(sa){ h.textContent="지금 홈 화면의 핀톡 아이콘으로 열고 있어요. 이미 설치돼 있어요."; h.hidden=false; }
+  else if(ios||and){ h.textContent=ios?"이 휴대폰은 아이폰이에요. 아이폰 방법을 먼저 보여 드려요.":"이 휴대폰은 안드로이드폰이에요. 안드로이드 방법을 먼저 보여 드려요."; h.hidden=false; }
+})();
+</script>
+</body>
+</html>
