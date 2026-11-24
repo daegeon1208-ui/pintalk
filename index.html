@@ -1294,10 +1294,11 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 
 <script>
 "use strict";
-const APP_VER = "4.63";
+const APP_VER = "4.64";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
+if(TRY) document.querySelectorAll(".guideGo").forEach(a=>a.href="guide/try/");   // 4.64 체험판 전용 사진 가이드 (실명·현장 사진 없음)
 if(TRY){ const P="try:", SP=Storage.prototype, g=SP.getItem, st=SP.setItem, rm=SP.removeItem;
   SP.getItem=function(k){ return g.call(this,P+k); }; SP.setItem=function(k,v){ return st.call(this,P+k,v); }; SP.removeItem=function(k){ return rm.call(this,P+k); };
   document.documentElement.classList.add("try"); }
@@ -2700,6 +2701,7 @@ const vTeams=v=>Array.isArray(v[2])&&v[2].length?v[2]:null;
 const dVendors=d=>d&&Array.isArray(d.vendors)?d.vendors:VENDORS, curV=()=>dVendors(V.drawing);
 const vendorsFor=team=>curV().filter(v=>!vTeams(v)||vTeams(v).includes(team||""));
 try{ const o=JSON.parse(localStorage.getItem("pinsSettings")||"null"); if(o){ if(typeof o.site==="string") SITE=o.site; if(Array.isArray(o.vendors)) VENDORS=o.vendors; } }catch(e){}
+if(TRY) SITE="○○ 공동주택 신축공사";   // 4.64 체험판은 실제 현장 이름 대신 예시 이름
 // 4.28 체험판은 실제 업체 대신 예시 업체만 (사용자 지정: 네모창호·세모방수·동글골조)
 const TRY_VENDORS=[["네모창호","창호",[]],["세모방수","방수",[]],["동글골조","골조",[]]];
 if(TRY){ VENDORS=TRY_VENDORS; (async()=>{ try{ if(localStorage.getItem("tryVend")==="1") return; for(const d of await dbAll("drawings")) if(d.vendors){ delete d.vendors; await dbPut("drawings",d); } localStorage.setItem("tryVend","1"); }catch(e){} })(); }
@@ -4761,7 +4763,7 @@ function tryKeepMsg(){
   const a=sa?"지금은 <b>홈 화면 아이콘</b>으로 열고 있어 저절로 지워지지 않아요. "
     :ios?"<b>홈 화면에 추가</b>해 아이콘으로 열면 저절로 지워지지 않아요. 사파리로만 열면 <b>7일 넘게 안 쓸 때</b> 아이폰이 지울 수 있어요. "
     :"<b>홈 화면에 추가</b>해 아이콘으로 열면 편해요. ";
-  return "📱 체험판 기록은 <b>이 휴대폰에만</b> 저장돼요. "+a+"앱을 지우거나 방문 기록·사이트 데이터를 지우면 함께 지워지고, 되살릴 수 없어요."+(ios&&!sa?" 사파리와 홈 화면 앱은 저장 공간이 따로라서, 처음부터 아이콘으로 열어 쓰세요.":"")+(sa?"":' <a href="guide/#s2" target="_blank" rel="noopener" style="color:#E31937;font-weight:700">홈 화면에 추가하는 방법 ›</a>');
+  return "📱 체험판 기록은 <b>이 휴대폰에만</b> 저장돼요. "+a+"앱을 지우거나 방문 기록·사이트 데이터를 지우면 함께 지워지고, 되살릴 수 없어요."+(ios&&!sa?" 사파리와 홈 화면 앱은 저장 공간이 따로라서, 처음부터 아이콘으로 열어 쓰세요.":"")+(sa?"":' <a href="guide/try/#s2" target="_blank" rel="noopener" style="color:#E31937;font-weight:700">홈 화면에 추가하는 방법 ›</a>');
 }
 function askTryTour(){   // 4.37 체험판: 처음 들어오면 따라하기를 할지 팝업으로 묻는다 (한 번만)
   try{ if(localStorage.getItem("tourDone")||localStorage.getItem("tryAsked")) return; }catch(e){}
