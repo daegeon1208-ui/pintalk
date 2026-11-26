@@ -967,6 +967,10 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 .bkch{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
 .bkch button{border:1px solid var(--line);border-radius:999px;background:var(--soft,#F3F4F2);padding:8px 12px;font-weight:700;font-size:14px}
 #lSelBtn.on{background:#E31937;color:#fff;border-color:#E31937}
+/* 4.66 첫 화면(서버 연결·로그인) 언어 고르기 */
+.glang{display:inline-flex;gap:2px;margin-top:12px;padding:3px;border-radius:999px;background:rgba(0,0,0,.06)}
+.glang button{border:0;background:none;font:inherit;font-size:13px;font-weight:600;color:var(--sub);padding:5px 12px;border-radius:999px;cursor:pointer}
+.glang button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
 /* 4.65 화면 언어: CSS로 쓴 글자 */
 html[lang=en].try header::after,html[lang=en] .try header::after{content:"Trial"} html[lang=zh-CN].try header::after,html[lang=zh-CN] .try header::after{content:"体验版"}
 html[lang=en] #home.drop::after{content:"Drop here to import a drawing (PDF·DWG)"} html[lang=zh-CN] #home.drop::after{content:"放到这里即可导入图纸 (PDF·DWG)"}
@@ -988,7 +992,8 @@ html[lang=en] #home.drop::after{content:"Drop here to import a drawing (PDF·DWG
 <!-- 시작: 연결 → 로그인 -->
 <section id="gate" class="screen" hidden>
   <div class="gtop"><div class="gmark"><img src="icon-192.png" alt="핀톡"></div>
-    <h1>핀톡</h1><p>이슈·하자·전달사항을 그 자리에 콕</p></div>
+    <h1>핀톡</h1><p>이슈·하자·전달사항을 그 자리에 콕</p>
+    <div class="glang" id="gLang" data-noi18n aria-label="언어 · Language · 语言"><button data-v="ko">한국어</button><button data-v="en">English</button><button data-v="zh">中文</button></div></div>
   <div class="gcard">
     <div id="gStep1" data-lb="A1 서버 연결">
       <div class="gstep"><span class="on"><b>1</b>서버 연결</span><i></i><span>2 로그인</span></div>
@@ -1300,7 +1305,7 @@ html[lang=en] #home.drop::after{content:"Drop here to import a drawing (PDF·DWG
 
 <script>
 "use strict";
-const APP_VER = "4.65";
+const APP_VER = "4.66";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -1436,8 +1441,9 @@ function renderPrefs(){
 }
 $("#setTeam").addEventListener("click",e=>{ const b=e.target.closest("[data-mt]"); if(!b) return; setPref("myTeam",b.dataset.mt); renderPrefs(); });
 /* 4.65 화면 언어: 고르면 저장하고 다시 연다 (i18n.js) */
-document.querySelectorAll("#setLang button").forEach(b=>b.classList.toggle("on",b.dataset.v===(window.PT_LANG||"ko")));
+document.querySelectorAll("#setLang button,#gLang button").forEach(b=>b.classList.toggle("on",b.dataset.v===(window.PT_LANG||"ko")));
 $("#setLang").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b||b.dataset.v===(window.PT_LANG||"ko")) return; window.ptSetLang?window.ptSetLang(b.dataset.v):0; });
+$("#gLang").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b||b.dataset.v===(window.PT_LANG||"ko")) return; window.ptSetLang?window.ptSetLang(b.dataset.v):0; });
 $("#setPhoto").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; setPref("photoQ",b.dataset.v); renderPrefs(); });
 $("#setTmpl").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; setPref("expTmpl",b.dataset.v); renderPrefs(); });
 $("#setPh").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; setPref("expAllPhotos",b.dataset.v); renderPrefs(); });
