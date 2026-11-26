@@ -971,6 +971,10 @@ i.lq>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 .glang{display:inline-flex;gap:2px;margin-top:12px;padding:3px;border-radius:999px;background:rgba(0,0,0,.06)}
 .glang button{border:0;background:none;font:inherit;font-size:13px;font-weight:600;color:var(--sub);padding:5px 12px;border-radius:999px;cursor:pointer}
 .glang button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+/* 4.67 영어·중국어에서 도면 목록 머리줄 버튼이 화면 밖으로 밀리지 않게: 앱 이름이 먼저 줄어든다 */
+#home header h1{min-width:0} #home header .hbtn{flex:none}
+#home header .htxt{min-width:0;overflow:hidden;text-overflow:ellipsis}
+html:not([lang=ko]) #home header h1{font-size:21px}
 /* 4.65 화면 언어: CSS로 쓴 글자 */
 html[lang=en].try header::after,html[lang=en] .try header::after{content:"Trial"} html[lang=zh-CN].try header::after,html[lang=zh-CN] .try header::after{content:"体验版"}
 html[lang=en] #home.drop::after{content:"Drop here to import a drawing (PDF·DWG)"} html[lang=zh-CN] #home.drop::after{content:"放到这里即可导入图纸 (PDF·DWG)"}
@@ -980,7 +984,7 @@ html[lang=en] #home.drop::after{content:"Drop here to import a drawing (PDF·DWG
 
 <!-- 도면 목록 -->
 <section id="home" class="screen" data-lb="B1 도면 목록">
-  <header><h1><span class="hlogo"><img src="icon-192.png" alt=""></span>핀톡</h1><button class="hbtn cloud" id="cloudBtn"><i></i><span id="cloudTxt">공유</span></button><button class="hbtn mode" id="modeBtn" hidden></button><button class="hbtn ico" id="noteBtn" aria-label="알림"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg><b class="nbadge" id="noteCnt" hidden></b></button><button class="hbtn ico" id="helpBtn" aria-label="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2L5.5 5.5"/><circle cx="12" cy="12" r="6.3"/></svg></button></header>
+  <header><h1><span class="hlogo"><img src="icon-192.png" alt=""></span><span class="htxt">핀톡</span></h1><button class="hbtn cloud" id="cloudBtn"><i></i><span id="cloudTxt">공유</span></button><button class="hbtn mode" id="modeBtn" hidden></button><button class="hbtn ico" id="noteBtn" aria-label="알림"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg><b class="nbadge" id="noteCnt" hidden></b></button><button class="hbtn ico" id="helpBtn" aria-label="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2L5.5 5.5"/><circle cx="12" cy="12" r="6.3"/></svg></button></header>
   <div class="asuser" id="asUserBar" hidden><span id="asUserTxt"></span> <button id="asUserOff">관리자로 돌아가기</button></div>
   <div class="htop" id="hTop"><div class="hsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="hq" type="search" name="dwg-search" placeholder="도면 이름으로 찾기" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore readonly enterkeyhint="search"><button id="hqX" aria-label="지우기" hidden>✕</button></div><div class="hfilter" id="hTabs"></div></div>
   <main id="dlist"></main>
@@ -1305,7 +1309,7 @@ html[lang=en] #home.drop::after{content:"Drop here to import a drawing (PDF·DWG
 
 <script>
 "use strict";
-const APP_VER = "4.66";
+const APP_VER = "4.67";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
