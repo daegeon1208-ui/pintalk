@@ -1309,7 +1309,7 @@ html[lang=en] #home.drop::after{content:"Drop here to import a drawing (PDF·DWG
 
 <script>
 "use strict";
-const APP_VER = "4.67";
+const APP_VER = "4.68";
 /* 3.97 체험판(/try/): 서버 없이 이 휴대폰에만 저장. 진짜 핀톡과 같은 주소(github.io)라서
    저장 공간이 섞이지 않게 도면 DB 이름을 따로 쓰고, localStorage 이름 앞에 "try:"를 붙인다 */
 const TRY=!!window.PINTALK_TRY;
@@ -1825,7 +1825,7 @@ $("#dlist").addEventListener("click",async e=>{
       ["copy","도면 복사","핀·사진까지 또는 도면만","copy"]]:[]),
       ...(d.sample?[]:d.private?[["toTeam","협업 도면으로 바꾸기","공유 서버에 올려 함께 쓰는 사람과 핀 공유","people"]]
         :[["toPrivate","개인 도면으로 바꾸기",shared?(lockMine(d)?"공유에서 내리거나 · 개인 사본 만들기":"나만 보는 개인 사본 만들기"):"다른 사람에게 안 보이고 나만 쓰기","lock"]]),
-      ...(shared&&lockMine(d)?[["invite","협업 요청 보내기","받은 사람은 비밀번호 없이 열 수 있음","people"]]:[]),
+      ...(shared&&lockMine(d)?[["invite","협업 요청 보내기","수락한 사람만 이 도면을 보고 받음","people"]]:[]),
       ...(canLock?[["lock",d.locked?"비밀번호 바꾸기·풀기":"비밀번호 걸기",d.locked?"🔒 걸려 있음 · 올린 사람과 관리자는 그냥 열림":"알려 준 사람만 열 수 있게","lock"]]:[]),
       ...(canEditD(d)?[["-"],
       ["delete","삭제",shared?"도면과 핀 모두 · 함께 쓰는 사람 모두에게서":"도면과 핀 모두 · 되돌릴 수 없음","trash"]]:[]),
@@ -1842,7 +1842,7 @@ $("#dlist").addEventListener("click",async e=>{
       else if(act==="lock"){ await lockMenu(d); }
       else if(act==="toTeam"){
         if(!cloudSet()){ toast("먼저 위의 '공유'에서 연결해 주세요",3500); return; }
-        if(!confirm(`「${d.name}」을(를) 협업 도면으로 바꿀까요?\n공유 서버에 올라가서 함께 쓰는 사람들이 도면과 핀을 보고 같이 씁니다.`)) return;
+        if(!confirm(`「${d.name}」을(를) 협업 도면으로 바꿀까요?\n공유 서버에 올라가고, 협업 요청을 수락한 사람만 도면과 핀을 보고 같이 씁니다.`)) return;
         if(d.cloud){ if(!cloudOn()){ toast("먼저 위의 '공유'에서 연결해 주세요",3500); return; } await api({action:"setPrivate",id:d.id,private:false}); }
         d.private=false; await dbPut("drawings",d); await renderHome();
         if(cloudOn()){ toast("공유 서버에 올리는 중…",60000); await syncDrawings(); if(!/멈췄|실패/.test($("#toast").dataset.raw||"")) toast("100% · 협업 도면으로 바꿨습니다",3000); }
@@ -2264,10 +2264,19 @@ async function syncDrawings(){
       if("vendors" in r&&JSON.stringify(r.vendors||null)!==JSON.stringify(l.vendors||null)){ l.vendors=r.vendors||undefined; await dbPut("drawings",l); if(V.drawing&&V.drawing.id===l.id) V.drawing.vendors=l.vendors; }
       if((r.ver||"")!==(l.ver||"")){ l.ver=r.ver||""; l.pages=r.pages; l.stale=true; l.size=r.size||0; await dbPut("drawings",l); }   // 다른 사람이 쪽을 바꿈 → 열 때 새 PDF를 받는다
     }
+    // 4.68 협업 도면은 초대받은 사람만 본다: 서버 목록에 없는 협업 도면은 이 휴대폰에서도 내린다 (아직 안 보낸 핀이 있으면 남겨 둠)
+    const seen=new Set(j.drawings.map(r=>r.id)); let gone=0;
+    for(const l of locals) if(l.cloud&&!l.private&&!l.sample&&l.id!==DEMO_ID&&!seen.has(l.id)){
+      if((await pinsOf(l.id)).some(p=>p.dirty)) continue;
+      if(V.drawing&&V.drawing.id===l.id) continue;
+      await removeLocalDrawing(l.id); gone++;
+    }
+    if(gone) toast(`초대받지 않은 협업 도면 ${gone}개를 목록에서 내렸어요`,3500);
     remoteOnly=live.filter(r=>!locals.some(d=>d.id===r.id));
     await renderHome();
-    for(const l of locals) if(!l.cloud&&!l.sample&&l.id!==DEMO_ID&&!j.drawings.some(r=>r.id===l.id)){ await uploadDrawing(l); }   // 4.41 개인 도면도 내 계정으로 서버에 보관
-    for(const l of await dbAll("drawings")) if(l.cloud){ try{ await pushDirty(l.id); }catch(e){ if(!e.locked) throw e; } }   // 비밀번호를 모르는 잠긴 도면은 건너뜀
+    const upd=new Set();
+    for(const l of locals) if(!l.cloud&&!l.sample&&l.id!==DEMO_ID&&!j.drawings.some(r=>r.id===l.id)){ await uploadDrawing(l); upd.add(l.id); }   // 4.41 개인 도면도 내 계정으로 서버에 보관
+    for(const l of await dbAll("drawings")) if(l.cloud&&(seen.has(l.id)||upd.has(l.id))){ try{ await pushDirty(l.id); }catch(e){ if(!e.locked) throw e; } }   // 비밀번호를 모르는 잠긴 도면은 건너뜀
     await renderHome();
     setSync("on","연결 확인");
   }catch(err){ setSync("err",navigator.onLine===false?"오프라인":"서버 연결 실패"); }
